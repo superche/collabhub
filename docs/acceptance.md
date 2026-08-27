@@ -1,6 +1,6 @@
 # v0.1 验收记录
 
-日期：2026-08-27（Asia/Shanghai）  
+日期：2026-08-28（Asia/Shanghai）
 环境：macOS arm64、Node.js v24.18.0、pnpm 10.11.0、Playwright Chromium 151.0.7922.34。
 
 ## 最终 gate
@@ -8,19 +8,21 @@
 `pnpm check`：通过。
 
 - TypeScript project references：通过。
-- Vite production build：41 modules；JS 215.76 KB / 66.83 KB gzip，CSS 4.54 KB / 1.64 KB gzip。
-- BlockNote Vite production build：914 modules；主 JS 1,132.54 KB / 343.56 KB gzip，CSS 243.00 KB / 38.62 KB gzip；大 chunk 警告记录为已知限制。
-- React Flow Vite production build：199 modules；JS 393.06 KB / 125.12 KB gzip，CSS 20.12 KB / 4.01 KB gzip。
-- Vitest：13 files / 41 tests passed。
-- 1,000-section patch benchmark：1,000 samples，p95 0.014 ms，gate 4 ms，通过。
+- Vite production build：41 modules；JS 216.54 KB / 67.08 KB gzip，CSS 4.54 KB / 1.64 KB gzip。
+- BlockNote Vite production build：914 modules；主 JS 1,133.33 KB / 343.82 KB gzip，CSS 243.00 KB / 38.62 KB gzip；大 chunk 警告记录为已知限制。
+- React Flow Vite production build：199 modules；JS 393.94 KB / 125.42 KB gzip，CSS 20.59 KB / 4.15 KB gzip。
+- Vitest：16 files / 55 tests passed。
+- 1,000-section patch benchmark：1,000 samples，p95 0.008 ms，gate 4 ms，通过。
 
-`pnpm test:e2e`：3 tests passed（19.2 s；TODO List 5.0 s，React Flow 6.6 s，BlockNote 6.3 s）。
+`pnpm test:e2e`：4 tests passed（7.6 s）；覆盖 TODO List、BlockNote、React Flow 分享 URL 与 React Flow 断线/联动。
 
 ## 发布与公开 Demo 门禁
 
-`pnpm release:check` 通过。7 个 `0.1.0` package 均生成只含编译 ESM、declaration、source map 与 manifest 的 tarball；审计确认没有 `src`、test 或 `workspace:` 依赖泄漏。`Prepare release artifacts` workflow 只能上传待检 tarball，不包含 tag、GitHub Release 或 npm publish 权限。
+`pnpm release:check` 通过。9 个 `0.1.0` package 均生成编译 ESM、declaration 与精简 manifest；审计确认没有 package `src`、test 或 `workspace:` 依赖泄漏，create-react 仅额外包含生成模板。`pnpm publish:dry-run` 按依赖顺序通过 9 个公共包的 npm dry-run。`Publish technical preview` workflow 会在 owner environment approval 后以 provenance 发布 npm、GHCR 双架构镜像与 GitHub prerelease；`v1.0.0` 仍需另行批准。
 
-`pnpm smoke:demo` 通过：生产 Vite 资源与 bundled Node server 在 `127.0.0.1:4400` 启动，`/demo.html` 中 Alice/Bob 两个 iframe 经真实 WebSocket 收敛；标题更新为 v1，任务联动更新为 v2 / 50%。
+`pnpm smoke:fresh-react` 通过：在系统临时目录生成全新项目，只安装 9 个本地 tarball，断言 `App.tsx`/application 为 0 个 CollabHub import，完成 TypeScript/Vite 构建，启动 server/Alice/Bob 三个独立进程，并由两个 Chromium 客户端收敛到 title `Fresh install works`、canonical v1 / pending 0。
+
+`pnpm smoke:demo` 通过：生产 React Flow 资源与 bundled Node server 在 `127.0.0.1:4400` 启动；先验证非法 Origin 以 1008 拒绝、同 IP 第三个连接以 1013 拒绝，再由 Alice/Bob 经真实 WebSocket 完成 node.add v1 与 node.move v2。活跃 room 不回收；连接关闭后 TTL 删除 room，旧 URL 重新打开恢复为初始 v0。
 
 `deploy/demo.Dockerfile` 与主 `Dockerfile` 均完成本机 Docker 构建。Demo 镜像以 UID/GID `10001:10001` 运行，容器 `/healthz` 返回 `{"status":"ok","version":"0.1.0"}`，并正确提供 Alice/Bob 双窗口页面。
 
@@ -152,6 +154,11 @@ Server trace 中 `node.add` 108 bytes、`node.rename` 64 bytes、`node.move` 66 
 | React Flow 断线恢复 | Bob pending 1，Alice 推进版本，Bob 重连重放后双方 v5 / pending 0 |
 | React Flow 联动删除 | 一个 `node.delete` 原子发布节点与两条关联边删除，双方 v6 收敛 |
 | React Flow 依赖边界 | components/application/domain 禁止 `@collabhub/*`；canonical domain/server pack 禁止 `@xyflow/*` |
+| 外部 React 首次安装 | `smoke:fresh-react` 在临时目录生成、安装 tarball、构建并以双 Chromium 收敛；业务文件 0 个 CollabHub import |
+| 单机 transport 安全默认值 | `server-ws.test.ts` 断言缺少 authenticate 时启动失败；显式开发模式双客户端同步且 operation identity 防伪 |
+| JWT/JWKS document grant | `auth.test.ts` 使用真实 RS256/JWKS，验证 issuer/audience、tenant、subject 与 document grant |
+| JSON Pointer 安全 | `domain-json.test.ts` 拒绝 `__proto__`、`prototype`、`constructor` 及 strict transaction 危险 patch |
+| 公开 Demo 防滥用 | `smoke:demo` 验证 Origin、连接上限、active-room 保护与 TTL 数据删除 |
 
 ## 分布式 runtime 验收
 

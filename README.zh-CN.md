@@ -30,21 +30,22 @@
 |---|---|---|
 | Domain、Store、React Components | Command Transport、Projection Adapter、Domain Pack | 切回原 REST transport |
 
-> **发布状态：** 当前保持 `0.1.0` 验收版本。包产物与发布门禁已就绪；npm 包和 `v1.0.0` 在仓库所有者批准前不会发布。
+> **发布状态：** `0.1.0` 是面向结构化 React 状态的技术预览，不宣称生产级安全或多地域能力；`v1.0.0` 仍需仓库所有者批准。
 
 ## Features
 
-| 能力 | 保证 |
+| 能力 | 范围 |
 |---|---|
 | **Server authoritative** | 服务端定序、校验并发布 canonical patch |
-| **Atomic linked updates** | 一个业务 intent 可原子更新实体、汇总与派生字段 |
+| **Atomic linked updates** | 一个业务 intent 在单个 document 内原子更新实体、汇总与派生字段 |
 | **Host-owned domain** | 无需迁移到 CollabHub 或 CRDT 数据模型 |
 | **Pluggable strategies** | LWW、实体生命周期、列表排序、严格事务 |
 | **Business conflict policy** | Domain Pack 可为旧版本 operation 选择 resolve、reject 或 resync |
 | **Reliable recovery** | 幂等 operation、pending replay、WAL、snapshot recovery |
-| **Horizontal scale** | 无状态 Gateway、单写 Room Worker、PostgreSQL fencing/outbox、Redis 临时路由 |
-| **Single writer** | 协同会话内阻止 REST 与 room 双写 |
+| **Horizontal scale** | 参考 runtime：无状态 Gateway、单写 Room Worker、PostgreSQL fencing/outbox、Redis 临时路由 |
+| **Single-writer contract** | 宿主把共享写统一路由到 mutation gateway；TODO 案例在协同活跃时关闭 REST 直写 |
 | **Ephemeral presence** | presence 不进入 WAL、snapshot 或文档版本 |
+| **Public-edge controls** | JWT/JWKS 身份绑定，并可配置 Origin、连接、room 与消息速率上限 |
 
 ## 案例
 
@@ -84,7 +85,7 @@ pnpm dev:blocknote
 | Alice | `http://127.0.0.1:5183/?client=alice` |
 | Bob | `http://127.0.0.1:5184/?client=bob` |
 
-验证通过：富文本更新、块增删、块排序、连续输入合并、断线重放与 snapshot recovery。详见 [BlockNote 接入说明](docs/integration/blocknote.md)。
+验证通过：块级富文本更新、块增删、块排序、连续输入合并、断线重放与 snapshot recovery。同一顶层 Block 的并发文本是 LWW，不是字符级 CRDT 合并。详见 [BlockNote 接入说明](docs/integration/blocknote.md)。
 
 https://github.com/user-attachments/assets/6a90ca9d-ef9b-4d1b-a105-2e542c80b189
 
@@ -118,6 +119,26 @@ https://github.com/user-attachments/assets/14766fef-c0ba-4bbb-a09e-7a1c9a14536e
 *双客户端冒烟：节点编辑、拖拽合并、断线恢复与关联边联动删除。*
 
 ## 接入案例
+
+从一个双客户端 React 项目开始：
+
+```bash
+npm create @collabhub/react@0.1.0 my-collab-app
+cd my-collab-app
+npm install
+npm run dev
+```
+
+它会启动一个单机权威服务和 Alice/Bob 两个 React 客户端；本地首次体验使用内存存储，不要求先部署 PostgreSQL/Redis。
+
+生成的 `App.tsx` 与应用接口没有任何 `@collabhub/*` import；接入代码只在 `src/collab`、composition root 与 `server.ts`。
+
+已有项目只安装实际使用的边界：
+
+```bash
+npm add @collabhub/client-core @collabhub/domain-json @collabhub/protocol
+npm add @collabhub/server-core @collabhub/server-ws @collabhub/strategy-sdk
+```
 
 React 组件不接触 WebSocket 或 operation。`CollaborationStore` 托管连接、pending、恢复和 canonical state；应用继续拥有 Command 与 patch 语义。
 
@@ -196,10 +217,12 @@ packages/
   protocol/           协议与 wire types
   client-core/        pending、重连与 recovery
   server-core/        定序、pipeline、WAL 与 snapshot
+  server-ws/          单机 WebSocket Adapter 与 room 生命周期
   server-distributed/ PostgreSQL / Redis 多节点 runtime
   strategy-sdk/       Strategy 与 Domain Pack SPI
   domain-json/        默认 JSON strategies
   testkit/            trace 与 conformance helpers
+  create-react/       面向全新 React 项目的 npm create starter
 examples/
   todo-list-app/      REST baseline 与协同接入样板
   blocknote-app/      BlockNote 增量块协同适配
@@ -219,6 +242,7 @@ pnpm dev:react-flow     # React Flow server + Alice + Bob
 pnpm check              # build + tests + benchmark
 pnpm test:e2e           # 双浏览器回归验收
 pnpm smoke:demo         # 生产 bundle + 双窗口公开 Demo
+pnpm smoke:fresh-react  # 打包、npm 安装、构建并双客户端同步全新 starter
 pnpm release:check      # 包元数据、ESM/types、tarball 审计
 
 # 本机独立进程：2 Gateway + 2 Worker + 2 TODO List 前端

@@ -1,93 +1,103 @@
 # React quick start
 
-This guide integrates a structured React state object without moving the domain model into CollabHub. WebSocket, pending operations, reconnect, recovery, and diagnostics stay inside the SDK.
+CollabHub keeps your React components and domain model. Put collaboration in one adapter and the composition root.
 
-> Registry packages are prepared but intentionally unpublished while `0.1.0` validation is in progress. Use the repository workspace or locally packed tarballs until a release is explicitly approved.
-
-## 1. Start a local server
-
-From the CollabHub repository:
+## Fastest path: create a working app
 
 ```bash
-pnpm install --frozen-lockfile
-docker compose -f deploy/docker-compose.yml up --build -d
+npm create @collabhub/react@0.1.0 my-collab-app
+cd my-collab-app
+npm install
+npm run dev
 ```
 
-The local WebSocket endpoint is `ws://127.0.0.1:7090/collab`.
+This starts one standalone authoritative server plus Alice and Bob clients. Open `http://127.0.0.1:5173/?client=alice` and `http://127.0.0.1:5174/?client=bob`, then edit the title in either window.
 
-## 2. Prepare installable packages
+The generated project demonstrates:
+
+- a business-facing React store based on `useSyncExternalStore`;
+- incremental `property.set` operations instead of whole-document writes;
+- pending operations, reconnect, canonical version, and diagnostics;
+- a secure-by-default server adapter, with insecure identity enabled explicitly for local development.
+
+The release gate runs the same generator in a temporary directory, installs only packed public packages, builds it, and verifies Alice/Bob synchronization in Chromium:
 
 ```bash
-pnpm pack:packages
+pnpm smoke:fresh-react
 ```
 
-Install the generated `client-core`, `domain-json`, and `protocol` tarballs in your React application. After an approved registry release, the equivalent command will be:
+## Add CollabHub to an existing React app
+
+Install the client packages:
 
 ```bash
-pnpm add @collabhub/client-core @collabhub/domain-json @collabhub/protocol
+npm add @collabhub/client-core @collabhub/domain-json @collabhub/protocol
 ```
 
-## 3. Add one collaboration module
+Create one collaboration adapter outside your components:
 
 ```ts
 // src/collab/document-collaboration.ts
 import { CollaborationStore } from '@collabhub/client-core'
 import { applyCanonicalPatches } from '@collabhub/domain-json'
-import type { JsonObject } from '@collabhub/protocol'
 
-type DocumentState = JsonObject & { title: string }
-type DocumentCommand = { type: 'document.rename'; title: string }
-
-export function createDocumentCollaboration(documentId: string, actorId: string) {
-  return new CollaborationStore<DocumentState, DocumentCommand>({
-    url: 'ws://127.0.0.1:7090/collab',
-    tenantId: 'demo',
-    documentId,
-    actorId,
-    clientId: `${actorId}-${crypto.randomUUID()}`,
-    schemaVersion: '1.0',
-    initialState: { title: 'Untitled' },
-    applyPatches: applyCanonicalPatches,
-    adaptCommand: (command) => ({
-      operation: {
-        operationType: 'property.set',
-        strategyId: 'json.property-lww',
-        strategyVersion: '1.0',
-        payload: { path: '/title', value: command.title },
-      },
-      optimisticPatches: [{ op: 'set', path: '/title', value: command.title }],
-    }),
-  })
-}
+export const documentStore = new CollaborationStore({
+  url: 'ws://localhost:4100/collab',
+  tenantId: 'example',
+  documentId: new URLSearchParams(location.search).get('document') ?? 'welcome',
+  actorId: crypto.randomUUID(),
+  clientId: crypto.randomUUID(),
+  schemaVersion: '1.0',
+  initialState: { title: 'Untitled' },
+  applyPatches: applyCanonicalPatches,
+  adaptCommand: (command: { type: 'rename'; title: string }) => ({
+    operation: {
+      operationType: 'property.set',
+      strategyId: 'json.property-lww',
+      strategyVersion: '1.0',
+      payload: { path: '/title', value: command.title },
+    },
+    optimisticPatches: [{ op: 'set', path: '/title', value: command.title }],
+  }),
+})
 ```
 
-## 4. Keep React business-facing
-
-Pass the store through your application runtime. The component only knows `getSnapshot`, `subscribe`, and a business command:
+Expose only your application runtime to React:
 
 ```tsx
-function DocumentTitle({ runtime }: { runtime: AppRuntime }) {
-  const document = useSyncExternalStore(
-    runtime.store.subscribe,
-    runtime.store.getSnapshot,
-  )
+function Title({ runtime }: { runtime: AppRuntime }) {
+  const document = useSyncExternalStore(runtime.subscribe, runtime.getSnapshot)
 
   return (
     <input
-      value={document.title}
-      onChange={(event) => runtime.execute({
-        type: 'document.rename',
-        title: event.target.value,
-      })}
+      defaultValue={document.title}
+      onBlur={(event) => runtime.execute({ type: 'rename', title: event.currentTarget.value })}
     />
   )
 }
 ```
 
-For an existing REST application, keep its `CommandTransport` interface and select `RestTransport` or the CollabHub-backed transport at the composition root. The complete production-shaped diff is the [TODO List integration](integration/todo-list-tutorial.md).
+Existing REST applications can keep their `CommandTransport` interface. Select the REST or CollabHub transport only in the composition root; the [TODO List tutorial](integration/todo-list-tutorial.md) shows this production-shaped migration.
 
-## 5. Add domain semantics
+## Start a standalone server
 
-Built-in JSON strategies cover properties, entities, and ordering. Put linked business rules and invariants in a server Domain Pack. One accepted operation can publish multiple patches in one canonical version; clients never observe a partial linked update.
+```bash
+npm add @collabhub/server-ws @collabhub/domain-json
+```
 
-Before production integration, review the [capability matrix](capabilities.md), [integration readiness](integration/readiness.md), and [known limitations](known-limitations.md).
+```ts
+import { createJsonDomainPack } from '@collabhub/domain-json'
+import { startStandaloneWebSocketServer } from '@collabhub/server-ws'
+
+const server = await startStandaloneWebSocketServer({
+  port: 4100,
+  domainPack: createJsonDomainPack(),
+  authenticate: async ({ authToken }) => verifyYourToken(authToken),
+})
+```
+
+`authenticate` must return trusted `tenantId`, `actorId`, and allowed document IDs. Local examples may opt into `allowInsecureDevelopmentIdentity`; production cannot do so accidentally.
+
+For linked fields or invariants, provide a Domain Pack strategy that emits multiple patches. One accepted operation publishes all patches under one canonical version.
+
+Before production use, read the [integration readiness checklist](integration/readiness.en.md), [architecture](architecture/overview.en.md), and [known limitations](known-limitations.en.md).

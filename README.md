@@ -30,21 +30,22 @@
 |---|---|---|
 | Domain, Store, React components | Command Transport, Projection Adapter, Domain Pack | Fall back to the existing REST transport |
 
-> **Release status:** `0.1.0` validation. Package artifacts and release gates are ready, but npm packages and `v1.0.0` are intentionally unpublished pending owner approval.
+> **Release status:** `0.1.0` technical preview for structured React state. It is not a production-ready security or multi-region platform; `v1.0.0` still requires owner approval.
 
 ## Features
 
-| Capability | Guarantee |
+| Capability | Scope |
 |---|---|
 | **Server authoritative** | The server orders, validates, and publishes canonical patches |
-| **Atomic linked updates** | One business intent atomically updates entities, summaries, and derived fields |
+| **Atomic linked updates** | One business intent atomically updates one document's entities, summaries, and derived fields |
 | **Host-owned domain** | No migration to a CollabHub or CRDT data model |
 | **Pluggable strategies** | LWW, entity lifecycle, list ordering, and strict transactions |
 | **Business conflict policy** | Each Domain Pack chooses resolve, reject, or resync for stale operations |
 | **Reliable recovery** | Idempotent operations, pending replay, WAL, and snapshot recovery |
-| **Horizontal scale** | Stateless Gateways, single-writer Room Workers, PostgreSQL fencing/outbox, and ephemeral Redis routing |
-| **Single writer** | REST cannot bypass an active collaborative room |
+| **Horizontal scale** | Reference runtime with stateless Gateways, single-writer Room Workers, PostgreSQL fencing/outbox, and ephemeral Redis routing |
+| **Single-writer contract** | The host routes shared mutations through its gateway; the TODO example gates REST while collaboration is active |
 | **Ephemeral presence** | Presence never enters WAL, snapshots, or document versions |
+| **Public-edge controls** | JWT/JWKS identity binding plus configurable origin, connection, room, and message limits |
 
 ## Examples
 
@@ -84,7 +85,7 @@ pnpm dev:blocknote
 | Alice | `http://127.0.0.1:5183/?client=alice` |
 | Bob | `http://127.0.0.1:5184/?client=bob` |
 
-Verified: rich-text updates, block insert/delete/reorder, input coalescing, offline replay, and snapshot recovery. See the [BlockNote integration guide](docs/integration/blocknote.md).
+Verified: block-level rich-text updates, block insert/delete/reorder, input coalescing, offline replay, and snapshot recovery. Concurrent text in one top-level block is LWW, not character-level CRDT merge. See the [BlockNote integration guide](docs/integration/blocknote.md).
 
 https://github.com/user-attachments/assets/6a90ca9d-ef9b-4d1b-a105-2e542c80b189
 
@@ -118,6 +119,26 @@ https://github.com/user-attachments/assets/14766fef-c0ba-4bbb-a09e-7a1c9a14536e
 *Two-client smoke: node editing, drag coalescing, offline recovery, and linked-edge deletion.*
 
 ## Integration
+
+Start with a fresh two-client React app:
+
+```bash
+npm create @collabhub/react@0.1.0 my-collab-app
+cd my-collab-app
+npm install
+npm run dev
+```
+
+This starts one standalone authoritative server and Alice/Bob React clients. It uses memory storage locally; PostgreSQL/Redis is optional until horizontal scale is needed.
+
+The generated `App.tsx` and application interfaces contain zero `@collabhub/*` imports. Integration stays in `src/collab`, the composition root, and `server.ts`.
+
+For an existing application, install only the boundaries it uses:
+
+```bash
+npm add @collabhub/client-core @collabhub/domain-json @collabhub/protocol
+npm add @collabhub/server-core @collabhub/server-ws @collabhub/strategy-sdk
+```
 
 React components never touch WebSocket or collaboration operations. `CollaborationStore` owns connection, pending, recovery, and canonical state; your application owns commands and patch semantics.
 
@@ -196,10 +217,12 @@ packages/
   protocol/           Wire protocol and versioned envelopes
   client-core/        Pending queue, reconnect, and recovery
   server-core/        Ordering, pipeline, WAL, and snapshots
+  server-ws/          Standalone WebSocket adapter and room lifecycle
   server-distributed/ PostgreSQL / Redis multi-node runtime
   strategy-sdk/       Strategy and Domain Pack SPI
   domain-json/        Built-in JSON strategies
   testkit/            Trace and conformance helpers
+  create-react/       npm create starter for a fresh React project
 examples/
   todo-list-app/      REST baseline and collaboration integration
   blocknote-app/      Incremental BlockNote adapter
@@ -219,6 +242,7 @@ pnpm dev:react-flow     # React Flow server + Alice + Bob
 pnpm check              # Build + tests + benchmark
 pnpm test:e2e           # Real two-browser regression
 pnpm smoke:demo         # Production bundle + two-frame public demo
+pnpm smoke:fresh-react  # Pack, npm-install, build, and sync a fresh external starter
 pnpm release:check      # Package metadata, ESM/types, tarball audit
 
 # Local independent processes: 2 Gateways + 2 Workers + 2 TODO clients
@@ -237,16 +261,16 @@ Recording commands: `pnpm record:todo-list`, `pnpm record:blocknote`, and `pnpm 
 - [React quick start](docs/getting-started.md)
 - [Capability matrix](docs/capabilities.md)
 - [Free public demo](docs/demo.md)
-- [Architecture](docs/architecture/overview.md)
-- [Protocol and pipeline](docs/architecture/protocol.md)
-- [Horizontal scaling and cloud deployment](docs/architecture/horizontal-scaling.md)
+- [Architecture](docs/architecture/overview.en.md)
+- [Protocol and pipeline](docs/architecture/protocol.en.md)
+- [Horizontal scaling and cloud deployment](docs/architecture/horizontal-scaling.en.md)
 - [Local multi-process TODO List smoke](docs/acceptance-local-process-cluster.md)
-- [Integration readiness](docs/integration/readiness.md)
+- [Integration readiness](docs/integration/readiness.en.md)
 - [TODO List integration](docs/integration/todo-list-tutorial.md)
 - [BlockNote integration](docs/integration/blocknote.md)
 - [React Flow integration](docs/integration/react-flow.md)
 - [Acceptance evidence](docs/acceptance.md)
-- [Known limitations](docs/known-limitations.md)
+- [Known limitations](docs/known-limitations.en.md)
 - [Release process](docs/releasing.md)
 - [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md)
 

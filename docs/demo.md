@@ -26,6 +26,17 @@ Room lifecycle defaults:
 | `COLLABHUB_DEMO_MAX_WARM_ROOMS` | `500` | Evict the least-recently-used inactive room when full |
 | `COLLABHUB_DEMO_ROOM_SCAN_INTERVAL_MS` | `60000` | Scan once per minute |
 
+Public-edge defaults:
+
+| Setting | Default | Behavior |
+|---|---:|---|
+| `COLLABHUB_DEMO_MAX_CONNECTIONS` | `250` | Close excess WebSocket connections |
+| `COLLABHUB_DEMO_MAX_CONNECTIONS_PER_IP` | `8` | Bound one source address |
+| `COLLABHUB_DEMO_MAX_ACTIVE_ROOMS` | `500` | Reject new active rooms at capacity |
+| `COLLABHUB_DEMO_MESSAGE_RATE_PER_SECOND` / `COLLABHUB_DEMO_MESSAGE_BURST` | `30` / `60` | Per-connection token bucket |
+| `COLLABHUB_DEMO_TRUST_PROXY_HEADERS` | `true` on Render | Use the platform-sanitized source IP |
+| `COLLABHUB_DEMO_ALLOWED_ORIGINS` | Render demo origin | Reject cross-origin WebSocket use |
+
 Eviction first persists a snapshot, releases the in-process session, then deletes the demo snapshot and WAL. Reopening an expired URL creates the initial graph. This delete policy is demo-only; the distributed runtime retains authoritative PostgreSQL data when it evicts a warm room.
 
 Render Free currently provides 750 instance hours per workspace each month. A service sleeps after 15 minutes without inbound HTTP or WebSocket traffic; the next connection can take about one minute to wake it. All graph state is in memory and resets after process restart or deploy. See [Render's official free-service limits](https://render.com/docs/free).
@@ -38,4 +49,4 @@ This topology is for public evaluation only. Production deployments should use t
 pnpm smoke:demo
 ```
 
-The smoke builds the same static assets and bundled Node server, opens `/demo.html` in Chromium, verifies the GitHub Star link, then edits through Alice and Bob and checks canonical convergence.
+The smoke builds the same static assets and bundled Node server, rejects an invalid Origin and an over-limit third connection, opens `/demo.html` in Chromium, verifies the GitHub Star link, then edits through Alice and Bob and checks canonical convergence.
