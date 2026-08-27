@@ -103,6 +103,7 @@ pnpm dev:react-flow
 [Open the live Alice/Bob React Flow demo](https://collabhub-demo.onrender.com/demo.html)
 
 The free deployment opens two React Flow clients against one authoritative graph. It can sleep when idle and keeps demo state in memory. See [demo deployment](docs/demo.md).
+Opening the [single-client demo](https://collabhub-demo.onrender.com/) creates a room ID in `?document=...`; share that URL to invite another client.
 
 | Process | Address |
 |---|---|

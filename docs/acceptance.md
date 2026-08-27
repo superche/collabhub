@@ -119,7 +119,7 @@ Alice 在 v2 断线；Bob 插入块推进到 v3；Alice 以 v2 重连取得 snap
 {"event":"linked_delete_converged","aliceVersion":"6","bobVersion":"6","alicePending":"0","bobPending":"0"}
 ```
 
-浏览器验收还断言：断线操作未提前出现在 Alice；重连后两端均为 6 个节点；删除 Build 的一个 `node.delete` 在 v6 同步节点删除与两条关联边删除，两端均显示 `5 nodes · 0 edges`。
+该历史录制使用三节点初始图。当前 Demo 已移除 Brief；最新 E2E 断言分享 URL 可让第二个独立 BrowserContext 加入同一 room，断线重连后两端均为 5 个节点，删除 Build 时同一 `node.delete` 原子删除关联边，两端均显示 `4 nodes · 0 edges`。
 
 Server trace 中 `node.add` 108 bytes、`node.rename` 64 bytes、`node.move` 66 bytes、`node.delete` 39 bytes；编辑热路径没有完整 graph。全新浏览器会话控制台为 0 errors / 0 warnings。
 

@@ -5,7 +5,12 @@ import { ReactFlowCollaborationRuntime } from '../collab/react-flow-collaboratio
 export function createGraphApplication(): GraphApplicationRuntime {
   const query = new URLSearchParams(location.search)
   const actorId = query.get('client') ?? crypto.randomUUID().slice(0, 8)
-  const documentId = query.get('document') ?? 'react-flow-demo'
+  let documentId = query.get('document')
+  if (!documentId) {
+    documentId = `graph-${crypto.randomUUID()}`
+    query.set('document', documentId)
+    history.replaceState(null, '', `${location.pathname}?${query.toString()}${location.hash}`)
+  }
   const clientId = `${actorId}-${crypto.randomUUID().slice(0, 6)}`
   document.documentElement.classList.toggle('embedded-demo', query.get('embedded') === '1')
   const defaultWebSocketUrl = import.meta.env.DEV

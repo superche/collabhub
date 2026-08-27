@@ -27,7 +27,6 @@ describe('React Flow command adapter', () => {
 
     expect(patches).toEqual([
       { op: 'entityDelete', collection: 'nodes', id: 'build' },
-      { op: 'entityDelete', collection: 'edges', id: 'brief-build' },
       { op: 'entityDelete', collection: 'edges', id: 'build-ship' },
     ])
     expect(patches).not.toContainEqual(expect.objectContaining({ op: 'set', path: '' }))

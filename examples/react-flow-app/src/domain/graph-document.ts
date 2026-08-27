@@ -40,12 +40,10 @@ export function initialGraphDocument(id: string): GraphDocument {
     id,
     revision: 0,
     nodes: [
-      { id: 'brief', position: { x: 70, y: 170 }, label: 'Brief', tone: 'blue' },
-      { id: 'build', position: { x: 330, y: 70 }, label: 'Build', tone: 'green' },
-      { id: 'ship', position: { x: 590, y: 170 }, label: 'Ship', tone: 'amber' },
+      { id: 'build', position: { x: 180, y: 170 }, label: 'Build', tone: 'green' },
+      { id: 'ship', position: { x: 520, y: 170 }, label: 'Ship', tone: 'amber' },
     ],
     edges: [
-      { id: 'brief-build', source: 'brief', target: 'build' },
       { id: 'build-ship', source: 'build', target: 'ship' },
     ],
   }

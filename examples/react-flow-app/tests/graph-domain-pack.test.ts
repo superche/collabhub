@@ -43,7 +43,6 @@ describe('React Flow server-authoritative Domain Pack', () => {
       canonicalVersion: 1,
       patches: [
         { op: 'entityDelete', collection: 'nodes', id: 'build' },
-        { op: 'entityDelete', collection: 'edges', id: 'brief-build' },
         { op: 'entityDelete', collection: 'edges', id: 'build-ship' },
         { op: 'set', path: '/revision', value: 1 },
       ],
@@ -57,7 +56,7 @@ describe('React Flow server-authoritative Domain Pack', () => {
   it('rejects edges whose endpoints do not exist without advancing canonical state', async () => {
     const graph = session()
     const result = await graph.submit(operation(4, 'edge.add', {
-      type: 'edge.add', edge: { id: 'invalid', source: 'brief', target: 'missing' },
+      type: 'edge.add', edge: { id: 'invalid', source: 'build', target: 'missing' },
     }))
 
     expect(result).toMatchObject({ kind: 'rejected', reason: { code: 'invalidOperation' } })

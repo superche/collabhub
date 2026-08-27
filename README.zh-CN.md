@@ -103,6 +103,7 @@ pnpm dev:react-flow
 [打开在线 Alice/Bob React Flow Demo](https://collabhub-demo.onrender.com/demo.html)
 
 免费部署让两个 React Flow 客户端连接同一中心权威图文档；服务闲置后可能休眠，Demo 状态仅保存在内存。详见 [Demo 部署](docs/demo.md)。
+打开[单客户端 Demo](https://collabhub-demo.onrender.com/)会在 `?document=...` 中生成 room ID；分享该 URL 即可邀请其他客户端。
 
 | 进程 | 地址 |
 |---|---|
