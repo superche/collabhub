@@ -14,22 +14,22 @@ export function DraftApp({ runtime }: { runtime: DraftApplicationRuntime }) {
     const result = await runtime.commandBus.execute(command)
     setError(result.ok ? undefined : result.reason ?? 'command rejected')
   }
-  const addSection = () => void execute({ type: 'section.add', sectionId: crypto.randomUUID().slice(0, 8), heading: 'New section', after: draft.sections.at(-1)?.id })
+  const addSection = () => void execute({ type: 'section.add', sectionId: crypto.randomUUID().slice(0, 8), heading: 'New task', after: draft.sections.at(-1)?.id })
 
   return <main>
     <header>
-      <div><span className="eyebrow">COLLABHUB v0.1</span><h1>Draft workspace</h1></div>
+      <div><span className="eyebrow">COLLABHUB v0.1</span><h1>TODO List</h1></div>
       <label className="mode-switch"><input data-testid="collab-toggle" type="checkbox" checked={collabEnabled} onChange={(event) => { setCollabEnabled(event.target.checked); runtime.setCollaboration(event.target.checked) }} /> Collaborative transport</label>
     </header>
     <section className="layout">
       <article className="editor-card">
-        <label className="field-label" htmlFor="title">Draft title</label>
+        <label className="field-label" htmlFor="title">List title</label>
         <input data-testid="draft-title" id="title" className="title-input" value={draft.title} onChange={(event) => runtime.store.publish({ type: 'draft.changed', draft: { ...draft, title: event.target.value } })} onBlur={(event) => void execute({ type: 'draft.rename', title: event.target.value })} />
-        <div className="meta"><span>{draft.status}</span><span>revision {draft.revision}</span><span>{draft.sections.length} sections</span></div>
+        <div className="meta"><span>{draft.status}</span><span>revision {draft.revision}</span><span>{draft.sections.length} tasks</span></div>
         <div className="sections" data-testid="sections">
           {draft.sections.map((section, index) => <SectionCard key={section.id} section={section} index={index} onCommand={execute} previousId={draft.sections[index - 1]?.id} />)}
         </div>
-        <div className="actions"><button data-testid="add-section" onClick={addSection}>Add section</button><button className="secondary" onClick={() => void execute({ type: 'draft.submitReview', expectedRevision: draft.revision })}>Submit review</button></div>
+        <div className="actions"><button data-testid="add-section" onClick={addSection}>Add task</button><button className="secondary" onClick={() => void execute({ type: 'draft.submitReview', expectedRevision: draft.revision })}>Submit list</button></div>
         {error && <p className="error" data-testid="command-error">{error}</p>}
       </article>
       <aside className="diagnostics" data-testid="diagnostics">

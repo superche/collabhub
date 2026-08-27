@@ -36,10 +36,10 @@ export interface DraftCommandResult {
 
 export function initialDraft(id: string): DraftDocument {
   return {
-    id, revision: 0, title: 'Quarterly launch draft', status: 'draft', metadata: {},
+    id, revision: 0, title: 'Launch checklist', status: 'draft', metadata: {},
     sections: [
-      { id: 'intro', heading: 'Introduction', body: 'Start writing together.', orderKey: '1024' },
-      { id: 'plan', heading: 'Plan', body: 'Add milestones and owners.', orderKey: '2048' },
+      { id: 'intro', heading: 'Write introduction', body: 'Coordinate the first task together.', orderKey: '1024' },
+      { id: 'plan', heading: 'Plan milestones', body: 'Assign owners and due dates.', orderKey: '2048' },
     ],
   }
 }

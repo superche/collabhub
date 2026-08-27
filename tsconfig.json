@@ -7,7 +7,7 @@
     { "path": "packages/server-core" },
     { "path": "packages/client-core" },
     { "path": "packages/testkit" },
-    { "path": "examples/react-draft-app" },
+    { "path": "examples/todo-list-app" },
     { "path": "examples/blocknote-app" }
   ]
 }

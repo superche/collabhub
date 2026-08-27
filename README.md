@@ -36,9 +36,9 @@
 
 ## 案例
 
-### 1. React Draft
+### 1. TODO List
 
-经典 React 草稿业务：保留 DraftDocument、Store、CommandBus 与 REST API，通过 Transport、Adapter 和 Domain Pack 接入协同。
+经典 React 待办清单：保留自己的 Domain、Store、CommandBus 与 REST API，通过 Transport、Adapter 和 Domain Pack 接入协同。
 
 ```bash
 pnpm dev
@@ -50,13 +50,13 @@ pnpm dev
 | Alice | `http://127.0.0.1:5173/?client=alice` |
 | Bob | `http://127.0.0.1:5174/?client=bob` |
 
-验证通过：属性编辑、section 排序、断线重放、snapshot recovery、REST/Collab 切换与协同期间防双写。详见 [React Draft 接入说明](docs/integration/react-draft-tutorial.md)。
+验证通过：任务编辑、排序、断线重放、snapshot recovery、REST/Collab 切换与协同期间防双写。详见 [TODO List 接入说明](docs/integration/todo-list-tutorial.md)。
 
-<a href="docs/assets/collabhub-v0.1-smoke.mp4" title="播放 React Draft 双客户端冒烟视频">
-  <img src="docs/assets/collabhub-smoke-poster.jpg" alt="React Draft multiplayer smoke test" width="100%">
+<a href="docs/assets/collabhub-todo-list-smoke.mp4" title="播放 TODO List 双客户端冒烟视频">
+  <img src="docs/assets/collabhub-todo-list-smoke-poster.jpg" alt="TODO List multiplayer smoke test" width="100%">
 </a>
 
-<p align="center"><a href="docs/assets/collabhub-v0.1-smoke.mp4">播放 28 秒 React Draft 双客户端冒烟视频</a></p>
+<p align="center"><a href="docs/assets/collabhub-todo-list-smoke.mp4">播放 30 秒 TODO List 双客户端冒烟视频</a></p>
 
 ### 2. BlockNote
 
@@ -137,7 +137,7 @@ function DocumentTitle({ runtime }: { runtime: AppRuntime }) {
 
 `CollabHubTransport` 集中完成 `Command → operation` 和 `canonical patch → DomainPatch`；关闭协同时换回 `RestTransport`，React 组件与领域模型无需修改。
 
-完整实现：[composition root](examples/react-draft-app/src/app/composition-root.ts)、[command adapter](examples/react-draft-app/src/collab/draft-command-adapter.ts)、[projection adapter](examples/react-draft-app/src/collab/draft-projection-adapter.ts)、[server Domain Pack](examples/react-draft-app/server/draft-domain-pack.ts)。
+完整实现：[composition root](examples/todo-list-app/src/app/composition-root.ts)、[command adapter](examples/todo-list-app/src/collab/draft-command-adapter.ts)、[projection adapter](examples/todo-list-app/src/collab/draft-projection-adapter.ts)、[server Domain Pack](examples/todo-list-app/server/draft-domain-pack.ts)。
 
 ## 仓库结构
 
@@ -150,7 +150,7 @@ packages/
   domain-json/     默认 JSON strategies
   testkit/         trace 与 conformance helpers
 examples/
-  react-draft-app/ REST baseline 与协同接入样板
+  todo-list-app/   REST baseline 与协同接入样板
   blocknote-app/   BlockNote 增量块协同适配
 docs/              架构、接入与验收文档
 ```
@@ -161,7 +161,8 @@ docs/              架构、接入与验收文档
 
 ```bash
 pnpm install
-pnpm dev             # Draft server + Alice + Bob
+pnpm dev             # TODO List server + Alice + Bob
+pnpm record:todo-list # 另开终端录制 TODO List 冒烟视频
 pnpm dev:blocknote   # BlockNote server + Alice + Bob
 pnpm record:blocknote # 另开终端录制 BlockNote 冒烟视频
 pnpm check           # build + tests + benchmark
@@ -173,7 +174,7 @@ pnpm test:e2e        # 两套双浏览器验收
 - [架构](docs/architecture/overview.md)
 - [协议与 Pipeline](docs/architecture/protocol.md)
 - [接入条件](docs/integration/readiness.md)
-- [React Draft 接入](docs/integration/react-draft-tutorial.md)
+- [TODO List 接入](docs/integration/todo-list-tutorial.md)
 - [BlockNote 接入](docs/integration/blocknote.md)
 - [验收记录](docs/acceptance.md)
 - [已知限制](docs/known-limitations.md)

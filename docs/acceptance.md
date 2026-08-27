@@ -13,7 +13,7 @@
 - Vitest：7 files / 17 tests passed。
 - 1,000-section patch benchmark：1,000 samples，p95 0.014 ms，gate 4 ms，通过。
 
-`pnpm test:e2e`：2 tests passed（9.0 s；Draft 2.8 s，BlockNote 3.9 s）。
+`pnpm test:e2e`：2 tests passed（9.0 s；TODO List 2.8 s，BlockNote 3.9 s）。
 
 ## 真实进程与网络
 
@@ -21,7 +21,7 @@
 
 | 角色 | 最终验收 PID | 监听 |
 |---|---:|---|
-| Draft API + CollabHub WebSocket | 24743 | `127.0.0.1:4100`, `/collab` |
+| TODO List API + CollabHub WebSocket | 24743 | `127.0.0.1:4100`, `/collab` |
 | React Alice Vite | 24721 | `127.0.0.1:5173` |
 | React Bob Vite | 24727 | `127.0.0.1:5174` |
 

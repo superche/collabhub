@@ -7,7 +7,7 @@ playwright-report/
 test-results/
 .playwright-cli/
 /output/
-examples/react-draft-app/.data/
+examples/todo-list-app/.data/
 /outputs/
 artifacts/
 *.log

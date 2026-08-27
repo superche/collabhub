@@ -1,6 +1,8 @@
-# React Draft：从 REST baseline 到协同
+# TODO List：从 REST baseline 到协同
 
-这个 example 先是一个经典中心化 React 业务，不是 collab-native demo。
+这个 example 先是一个经典中心化 React 待办清单，不是 collab-native demo。
+
+项目入口名为 `todo-list-app`；内部 `Draft*` 是宿主已有领域命名，CollabHub 接入不要求重命名领域模型。
 
 ## Baseline
 
