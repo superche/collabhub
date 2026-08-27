@@ -30,6 +30,21 @@ class FakeServer {
   }
 }
 
+class ScriptedServer extends FakeServer {
+  override receive(socket: FakeSocket, message: ClientWireMessage) {
+    if (message.kind === 'hello') {
+      socket.deliver({ kind: 'snapshot', tenantId: 't', documentId: 'd', canonicalVersion: 0, schemaVersion: '1.0', snapshotRef: 's0', snapshot: { title: 'Initial' } })
+      socket.deliver({ kind: 'ready', canonicalVersion: 0 })
+    }
+    if (message.kind === 'submit') {
+      this.submissions++
+      if (this.submissions === 1) socket.deliver({ kind: 'retryLater', operationId: message.operation.operationId, canonicalVersion: 0, retryAfterMs: 10, reason: 'ownerChanging' })
+      else socket.deliver({ kind: 'accepted', operationId: message.operation.operationId, canonicalVersion: 2, patches: [{ op: 'set', path: '/title', value: 'Committed' }] })
+    }
+    if (message.kind === 'recover') socket.deliver({ kind: 'snapshot', tenantId: 't', documentId: 'd', canonicalVersion: 2, schemaVersion: '1.0', snapshotRef: 's2', snapshot: { title: 'Committed' } })
+  }
+}
+
 describe('collaboration client recovery', () => {
   it('queues while disconnected, reconnects, replays once, and clears pending', async () => {
     const server = new FakeServer()
@@ -50,6 +65,25 @@ describe('collaboration client recovery', () => {
     expect(client.state?.title).toBe('Recovered')
     expect(client.diagnostics.pendingCount).toBe(0)
     expect(client.diagnostics.reconnectCount).toBe(1)
+    client.disconnect()
+  })
+
+  it('keeps the same pending operation through retryLater and an accepted version gap', async () => {
+    const server = new ScriptedServer()
+    const client = new CollaborationClient<JsonObject>({
+      url: 'fake://', tenantId: 't', documentId: 'd', actorId: 'a', clientId: 'c', schemaVersion: '1.0',
+      socketFactory: server.create, reconnectDelayMs: 5,
+      applyPatches: (state, patches) => patches.reduce((next, patch) => patch.op === 'set' ? { ...next, [patch.path.slice(1)]: patch.value } : next, state),
+    })
+    client.connect()
+    await new Promise((resolve) => setTimeout(resolve, 1))
+    const result = await client.submit({ operationId: 'stable-op', operationType: 'property.set', strategyId: 'json.property-lww', strategyVersion: '1.0', payload: { path: '/title', value: 'Committed' } })
+    expect(result.kind).toBe('accepted')
+    expect(result.operationId).toBe('stable-op')
+    expect(server.submissions).toBe(2)
+    expect(client.canonicalVersion).toBe(2)
+    expect(client.state?.title).toBe('Committed')
+    expect(client.diagnostics.pendingCount).toBe(0)
     client.disconnect()
   })
 })

@@ -37,6 +37,7 @@ interface PendingOperation {
   bytes: number
   submittedAt: number
   sent: boolean
+  acceptedResult?: Extract<OperationResult, { kind: 'accepted' }>
   resolve: (result: OperationResult) => void
 }
 
@@ -180,7 +181,11 @@ export class CollaborationClient<TState extends JsonObject> {
   private handle(message: ServerWireMessage): void {
     if (message.kind === 'snapshot') return this.handleSnapshot(message as SnapshotMessage<TState>)
     if (message.kind === 'ready') {
-      this.setDiagnostics({ connection: 'online', canonicalVersion: message.canonicalVersion })
+      if (!this.canonical || message.canonicalVersion !== this.canonicalVersion) {
+        this.requestRecovery('ready version differs from materialized state')
+        return
+      }
+      this.setDiagnostics({ connection: 'online' })
       this.flush()
       return
     }
@@ -193,14 +198,25 @@ export class CollaborationClient<TState extends JsonObject> {
   }
 
   private handleSnapshot(message: SnapshotMessage<TState>): void {
+    const awaitingReady = this.diagnosticsValue.connection === 'connecting'
     this.canonical = message.snapshot
-    this.setDiagnostics({ connection: 'online', canonicalVersion: message.canonicalVersion })
+    this.setDiagnostics({ connection: awaitingReady ? 'connecting' : 'online', canonicalVersion: message.canonicalVersion })
+    const settled: PendingOperation[] = []
     for (const item of this.pending) {
+      if (item.acceptedResult && item.acceptedResult.canonicalVersion <= message.canonicalVersion) {
+        settled.push(item)
+        continue
+      }
       item.operation.baseVersion = message.canonicalVersion
       item.sent = false
     }
+    for (const item of settled) {
+      this.pending.splice(this.pending.indexOf(item), 1)
+      item.resolve(item.acceptedResult!)
+      this.setDiagnostics({ lastAckLatencyMs: Math.round((performance.now() - item.submittedAt) * 100) / 100 })
+    }
     this.reproject()
-    this.flush()
+    if (!awaitingReady) this.flush()
   }
 
   private handleCanonical(event: CanonicalEvent): void {
@@ -221,6 +237,22 @@ export class CollaborationClient<TState extends JsonObject> {
       this.setDiagnostics({ connection: 'resyncing', resyncCount: this.diagnosticsValue.resyncCount + 1 })
       if (item) item.sent = false
       this.send({ kind: 'recover', tenantId: this.options.tenantId, documentId: this.options.documentId, sinceVersion: this.canonicalVersion })
+      return
+    }
+    if (result.kind === 'retryLater') {
+      if (item) {
+        item.sent = true
+        setTimeout(() => {
+          if (!this.pending.includes(item)) return
+          item.sent = false
+          this.flush()
+        }, Math.max(10, result.retryAfterMs))
+      }
+      return
+    }
+    if (result.kind === 'accepted' && (!this.canonical || result.canonicalVersion > this.canonicalVersion + 1)) {
+      if (item) item.acceptedResult = result
+      this.requestRecovery('accepted result has a canonical version gap')
       return
     }
     if (result.kind === 'accepted' && this.canonical && result.canonicalVersion === this.canonicalVersion + 1) {

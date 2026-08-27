@@ -5,6 +5,7 @@
     { "path": "packages/strategy-sdk" },
     { "path": "packages/domain-json" },
     { "path": "packages/server-core" },
+    { "path": "packages/server-distributed" },
     { "path": "packages/client-core" },
     { "path": "packages/testkit" },
     { "path": "examples/todo-list-app" },

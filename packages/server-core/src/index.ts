@@ -197,10 +197,18 @@ export class AuthoritativeDocumentSession<TState extends JsonObject = JsonObject
       this.operations.push(operation)
       const result: OperationResult = { kind: 'accepted', operationId: operation.operationId, canonicalVersion: nextVersion, patches: resolution.patches }
       this.results.set(operation.operationId, result)
-      if (nextVersion % (this.options.snapshotInterval ?? 25) === 0) await this.persistSnapshot()
       const event: CanonicalEvent = { kind: 'canonical', operationId: operation.operationId, actorId: operation.actorId, canonicalVersion: nextVersion, patches: resolution.patches }
-      for (const listener of this.listeners) listener(event)
-      await this.runHooks('afterCommit', { ...context, state: this.state })
+      // appendWal is the commit boundary. Post-commit failures cannot turn an
+      // accepted operation into a rejection; durable recovery replays the WAL.
+      try {
+        if (nextVersion % (this.options.snapshotInterval ?? 25) === 0) await this.persistSnapshot()
+        for (const listener of this.listeners) {
+          try { listener(event) } catch { /* observer failure is post-commit */ }
+        }
+        await this.runHooks('afterCommit', { ...context, state: this.state })
+      } catch {
+        // Distributed runtimes retry these effects through their outbox.
+      }
       return result
     } catch (error) {
       return this.rejected(operation.operationId, 'strategyFailure', error instanceof Error ? error.message : String(error))

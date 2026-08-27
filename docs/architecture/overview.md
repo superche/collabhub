@@ -10,13 +10,14 @@ React components -> Draft actions -> DraftCommandBus -> DraftCommandTransport
                                              └── Collab adapter -> Client Core
                                                                     │ operation
                                                                     ▼
-WebSocket gateway -> AuthoritativeDocumentSession -> pipeline -> Domain Pack
-                              │                         │             │
-                              ├── WAL -> snapshot       └── invariant └── strategy
-                              └── canonical patch -> all clients -> projection -> DraftStore
+WebSocket gateway -> Room Worker -> pipeline -> Domain Pack
+          │              │          │             │
+          │              ├── WAL / receipt / outbox └── strategy
+          │              └── canonical patch -> all clients -> projection -> DraftStore
+          └── Redis route/presence; PostgreSQL watermark catch-up
 ```
 
-公开的 protocol、Client Core、Server Core 接口都不包含 `ws`、Express、Colyseus 或 example room runtime 类型。`ws` 只存在于 example gateway；它可以被其他 runtime adapter 替换。
+公开的 protocol、Client Core、Server Core 接口都不包含 `ws`、Express 或具体 room runtime 类型。`server-core` 提供可嵌入单机 runtime；`server-distributed` 提供可替换的无状态 Gateway、单写 Room Worker、PostgreSQL 权威提交与 Redis 临时路由。
 
 ## Commit 与恢复
 
@@ -26,14 +27,14 @@ WebSocket gateway -> AuthoritativeDocumentSession -> pipeline -> Domain Pack
 2. 运行 authenticate/authorize/schema/normalize/beforeResolve hooks。
 3. 按 strategy id/version resolve；reject/resync 不改版本。
 4. 计算 next state，运行 Domain Pack invariants 与 beforeCommit。
-5. 先 append WAL，再推进内存 canonical state/version。
-6. 按 interval 保存 snapshot，广播 canonical event，最后运行 afterCommit。
+5. 单机 runtime 先 append WAL，再推进内存 canonical state/version；此后 snapshot/observer/afterCommit 失败不得回滚 accepted。
+6. 分布式 runtime 把 WAL、receipt、head version 与 outbox 放在同一 PostgreSQL 事务，并用 owner epoch fencing 旧 writer。
 
 一次 strategy resolution 可以返回多条 patch。Server Core 先将整组 patch 应用为 next state，再运行 invariant，并以一个 WAL record 和 canonical version 提交。因此同一文档内的实体变化、计数器和派生汇总可以原子联动；客户端不能通过先写本地 Store 再依赖副作用获得这一保证。
 
 启动恢复会加载最近 snapshot，再回放其后的 WAL。为了让幂等键跨 snapshot/重启有效，历史 WAL 的 operationId 也会重建进 result index。snapshot 和 WAL 都经 `StorageAdapter`，example 将它们原子保存到中心 DraftRepository 文件。
 
-v0.1 的 `afterCommit` 不是可靠 outbox；不可逆外部副作用不应直接放在 hook 内。生产实现需要 transactional outbox。
+分布式 runtime 的 outbox dispatcher 至少一次发布 canonical event；Gateway 同时比较 PostgreSQL head watermark，从 WAL 修复 Redis Pub/Sub 丢失。snapshot 先写不可变版本，再 CAS 推进 head pointer。
 
 ## 客户端模型
 

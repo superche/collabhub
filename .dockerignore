@@ -1,0 +1,11 @@
+.git
+.github
+node_modules
+**/node_modules
+**/dist
+**/dist-types
+**/.data
+test-results
+playwright-report
+*.mp4
+.DS_Store

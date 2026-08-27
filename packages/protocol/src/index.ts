@@ -62,6 +62,13 @@ export type OperationResult =
       snapshotRef: string
       reason: string
     }
+  | {
+      kind: 'retryLater'
+      operationId: string
+      canonicalVersion: number
+      retryAfterMs: number
+      reason: 'ownerChanging' | 'temporarilyUnavailable' | 'backpressure'
+    }
 
 export interface SnapshotMessage<T = JsonObject> {
   kind: 'snapshot'
@@ -83,6 +90,7 @@ export interface CanonicalEvent {
 
 export interface PresenceMessage {
   kind: 'presence'
+  tenantId?: string
   documentId: string
   actorId: string
   clientId: string

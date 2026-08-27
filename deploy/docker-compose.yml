@@ -1,0 +1,118 @@
+name: collabhub
+
+x-node-env: &node-env
+  DATABASE_URL: postgres://collabhub:collabhub@postgres:5432/collabhub
+  REDIS_URL: redis://redis:6379
+  INTERNAL_TOKEN: local-compose-token
+  OWNER_LEASE_SECONDS: 10
+  PG_POOL_MAX: 10
+  SNAPSHOT_INTERVAL: 2
+  RSS_LIMIT_BYTES: 3221225472
+  NODE_OPTIONS: --max-old-space-size=896
+
+x-node: &node
+  build:
+    context: ..
+    dockerfile: Dockerfile
+  restart: unless-stopped
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  networks: [collabhub]
+  healthcheck:
+    test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:' + process.env.PORT + '/readyz').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
+    interval: 5s
+    timeout: 3s
+    start_period: 10s
+    retries: 6
+  deploy:
+    resources:
+      limits:
+        cpus: "2.0"
+        memory: 4G
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: collabhub
+      POSTGRES_PASSWORD: collabhub
+      POSTGRES_DB: collabhub
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U collabhub -d collabhub"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks: [collabhub]
+
+  redis:
+    image: redis:7.2-alpine
+    command: ["redis-server", "--appendonly", "no", "--save", ""]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+    networks: [collabhub]
+
+  worker-1:
+    <<: *node
+    environment:
+      <<: *node-env
+      COLLABHUB_ROLE: worker
+      INSTANCE_ID: worker-1
+      PORT: 7100
+      INTERNAL_URL: http://worker-1:7100
+
+  worker-2:
+    <<: *node
+    environment:
+      <<: *node-env
+      COLLABHUB_ROLE: worker
+      INSTANCE_ID: worker-2
+      PORT: 7100
+      INTERNAL_URL: http://worker-2:7100
+
+  gateway-1:
+    <<: *node
+    environment:
+      <<: *node-env
+      COLLABHUB_ROLE: gateway
+      INSTANCE_ID: gateway-1
+      PORT: 7000
+    ports: ["7001:7000"]
+
+  gateway-2:
+    <<: *node
+    environment:
+      <<: *node-env
+      COLLABHUB_ROLE: gateway
+      INSTANCE_ID: gateway-2
+      PORT: 7000
+    ports: ["7002:7000"]
+
+  load-balancer:
+    image: nginx:1.27-alpine
+    depends_on:
+      gateway-1: { condition: service_healthy }
+      gateway-2: { condition: service_healthy }
+    ports: ["7090:7000"]
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    networks: [collabhub]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:7000/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 6
+
+volumes:
+  postgres-data:
+
+networks:
+  collabhub:
+    driver: bridge

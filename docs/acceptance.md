@@ -11,7 +11,7 @@
 - Vite production build：41 modules；JS 213.79 KB / 66.38 KB gzip，CSS 4.54 KB / 1.64 KB gzip。
 - BlockNote Vite production build：914 modules；主 JS 1,131.76 KB / 343.38 KB gzip，CSS 243.00 KB / 38.62 KB gzip；大 chunk 警告记录为已知限制。
 - React Flow Vite production build：199 modules；JS 392.29 KB / 124.88 KB gzip，CSS 20.12 KB / 4.01 KB gzip。
-- Vitest：11 files / 30 tests passed。
+- Vitest：12 files / 34 tests passed。
 - 1,000-section patch benchmark：1,000 samples，p95 0.014 ms，gate 4 ms，通过。
 
 `pnpm test:e2e`：2 tests passed（7.3 s；TODO List 1.8 s，BlockNote 2.6 s）。
@@ -141,6 +141,45 @@ Server trace 中 `node.add` 108 bytes、`node.rename` 64 bytes、`node.move` 66 
 | React Flow 联动删除 | 一个 `node.delete` 原子发布节点与两条关联边删除，双方 v6 收敛 |
 | React Flow 依赖边界 | components/application/domain 禁止 `@collabhub/*`；canonical domain/server pack 禁止 `@xyflow/*` |
 
+## 分布式 runtime 验收
+
+容器栈：Node.js 22、PostgreSQL 16、Redis 7.2、Nginx 1.27；两个 Gateway、两个 Room Worker。Gateway 直连端口 `7001/7002`，Nginx 负载均衡端口 `7090`。运行镜像使用 UID/GID `10001:10001`，本机 arm64 镜像约 80.4 MB。
+
+```bash
+docker compose -f deploy/docker-compose.yml up --build -d
+pnpm smoke:distributed
+docker buildx build --platform linux/amd64,linux/arm64 --output type=cacheonly .
+```
+
+最终故障文档：`smoke-1787828374147`。Alice 连接 Gateway 1，Bob 连接 Gateway 2；冒烟脚本主动停止 PostgreSQL 记录的当前 writer，验证接管后自动恢复该 Worker。Charlie 经 Nginx `7090` WebSocket 入口恢复状态。
+
+```json
+{"event":"dual_gateway_ready","aliceVersion":0,"bobVersion":0}
+{"event":"cross_gateway_converged","canonicalVersion":1}
+{"event":"duplicate_receipt","duplicate":true,"canonicalVersion":1}
+{"event":"operation_id_collision_rejected","canonicalVersion":1}
+{"event":"presence_ephemeral","canonicalVersion":1,"boundActorId":"alice"}
+{"event":"owner_stopped","owner":"worker-1"}
+{"event":"owner_failover_converged","from":"worker-1","canonicalVersion":2}
+{"event":"rest_uses_authoritative_path","canonicalVersion":3}
+{"event":"snapshot_recovery","canonicalVersion":3,"title":"REST through authority"}
+```
+
+故障后 PostgreSQL 权威状态：`canonical_version=3`、`owner_epoch=2`、`owner_instance_id=worker-2`、`snapshot_version=2`。同文档有 3 条 WAL、3 条 receipt、3 条已投递 outbox；Presence 后版本仍为 1。Charlie 从不可变 v2 snapshot + v3 WAL 恢复到 v3。`linux/amd64` 与 `linux/arm64` 双平台 Docker buildx 构建退出码均为 0。
+
+500-op 基线文档 `distributed-1787828190944`：32 并发、Gateway 1 HTTP ingress、Gateway 2 WebSocket observer；accepted 434.5 op/s、跨 Gateway 完整收敛 397.5 op/s，请求 p50/p95/p99 为 67.23/103.96/111.72 ms。PostgreSQL 最终 v500、snapshot v500、500 WAL/receipt/delivered outbox。该结果来自本机 Colima 4C8G 共享容器栈，仅用于回归，不是 2C4G 云 VM SLO。
+
+| 场景 | 真实证据 |
+|---|---|
+| 跨 Gateway 广播 | Alice v1 accepted；另一 Gateway 的 Bob 收到同一 v1 canonical |
+| 持久幂等 | 相同 operation 返回 `duplicate=true`；同 operationId 不同 payload 被拒绝，head 保持 v1 |
+| 身份绑定 | spoofed Presence 被改写为 hello 绑定的 Alice/document |
+| Presence 临时态 | 广播后 PostgreSQL canonical version 不变 |
+| writer 故障迁移 | worker-1 停止；worker-2 以 epoch 2 接管并提交 v2 |
+| REST 单写 | HTTP operation API 提交 v3；两个 WebSocket 客户端同步收到 canonical |
+| snapshot + WAL | snapshot pointer v2；新客户端恢复为 v3 |
+| OCI 多架构 | Dockerfile 对 linux/amd64、linux/arm64 均完整构建 |
+
 ## 可复现命令
 
 ```bash
@@ -154,4 +193,6 @@ pnpm dev:react-flow
 pnpm record:todo-list
 pnpm record:blocknote
 pnpm record:react-flow
+docker compose -f deploy/docker-compose.yml up --build -d
+pnpm smoke:distributed
 ```

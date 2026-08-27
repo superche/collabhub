@@ -85,4 +85,18 @@ describe('authoritative document session', () => {
     expect(result.kind === 'resyncRequired' && result.snapshotRef).toContain('/1')
     expect(session.canonicalVersion).toBe(1)
   })
+
+  it('never converts a durable commit into a rejection when post-commit effects fail', async () => {
+    class FaultySnapshotStorage extends InMemoryStorageAdapter<JsonObject> {
+      override async saveSnapshot(): Promise<void> { throw new Error('snapshot backend unavailable') }
+    }
+    const storage = new FaultySnapshotStorage()
+    const session = new AuthoritativeDocumentSession({ tenantId: 't', documentId: 'd', domainPack: pack, storage, snapshotInterval: 1 })
+    session.subscribe(() => { throw new Error('observer unavailable') })
+    const result = await session.submit(op({ operationId: 'post-commit', operationType: 'property.set', strategyId: 'json.property-lww', payload: { path: '/title', value: 'Durable' } }))
+    expect(result.kind).toBe('accepted')
+    expect(session.canonicalVersion).toBe(1)
+    expect(session.canonicalState.title).toBe('Durable')
+    expect((await storage.loadWal('t', 'd', 0))).toHaveLength(1)
+  })
 })

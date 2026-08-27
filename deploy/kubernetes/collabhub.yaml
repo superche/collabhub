@@ -1,0 +1,170 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: collabhub
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: collabhub-runtime
+  namespace: collabhub
+type: Opaque
+stringData:
+  DATABASE_URL: postgres://USER:PASSWORD@MANAGED_POSTGRES:5432/collabhub
+  REDIS_URL: rediss://MANAGED_REDIS:6379
+  INTERNAL_TOKEN: REPLACE_WITH_A_RANDOM_SECRET
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: collabhub-worker-headless
+  namespace: collabhub
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: false
+  selector: { app: collabhub-worker }
+  ports:
+    - { name: internal, port: 7100, targetPort: internal }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: collabhub-worker
+  namespace: collabhub
+spec:
+  serviceName: collabhub-worker-headless
+  podManagementPolicy: Parallel
+  replicas: 2
+  selector:
+    matchLabels: { app: collabhub-worker }
+  template:
+    metadata:
+      labels: { app: collabhub-worker }
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: collabhub
+          image: ghcr.io/superche/collabhub:0.1.0
+          imagePullPolicy: IfNotPresent
+          ports: [{ name: internal, containerPort: 7100 }]
+          env:
+            - { name: COLLABHUB_ROLE, value: worker }
+            - { name: PORT, value: "7100" }
+            - { name: POD_NAME, valueFrom: { fieldRef: { fieldPath: metadata.name } } }
+            - { name: INSTANCE_ID, value: "$(POD_NAME)" }
+            - { name: INTERNAL_URL, value: "http://$(POD_NAME).collabhub-worker-headless.collabhub.svc.cluster.local:7100" }
+            - { name: DATABASE_URL, valueFrom: { secretKeyRef: { name: collabhub-runtime, key: DATABASE_URL } } }
+            - { name: REDIS_URL, valueFrom: { secretKeyRef: { name: collabhub-runtime, key: REDIS_URL } } }
+            - { name: INTERNAL_TOKEN, valueFrom: { secretKeyRef: { name: collabhub-runtime, key: INTERNAL_TOKEN } } }
+            - { name: PG_POOL_MAX, value: "10" }
+            - { name: MAX_WARM_ROOMS, value: "1000" }
+            - { name: NODE_OPTIONS, value: --max-old-space-size=896 }
+          resources:
+            requests: { cpu: "1", memory: 2Gi }
+            limits: { cpu: "2", memory: 4Gi }
+          readinessProbe: { httpGet: { path: /readyz, port: internal }, periodSeconds: 5, timeoutSeconds: 2 }
+          livenessProbe: { httpGet: { path: /healthz, port: internal }, periodSeconds: 10, timeoutSeconds: 2 }
+          securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: ["ALL"] }, readOnlyRootFilesystem: true }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: collabhub-gateway
+  namespace: collabhub
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: collabhub-gateway }
+  template:
+    metadata:
+      labels: { app: collabhub-gateway }
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: collabhub
+          image: ghcr.io/superche/collabhub:0.1.0
+          imagePullPolicy: IfNotPresent
+          ports: [{ name: http, containerPort: 7000 }]
+          env:
+            - { name: COLLABHUB_ROLE, value: gateway }
+            - { name: PORT, value: "7000" }
+            - { name: POD_NAME, valueFrom: { fieldRef: { fieldPath: metadata.name } } }
+            - { name: INSTANCE_ID, value: "$(POD_NAME)" }
+            - { name: DATABASE_URL, valueFrom: { secretKeyRef: { name: collabhub-runtime, key: DATABASE_URL } } }
+            - { name: REDIS_URL, valueFrom: { secretKeyRef: { name: collabhub-runtime, key: REDIS_URL } } }
+            - { name: INTERNAL_TOKEN, valueFrom: { secretKeyRef: { name: collabhub-runtime, key: INTERNAL_TOKEN } } }
+            - { name: PG_POOL_MAX, value: "10" }
+            - { name: NODE_OPTIONS, value: --max-old-space-size=896 }
+          resources:
+            requests: { cpu: "1", memory: 2Gi }
+            limits: { cpu: "2", memory: 4Gi }
+          readinessProbe: { httpGet: { path: /readyz, port: http }, periodSeconds: 5, timeoutSeconds: 2 }
+          livenessProbe: { httpGet: { path: /healthz, port: http }, periodSeconds: 10, timeoutSeconds: 2 }
+          securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: ["ALL"] }, readOnlyRootFilesystem: true }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: collabhub-gateway
+  namespace: collabhub
+spec:
+  type: LoadBalancer
+  selector: { app: collabhub-gateway }
+  ports:
+    - { name: http, port: 80, targetPort: http }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: collabhub-gateway
+  namespace: collabhub
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: collabhub-gateway }
+  minReplicas: 2
+  maxReplicas: 30
+  behavior:
+    scaleDown: { stabilizationWindowSeconds: 300 }
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 60 }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: collabhub-worker
+  namespace: collabhub
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: StatefulSet, name: collabhub-worker }
+  minReplicas: 2
+  maxReplicas: 20
+  behavior:
+    scaleDown: { stabilizationWindowSeconds: 600 }
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 60 }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: collabhub-gateway
+  namespace: collabhub
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: { app: collabhub-gateway }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: collabhub-worker
+  namespace: collabhub
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: { app: collabhub-worker }

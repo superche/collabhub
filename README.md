@@ -32,6 +32,7 @@
 | **Host-owned domain** | 无需迁移到 CollabHub 或 CRDT 数据模型 |
 | **Pluggable strategies** | LWW、实体生命周期、列表排序、严格事务 |
 | **Reliable recovery** | 幂等 operation、pending replay、WAL、snapshot recovery |
+| **Horizontal scale** | 无状态 Gateway、单写 Room Worker、PostgreSQL fencing/outbox、Redis 临时路由 |
 | **Single writer** | 协同会话内阻止 REST 与 room 双写 |
 | **Ephemeral presence** | presence 不进入 WAL、snapshot 或文档版本 |
 
@@ -181,6 +182,7 @@ packages/
   protocol/        协议与 wire types
   client-core/     pending、重连与 recovery
   server-core/     定序、pipeline、WAL 与 snapshot
+  server-distributed/ PostgreSQL / Redis 多节点 runtime
   strategy-sdk/    Strategy 与 Domain Pack SPI
   domain-json/     默认 JSON strategies
   testkit/         trace 与 conformance helpers
@@ -205,12 +207,17 @@ pnpm dev:react-flow  # React Flow server + Alice + Bob
 pnpm record:react-flow # 另开终端录制 React Flow 冒烟视频
 pnpm check           # build + tests + benchmark
 pnpm test:e2e        # 双浏览器回归验收
+
+# 两个 Gateway + 两个 Worker + PostgreSQL + Redis
+docker compose -f deploy/docker-compose.yml up --build -d
+pnpm smoke:distributed
 ```
 
 ## 文档
 
 - [架构](docs/architecture/overview.md)
 - [协议与 Pipeline](docs/architecture/protocol.md)
+- [水平扩容与云部署](docs/architecture/horizontal-scaling.md)
 - [接入条件](docs/integration/readiness.md)
 - [TODO List 接入](docs/integration/todo-list-tutorial.md)
 - [BlockNote 接入](docs/integration/blocknote.md)
