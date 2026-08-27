@@ -1,8 +1,77 @@
 # CollabHub v0.1
 
-CollabHub 是一个开箱即用、可扩展的中心化多人协同外挂。它只实现 server-authoritative client/server：宿主保留领域模型，通过版本化 operation、canonical patch、Client Core、Server Core、Domain Pack 与 Adapter 接入，不要求改造成某个 CRDT 的内部模型。
+**给已有应用外挂多人协同，不接管你的领域模型。**
 
-v0.1 是一个可本地运行、可测试、可做真实双浏览器验收的单节点开发者预览。它实现了纵向闭环，不把多实例、富文本和生产认证伪装成已交付。
+CollabHub 是开箱即用、可扩展的中心权威协同内核。宿主继续拥有自己的 Document、Store、Command 和 REST API；协同能力集中在 operation adapter、canonical-patch projection 与服务端 Domain Pack，不要求把业务重写成某个 CRDT 的内部数据结构。
+
+`Server-authoritative` · `Host-owned domain` · `Pluggable strategies` · `REST fallback` · `No P2P` · `Apache-2.0`
+
+## 业务接入：保留原 Command，只替换 Transport
+
+React 组件仍然只调用宿主业务命令。关闭协同时走原 REST，开启协同时由窄 adapter 映射 operation；canonical patch 再投影回原 DraftStore。
+
+```ts
+// 原业务边界：components/domain 不 import @collabhub/*
+interface DraftCommandTransport {
+  execute(command: DraftCommand): Promise<DraftCommandResult>
+  subscribe(listener: (event: DraftDomainEvent) => void): () => void
+}
+
+// composition root：同一套 UI / CommandBus 可在 REST 与协同间切换
+const transport: DraftCommandTransport = collabEnabled
+  ? new CollabHubDraftTransport(
+      'ws://127.0.0.1:4100/collab', actorId, clientId, draftStore,
+    )
+  : new RestDraftTransport('http://127.0.0.1:4100', draftId)
+
+const commandBus = new DraftCommandBus(transport)
+await commandBus.execute({ type: 'draft.rename', title: 'Launch plan' })
+
+// client adapter：业务 Command -> 版本化 operation；只发送增量 intent
+const operation = adaptDraftCommand(command, draftStore.getSnapshot())
+await collabClient.submit(operation, operation.optimisticPatches)
+
+// projection adapter：canonical patch -> 原业务 DraftDocument / DraftStore
+collabClient.subscribe((canonicalDraft) => {
+  draftStore.publish({ type: 'draft.changed', draft: canonicalDraft })
+})
+
+// server：扩展业务语义，不修改 Server Core
+export const DraftDomainPack = defineDomainPack({
+  id: 'example.draft',
+  schemaVersion: '1.0',
+  strategies: jsonStrategies, // property LWW / entity / list / reject-if-stale
+  invariants: [uniqueSectionId, validDraftStatus],
+  initialState: (documentId) => initialDraft(documentId),
+})
+```
+
+完整可运行接入见 [`examples/react-draft-app`](examples/react-draft-app) 和 [baseline → collaboration 教程](docs/integration/react-draft-tutorial.md)。
+
+## Feature Highlights
+
+| 能力 | CollabHub v0.1 提供什么 |
+|---|---|
+| **中心权威收敛** | 单文档串行定序；客户端消费 `accepted / rejected / resyncRequired` 与 canonical patch |
+| **宿主低侵入** | React components、Draft domain、Store 与 CommandBus 不依赖 CollabHub；协同依赖集中在 adapter/composition root |
+| **可插拔业务语义** | Strategy SDK + Domain Pack；内置 property LWW、实体生命周期、fractional list order、reject-if-stale |
+| **可靠重连** | 幂等 `operationId`、有界 pending queue、自动重连、snapshot + WAL recovery、pending intent replay |
+| **防止 split brain** | 协同会话只有一个 writer；REST `POST/PUT` 不能绕过权威 room 双写 |
+| **性能与诊断** | 增量 operation/patch、结构共享、输入合并、backpressure；实时观察 version、pending、ack、reject、resync |
+
+Presence 使用独立 ephemeral lane，不写 WAL/snapshot；普通编辑热路径不发送整份业务文档。
+
+## 28 秒真实双客户端冒烟
+
+点击画面播放 1080p MP4。左侧 Alice、右侧 Bob，以人类键鼠速度验证标题、正文、实体新增与列表排序同步，最终两端 `canonical version = 4`、`pending = 0`。
+
+<a href="docs/assets/collabhub-v0.1-smoke.mp4">
+  <img src="docs/assets/collabhub-smoke-poster.jpg" alt="CollabHub Alice and Bob multiplayer smoke test" width="100%">
+</a>
+
+**[▶ 播放 CollabHub v0.1 多人协同冒烟视频](docs/assets/collabhub-v0.1-smoke.mp4)**
+
+> v0.1 是可本地运行、可测试、经过真实双浏览器故障验收的单节点开发者预览。多实例、生产认证、富文本与 transactional outbox 的边界见 [已知限制](docs/known-limitations.md)。
 
 ## 60 秒启动
 
