@@ -1,10 +1,12 @@
 {
   "files": [],
   "references": [
+    { "path": "packages/create-react" },
     { "path": "packages/protocol" },
     { "path": "packages/strategy-sdk" },
     { "path": "packages/domain-json" },
     { "path": "packages/server-core" },
+    { "path": "packages/server-ws" },
     { "path": "packages/server-distributed" },
     { "path": "packages/client-core" },
     { "path": "packages/testkit" },

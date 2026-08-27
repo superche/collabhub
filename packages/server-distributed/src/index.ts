@@ -1,4 +1,5 @@
 export * from './types.js'
+export * from './auth.js'
 export * from './identity.js'
 export * from './postgres-store.js'
 export * from './redis-coordinator.js'

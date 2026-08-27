@@ -490,7 +490,7 @@ export class CollaborationServerCore<TState extends JsonObject = JsonObject> {
     }
     if (this.cachePolicy) {
       this.maintenanceTimer = setInterval(() => { void this.sweepRooms().catch(() => undefined) }, this.cachePolicy.scanIntervalMs)
-      this.maintenanceTimer.unref?.()
+      ;(this.maintenanceTimer as unknown as { unref?: () => void }).unref?.()
     }
   }
 

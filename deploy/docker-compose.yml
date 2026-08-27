@@ -4,6 +4,7 @@ x-node-env: &node-env
   DATABASE_URL: postgres://collabhub:collabhub@postgres:5432/collabhub
   REDIS_URL: redis://redis:6379
   INTERNAL_TOKEN: local-compose-token
+  ALLOW_INSECURE_IDENTITY: "true"
   OWNER_LEASE_SECONDS: 10
   PG_POOL_MAX: 10
   SNAPSHOT_INTERVAL: 2

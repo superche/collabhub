@@ -210,6 +210,8 @@ importers:
         specifier: workspace:*
         version: link:../protocol
 
+  packages/create-react: {}
+
   packages/domain-json:
     dependencies:
       '@collabhub/protocol':
@@ -250,6 +252,9 @@ importers:
       express:
         specifier: ^5.2.1
         version: 5.2.1
+      jose:
+        specifier: ^6.1.0
+        version: 6.2.10
       pg:
         specifier: ^8.16.3
         version: 8.23.0
@@ -272,6 +277,28 @@ importers:
       esbuild:
         specifier: ^0.28.2
         version: 0.28.2
+
+  packages/server-ws:
+    dependencies:
+      '@collabhub/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+      '@collabhub/server-core':
+        specifier: workspace:*
+        version: link:../server-core
+      '@collabhub/strategy-sdk':
+        specifier: workspace:*
+        version: link:../strategy-sdk
+      ws:
+        specifier: ^8.18.3
+        version: 8.21.3
+    devDependencies:
+      '@collabhub/domain-json':
+        specifier: workspace:*
+        version: link:../domain-json
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
 
   packages/strategy-sdk:
     dependencies:
@@ -1376,6 +1403,9 @@ packages:
 
   is-promise@4.0.0:
     resolution: {integrity: sha512-hvpoI6korhJMnej285dSg6nu1+e6uxs7zG3BYAm5byqDsgJNWwxzM6z6iZiAgQR4TJ30JmBTOwqZUw3WlyH3AQ==}
+
+  jose@6.2.10:
+    resolution: {integrity: sha512-iiW7J9qRFlGxvCOIBDBDxFePQSn7ZMAnrYGhrrOo6siO/MIqwfyilLR27pkfDgUk+raLuzADS8A3S/KLBisc0g==}
 
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
@@ -3122,6 +3152,8 @@ snapshots:
   is-fullwidth-code-point@3.0.0: {}
 
   is-promise@4.0.0: {}
+
+  jose@6.2.10: {}
 
   js-tokens@4.0.0: {}
 

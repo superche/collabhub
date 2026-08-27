@@ -6,6 +6,12 @@ type EntityPayload = { collection: string; id: string; value?: JsonObject }
 type ListPayload = { collection: string; id: string; afterId?: string }
 type TransactionPayload = { patches: CanonicalPatch[] }
 
+const unsafePropertyNames = new Set(['__proto__', 'prototype', 'constructor'])
+
+function isSafePropertyName(value: string): boolean {
+  return value.length > 0 && value.length <= 256 && !unsafePropertyNames.has(value)
+}
+
 function payload<T>(context: ResolveContext): T {
   return context.operation.payload as T
 }
@@ -20,7 +26,8 @@ export const propertyLwwStrategy: ConflictStrategy = {
   supports: (type) => type === 'property.set' || type === 'property.unset',
   resolve(context) {
     const data = payload<PropertyPayload>(context)
-    if (!data.path?.startsWith('/')) return invalid('property path must be a JSON pointer')
+    try { pointerSegments(data.path) }
+    catch (error) { return invalid(error instanceof Error ? error.message : String(error)) }
     if (context.operation.operationType === 'property.unset') return { kind: 'accept', patches: [{ op: 'remove', path: data.path }] }
     if (data.value === undefined) return invalid('property.set requires value')
     return { kind: 'accept', patches: [{ op: 'set', path: data.path, value: data.value }] }
@@ -33,7 +40,7 @@ export const entityLifecycleStrategy: ConflictStrategy = {
   supports: (type) => type === 'entity.create' || type === 'entity.delete' || type === 'entity.restore',
   resolve(context) {
     const data = payload<EntityPayload>(context)
-    if (!data.collection || !data.id) return invalid('entity operation requires collection and id')
+    if (!isSafePropertyName(data.collection) || !data.id) return invalid('entity operation requires a safe collection and id')
     const collection = context.currentState[data.collection]
     const existing = Array.isArray(collection)
       ? collection.find((item) => item && typeof item === 'object' && !Array.isArray(item) && (item as JsonObject).id === data.id)
@@ -61,6 +68,7 @@ export const listOrderStrategy: ConflictStrategy = {
   supports: (type) => type === 'list.move' || type === 'list.insert',
   resolve(context) {
     const data = payload<ListPayload>(context)
+    if (!isSafePropertyName(data.collection)) return invalid('list operation requires a safe collection')
     const rawCollection = context.currentState[data.collection]
     if (!Array.isArray(rawCollection)) return invalid(`collection ${data.collection} is not a list`)
     const entities = rawCollection.filter((item): item is JsonObject => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
@@ -93,6 +101,8 @@ export const rejectIfStaleStrategy: ConflictStrategy = {
     }
     const data = payload<TransactionPayload>(context)
     if (!Array.isArray(data.patches)) return invalid('transaction.apply requires patches')
+    try { for (const patch of data.patches) assertSafeCanonicalPatch(patch) }
+    catch (error) { return invalid(error instanceof Error ? error.message : String(error)) }
     return { kind: 'accept', patches: data.patches }
   },
 }
@@ -100,7 +110,21 @@ export const rejectIfStaleStrategy: ConflictStrategy = {
 export const jsonStrategies = [propertyLwwStrategy, entityLifecycleStrategy, listOrderStrategy, rejectIfStaleStrategy] as const
 
 function pointerSegments(path: string): string[] {
-  return path.split('/').slice(1).map((part) => part.replaceAll('~1', '/').replaceAll('~0', '~'))
+  if (typeof path !== 'string' || !path.startsWith('/') || path.length > 4096) throw new Error('property path must be a bounded JSON pointer')
+  const segments = path.split('/').slice(1).map((part) => part.replaceAll('~1', '/').replaceAll('~0', '~'))
+  if (segments.length === 0 || segments.length > 64) throw new Error('property path depth is outside the supported range')
+  if (segments.some((segment) => !isSafePropertyName(segment))) throw new Error('property path contains an unsafe segment')
+  return segments
+}
+
+export function assertSafeCanonicalPatch(patch: CanonicalPatch): void {
+  if (!patch || typeof patch !== 'object') throw new Error('canonical patch must be an object')
+  if (patch.op === 'set' || patch.op === 'remove') {
+    pointerSegments(patch.path)
+    return
+  }
+  if (!isSafePropertyName(patch.collection)) throw new Error('canonical patch contains an unsafe collection')
+  if (!patch.id || patch.id.length > 512) throw new Error('canonical patch requires a bounded entity id')
 }
 
 function setPointer(root: JsonObject, path: string, value: JsonValue | undefined): JsonObject {
@@ -123,6 +147,7 @@ function setPointer(root: JsonObject, path: string, value: JsonValue | undefined
 }
 
 export function applyCanonicalPatch<T extends JsonObject>(state: T, patch: CanonicalPatch): T {
+  assertSafeCanonicalPatch(patch)
   if (patch.op === 'set') return setPointer(state, patch.path, patch.value) as T
   if (patch.op === 'remove') return setPointer(state, patch.path, undefined) as T
   const collection = state[patch.collection]

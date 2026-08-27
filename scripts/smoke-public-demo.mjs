@@ -2,6 +2,7 @@ import { chromium, expect } from '@playwright/test'
 import { spawn } from 'node:child_process'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { WebSocket } from 'ws'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const port = 4400
@@ -16,6 +17,8 @@ const server = spawn(process.execPath, [resolve(root, 'examples/react-flow-app/d
     COLLABHUB_DEMO_ROOM_IDLE_TTL_MS: '200',
     COLLABHUB_DEMO_MAX_WARM_ROOMS: '2',
     COLLABHUB_DEMO_ROOM_SCAN_INTERVAL_MS: '50',
+    COLLABHUB_DEMO_MAX_CONNECTIONS_PER_IP: '2',
+    COLLABHUB_DEMO_ALLOWED_ORIGINS: `http://127.0.0.1:${port}`,
   },
   stdio: ['ignore', 'pipe', 'pipe'],
 })
@@ -48,12 +51,19 @@ try {
 
   await page.close()
   await expect.poll(warmRoomCount, { timeout: 5000 }).toBe(0)
+  const badOrigin = new WebSocket(`ws://127.0.0.1:${port}/collab`, { headers: { Origin: 'https://untrusted.example' } })
+  expect(await closeCode(badOrigin)).toBe(1008)
+  const first = await openSocket()
+  const second = await openSocket()
+  const overLimit = new WebSocket(`ws://127.0.0.1:${port}/collab`, { headers: { Origin: `http://127.0.0.1:${port}` } })
+  expect(await closeCode(overLimit)).toBe(1013)
+  await Promise.all([closeSocket(first), closeSocket(second)])
   const reopened = await browser.newPage({ viewport: { width: 1200, height: 800 } })
   await reopened.goto(`http://127.0.0.1:${port}/?document=${documentId}&client=reopened`)
   await expect(reopened.getByText('online', { exact: true })).toBeVisible()
   await expect(reopened.locator('.react-flow__node')).toHaveCount(2)
   await expect(reopened.getByTestId('react-flow-version')).toHaveText('0')
-  console.log(JSON.stringify({ event: 'react_flow_public_demo_smoke_passed', url: `http://127.0.0.1:${port}/demo.html`, documentId, canonicalVersion: 2, nodeCount: 3, starLink: true, activeRoomProtected: true, expiredRoomDeleted: true, reopenedVersion: 0 }))
+  console.log(JSON.stringify({ event: 'react_flow_public_demo_smoke_passed', url: `http://127.0.0.1:${port}/demo.html`, documentId, canonicalVersion: 2, nodeCount: 3, starLink: true, activeRoomProtected: true, expiredRoomDeleted: true, originRejected: true, perIpConnectionLimit: true, reopenedVersion: 0 }))
 } finally {
   await browser?.close().catch(() => undefined)
   server.kill('SIGTERM')
@@ -75,4 +85,23 @@ async function warmRoomCount() {
   const response = await fetch(`http://127.0.0.1:${port}/healthz`)
   if (!response.ok) throw new Error(`healthz returned ${response.status}`)
   return (await response.json()).warmRooms
+}
+
+async function openSocket() {
+  const socket = new WebSocket(`ws://127.0.0.1:${port}/collab`, { headers: { Origin: `http://127.0.0.1:${port}` } })
+  await new Promise((resolveOpen, reject) => { socket.once('open', resolveOpen); socket.once('error', reject) })
+  return socket
+}
+
+async function closeCode(socket) {
+  return new Promise((resolveClose, reject) => {
+    socket.once('close', resolveClose)
+    socket.once('error', reject)
+  })
+}
+
+async function closeSocket(socket) {
+  const closed = closeCode(socket)
+  socket.close()
+  await closed
 }

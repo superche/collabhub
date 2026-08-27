@@ -49,6 +49,8 @@ export interface CollaborationClientOptions<TState extends JsonObject> {
   actorId: string
   clientId: string
   schemaVersion: string
+  /** Bearer token forwarded in the WebSocket hello. Use WSS outside local development. */
+  authToken?: string
   socketFactory?: SocketFactory
   applyPatches(state: TState, patches: readonly CanonicalPatch[]): TState
   maxPendingOperations?: number
@@ -102,6 +104,7 @@ export class CollaborationClient<TState extends JsonObject> {
         tenantId: this.options.tenantId, documentId: this.options.documentId,
         actorId: this.options.actorId, clientId: this.options.clientId,
         lastKnownVersion: this.canonicalVersion,
+        authToken: this.options.authToken,
       })
     })
     socket.addEventListener('message', (event) => {

@@ -106,6 +106,8 @@ export interface CapabilityHello {
   actorId: string
   clientId: string
   lastKnownVersion: number
+  /** Optional bearer token. Production gateways should authenticate and bind identity from its claims. */
+  authToken?: string
 }
 
 export interface SubmitMessage {

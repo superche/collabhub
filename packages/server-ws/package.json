@@ -1,0 +1,24 @@
+{
+  "name": "@collabhub/server-ws",
+  "version": "0.1.0",
+  "description": "Standalone WebSocket adapter for the CollabHub server-authoritative core",
+  "type": "module",
+  "license": "Apache-2.0",
+  "repository": { "type": "git", "url": "git+https://github.com/superche/collabhub.git", "directory": "packages/server-ws" },
+  "homepage": "https://github.com/superche/collabhub#readme",
+  "bugs": "https://github.com/superche/collabhub/issues",
+  "files": ["dist"],
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js", "default": "./dist/index.js" } },
+  "sideEffects": false,
+  "engines": { "node": ">=22" },
+  "publishConfig": { "access": "public", "provenance": true },
+  "scripts": { "build": "node ../../scripts/clean-package-output.mjs && tsc -b --force", "prepack": "pnpm build" },
+  "dependencies": {
+    "@collabhub/protocol": "workspace:*",
+    "@collabhub/server-core": "workspace:*",
+    "@collabhub/strategy-sdk": "workspace:*",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": { "@collabhub/domain-json": "workspace:*", "@types/ws": "^8.18.1" }
+}

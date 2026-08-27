@@ -1,4 +1,4 @@
-import { createServer, type Server } from 'node:http'
+import { createServer, type IncomingMessage, type Server } from 'node:http'
 import express from 'express'
 import { WebSocketServer, WebSocket } from 'ws'
 import {
@@ -14,9 +14,11 @@ import {
   type SnapshotMessage,
 } from '@collabhub/protocol'
 import type { CommitStore, ConnectionContext, InternalRoomEvent, OwnerRecord, OwnershipCoordinator, RoomIdentity, WorkerRouter } from './types.js'
+import { bearerToken, type GatewayAuthAdapter } from './auth.js'
 
 interface GatewayConnection {
   socket: WebSocket
+  ip: string
   context?: ConnectionContext
   phase: 'new' | 'syncing' | 'ready'
   lastSentVersion: number
@@ -37,7 +39,17 @@ export interface GatewayOptions<TState extends JsonObject> {
   coordinator: OwnershipCoordinator
   store: CommitStore<TState>
   router: WorkerRouter
+  auth: GatewayAuthAdapter
   maxBufferedBytes?: number
+  maxConnections?: number
+  maxConnectionsPerIp?: number
+  operationRatePerSecond?: number
+  operationBurst?: number
+  httpRatePerSecond?: number
+  httpBurst?: number
+  allowedOrigins?: readonly string[]
+  /** Trust only when the immediately upstream proxy removes client-supplied forwarding headers. */
+  trustProxyHeaders?: boolean
 }
 
 export class CollaborationGateway<TState extends JsonObject = JsonObject> {
@@ -46,7 +58,10 @@ export class CollaborationGateway<TState extends JsonObject = JsonObject> {
   private sockets?: WebSocketServer
   private unsubscribe?: () => Promise<void>
   private watermarkTimer?: ReturnType<typeof setInterval>
-  private readonly metrics = { submissions: 0, accepted: 0, rejected: 0, retries: 0, recoveries: 0, slowClients: 0 }
+  private readonly connectionsByIp = new Map<string, number>()
+  private readonly operationLimiter = new TokenBucketLimiter()
+  private readonly httpLimiter = new TokenBucketLimiter()
+  private readonly metrics = { submissions: 0, accepted: 0, rejected: 0, retries: 0, recoveries: 0, slowClients: 0, rateLimited: 0, authRejected: 0 }
 
   constructor(private readonly options: GatewayOptions<TState>) {}
 
@@ -57,6 +72,12 @@ export class CollaborationGateway<TState extends JsonObject = JsonObject> {
       (message) => this.onPresence(message),
     )
     const app = express()
+    app.use('/v1', (request, response, next) => {
+      const ip = requestIp(request, this.options.trustProxyHeaders ?? false)
+      if (this.httpLimiter.allow(ip, this.options.httpRatePerSecond ?? 20, this.options.httpBurst ?? 40)) return next()
+      this.metrics.rateLimited++
+      response.status(429).json({ error: 'rate limit exceeded' })
+    })
     app.use(express.json({ limit: '128kb' }))
     app.get('/healthz', (_request, response) => response.json({ ok: true, role: 'gateway', instanceId: this.options.instanceId }))
     app.get('/readyz', async (_request, response) => {
@@ -72,14 +93,36 @@ export class CollaborationGateway<TState extends JsonObject = JsonObject> {
       ].join('\n') + '\n')
     })
     app.get('/v1/tenants/:tenantId/documents/:documentId/snapshot', async (request, response) => {
-      try { response.json(await this.fetchSnapshot({ tenantId: request.params.tenantId, documentId: request.params.documentId })) }
+      const actorId = request.header('x-collabhub-actor-id')
+      const clientId = request.header('x-collabhub-client-id')
+      if (!actorId || !clientId) return response.status(400).json({ error: 'actor and client headers are required' })
+      let context: ConnectionContext
+      try {
+        context = await this.options.auth.authenticate({
+          transport: 'http', token: bearerToken(request.header('authorization')),
+          requested: { tenantId: request.params.tenantId, documentId: request.params.documentId, actorId, clientId },
+        })
+      } catch {
+        this.metrics.authRejected++
+        return response.status(401).json({ error: 'unauthorized' })
+      }
+      try { response.json(await this.fetchSnapshot(context)) }
       catch (error) { response.status(503).json({ error: error instanceof Error ? error.message : String(error) }) }
     })
     app.post('/v1/tenants/:tenantId/documents/:documentId/operations', async (request, response) => {
       const actorId = request.header('x-collabhub-actor-id')
       const clientId = request.header('x-collabhub-client-id')
       if (!actorId || !clientId) return response.status(400).json({ error: 'actor and client headers are required' })
-      const context: ConnectionContext = { tenantId: request.params.tenantId, documentId: request.params.documentId, actorId, clientId }
+      let context: ConnectionContext
+      try {
+        context = await this.options.auth.authenticate({
+          transport: 'http', token: bearerToken(request.header('authorization')),
+          requested: { tenantId: request.params.tenantId, documentId: request.params.documentId, actorId, clientId },
+        })
+      } catch {
+        this.metrics.authRejected++
+        return response.status(401).json({ error: 'unauthorized' })
+      }
       try {
         const result = await this.submit(context, this.bindOperation(context, request.body as CollaborationOperation))
         response.status(result.kind === 'retryLater' ? 503 : 200).json(result)
@@ -88,7 +131,15 @@ export class CollaborationGateway<TState extends JsonObject = JsonObject> {
 
     this.server = createServer(app)
     this.sockets = new WebSocketServer({ server: this.server, path: '/collab', maxPayload: 128 * 1024 })
-    this.sockets.on('connection', (socket) => this.attachSocket(socket))
+    this.sockets.on('connection', (socket, request) => {
+      const ip = requestIp(request, this.options.trustProxyHeaders ?? false)
+      const origin = request.headers.origin
+      if (this.options.allowedOrigins?.length && (!origin || !this.options.allowedOrigins.includes(origin))) return socket.close(1008, 'origin not allowed')
+      if (this.sockets!.clients.size > (this.options.maxConnections ?? 10_000)) return socket.close(1013, 'connection capacity reached')
+      if ((this.connectionsByIp.get(ip) ?? 0) >= (this.options.maxConnectionsPerIp ?? 50)) return socket.close(1013, 'connection limit reached')
+      this.connectionsByIp.set(ip, (this.connectionsByIp.get(ip) ?? 0) + 1)
+      this.attachSocket(socket, ip)
+    })
     await new Promise<void>((resolve, reject) => {
       this.server!.once('error', reject)
       this.server!.listen(this.options.port, '0.0.0.0', resolve)
@@ -107,8 +158,8 @@ export class CollaborationGateway<TState extends JsonObject = JsonObject> {
     if (this.server) await new Promise<void>((resolve) => this.server!.close(() => resolve()))
   }
 
-  private attachSocket(socket: WebSocket): void {
-    const connection: GatewayConnection = { socket, phase: 'new', lastSentVersion: 0, queuedEvents: [] }
+  private attachSocket(socket: WebSocket, ip: string): void {
+    const connection: GatewayConnection = { socket, ip, phase: 'new', lastSentVersion: 0, queuedEvents: [] }
     socket.on('message', (raw) => {
       let message: ClientWireMessage
       try { message = JSON.parse(String(raw)) as ClientWireMessage }
@@ -124,6 +175,11 @@ export class CollaborationGateway<TState extends JsonObject = JsonObject> {
     if (message.kind === 'hello') return this.hello(connection, message)
     if (!connection.context) return connection.socket.close(1008, 'hello required')
     if (message.kind === 'submit') {
+      if (!this.operationLimiter.allow(connection.ip, this.options.operationRatePerSecond ?? 30, this.options.operationBurst ?? 60)) {
+        this.metrics.rateLimited++
+        this.send(connection, { kind: 'retryLater', operationId: message.operation.operationId, canonicalVersion: connection.lastSentVersion, retryAfterMs: 1000, reason: 'backpressure' })
+        return
+      }
       const operation = this.bindOperation(connection.context, message.operation)
       this.send(connection, await this.submit(connection.context, operation))
       return
@@ -141,8 +197,16 @@ export class CollaborationGateway<TState extends JsonObject = JsonObject> {
   private async hello(connection: GatewayConnection, hello: CapabilityHello): Promise<void> {
     if (connection.context) return connection.socket.close(1008, 'connection identity is immutable')
     if (hello.protocolVersion !== PROTOCOL_VERSION) return connection.socket.close(1002, 'protocol version mismatch')
-    for (const value of [hello.tenantId, hello.documentId, hello.actorId, hello.clientId]) if (!value) return connection.socket.close(1008, 'identity is required')
-    connection.context = { tenantId: hello.tenantId, documentId: hello.documentId, actorId: hello.actorId, clientId: hello.clientId }
+    for (const value of [hello.tenantId, hello.documentId, hello.actorId, hello.clientId]) if (!value || value.length > 256) return connection.socket.close(1008, 'identity is invalid')
+    try {
+      connection.context = await this.options.auth.authenticate({
+        transport: 'websocket', token: hello.authToken,
+        requested: { tenantId: hello.tenantId, documentId: hello.documentId, actorId: hello.actorId, clientId: hello.clientId },
+      })
+    } catch {
+      this.metrics.authRejected++
+      return connection.socket.close(1008, 'unauthorized')
+    }
     const hub = this.hub(connection.context)
     hub.connections.add(connection)
     await this.synchronize(connection)
@@ -301,6 +365,9 @@ export class CollaborationGateway<TState extends JsonObject = JsonObject> {
   }
 
   private detach(connection: GatewayConnection): void {
+    const connections = Math.max(0, (this.connectionsByIp.get(connection.ip) ?? 1) - 1)
+    if (connections === 0) this.connectionsByIp.delete(connection.ip)
+    else this.connectionsByIp.set(connection.ip, connections)
     if (!connection.context) return
     const key = this.key(connection.context)
     const hub = this.hubs.get(key)
@@ -319,4 +386,45 @@ export class CollaborationGateway<TState extends JsonObject = JsonObject> {
   }
 
   private key(room: RoomIdentity): string { return `${room.tenantId}\u0000${room.documentId}` }
+}
+
+interface TokenBucket { tokens: number; updatedAt: number; lastSeenAt: number }
+
+class TokenBucketLimiter {
+  private readonly buckets = new Map<string, TokenBucket>()
+
+  allow(key: string, ratePerSecond: number, burst: number, now = Date.now()): boolean {
+    let bucket = this.buckets.get(key)
+    if (!bucket) {
+      bucket = { tokens: burst, updatedAt: now, lastSeenAt: now }
+      this.buckets.set(key, bucket)
+      this.prune(now)
+    }
+    bucket.tokens = Math.min(burst, bucket.tokens + ((now - bucket.updatedAt) / 1000) * ratePerSecond)
+    bucket.updatedAt = now
+    bucket.lastSeenAt = now
+    if (bucket.tokens < 1) return false
+    bucket.tokens--
+    return true
+  }
+
+  private prune(now: number): void {
+    if (this.buckets.size <= 10_000) return
+    for (const [key, bucket] of this.buckets) if (now - bucket.lastSeenAt > 5 * 60_000) this.buckets.delete(key)
+    while (this.buckets.size > 10_000) {
+      let oldestKey: string | undefined
+      let oldestSeen = Number.POSITIVE_INFINITY
+      for (const [key, bucket] of this.buckets) {
+        if (bucket.lastSeenAt < oldestSeen) { oldestKey = key; oldestSeen = bucket.lastSeenAt }
+      }
+      if (!oldestKey) break
+      this.buckets.delete(oldestKey)
+    }
+  }
+}
+
+function requestIp(request: IncomingMessage | { headers: IncomingMessage['headers']; socket: IncomingMessage['socket'] }, trustProxyHeaders: boolean): string {
+  const forwarded = trustProxyHeaders ? request.headers['x-forwarded-for'] : undefined
+  const first = Array.isArray(forwarded) ? forwarded[0] : forwarded?.split(',')[0]
+  return first?.trim() || request.socket.remoteAddress || 'unknown'
 }

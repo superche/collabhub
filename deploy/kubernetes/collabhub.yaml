@@ -13,6 +13,9 @@ stringData:
   DATABASE_URL: postgres://USER:PASSWORD@MANAGED_POSTGRES:5432/collabhub
   REDIS_URL: rediss://MANAGED_REDIS:6379
   INTERNAL_TOKEN: REPLACE_WITH_A_RANDOM_SECRET
+  JWT_JWKS_URL: https://YOUR_IDP/.well-known/jwks.json
+  JWT_ISSUER: https://YOUR_IDP/
+  JWT_AUDIENCE: collabhub
 ---
 apiVersion: v1
 kind: Service
@@ -97,7 +100,16 @@ spec:
             - { name: DATABASE_URL, valueFrom: { secretKeyRef: { name: collabhub-runtime, key: DATABASE_URL } } }
             - { name: REDIS_URL, valueFrom: { secretKeyRef: { name: collabhub-runtime, key: REDIS_URL } } }
             - { name: INTERNAL_TOKEN, valueFrom: { secretKeyRef: { name: collabhub-runtime, key: INTERNAL_TOKEN } } }
+            - { name: JWT_JWKS_URL, valueFrom: { secretKeyRef: { name: collabhub-runtime, key: JWT_JWKS_URL } } }
+            - { name: JWT_ISSUER, valueFrom: { secretKeyRef: { name: collabhub-runtime, key: JWT_ISSUER } } }
+            - { name: JWT_AUDIENCE, valueFrom: { secretKeyRef: { name: collabhub-runtime, key: JWT_AUDIENCE } } }
+            - { name: ALLOWED_ORIGINS, value: "https://YOUR_APP" }
+            - { name: TRUST_PROXY_HEADERS, value: "true" }
             - { name: PG_POOL_MAX, value: "10" }
+            - { name: MAX_GATEWAY_CONNECTIONS, value: "10000" }
+            - { name: MAX_CONNECTIONS_PER_IP, value: "50" }
+            - { name: OPERATION_RATE_PER_SECOND, value: "30" }
+            - { name: OPERATION_BURST, value: "60" }
             - { name: NODE_OPTIONS, value: --max-old-space-size=896 }
           resources:
             requests: { cpu: "1", memory: 2Gi }

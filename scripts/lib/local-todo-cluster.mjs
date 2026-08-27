@@ -60,6 +60,7 @@ export async function startLocalTodoCluster({ startInfrastructure = true, startW
         DATABASE_URL: databaseUrl,
         REDIS_URL: redisUrl,
         INTERNAL_TOKEN: internalToken,
+        ALLOW_INSECURE_IDENTITY: 'true',
         SNAPSHOT_INTERVAL: '2',
         OWNER_LEASE_SECONDS: '5',
         PG_POOL_MAX: '5',

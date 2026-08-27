@@ -48,8 +48,11 @@ try {
     const packedManifest = JSON.parse(run('tar', ['-xOf', archivePath, 'package/package.json'], root))
     if (containsWorkspaceProtocol(packedManifest)) throw new Error(`${manifest.name} tarball still contains workspace: dependencies`)
     if (!files.includes('package/dist/index.js') || !files.includes('package/dist/index.d.ts')) throw new Error(`${manifest.name} tarball is missing dist entrypoints`)
-    if (files.some((file) => file.includes('/src/') || file.includes('.test.'))) throw new Error(`${manifest.name} tarball contains source or test files`)
-    if (manifest.bin && !files.includes(`package/${Object.values(manifest.bin)[0]}`)) throw new Error(`${manifest.name} tarball is missing its executable`)
+    if (files.some((file) => file.startsWith('package/src/') || file.includes('.test.'))) throw new Error(`${manifest.name} tarball contains package source or test files`)
+    if (manifest.bin) {
+      const executable = String(Object.values(manifest.bin)[0]).replace(/^\.\//, '')
+      if (!files.includes(`package/${executable}`)) throw new Error(`${manifest.name} tarball is missing its executable`)
+    }
     evidence.push({ name: manifest.name, archive: basename(archivePath), files: files.length })
   }
   console.log(JSON.stringify({ event: 'package_artifacts_verified', packages: evidence }, null, 2))

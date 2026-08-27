@@ -6,6 +6,7 @@ import { PostgresCommitStore } from './postgres-store.js'
 import { RedisOwnershipCoordinator } from './redis-coordinator.js'
 import { HttpWorkerRouter } from './router.js'
 import { DistributedRoomWorker } from './worker.js'
+import { InsecureDevelopmentAuthAdapter, JwtGatewayAuthAdapter, type GatewayAuthAdapter } from './auth.js'
 
 export interface DistributedNodeHandle {
   role: 'gateway' | 'worker'
@@ -30,6 +31,29 @@ function nonNegativeInteger(name: string, fallback: number): number {
   const value = Number(process.env[name] ?? fallback)
   if (!Number.isSafeInteger(value) || value < 0) throw new Error(`${name} must be a non-negative integer`)
   return value
+}
+
+function boolean(name: string, fallback = false): boolean {
+  const value = process.env[name]
+  if (value === undefined) return fallback
+  if (value === 'true') return true
+  if (value === 'false') return false
+  throw new Error(`${name} must be true or false`)
+}
+
+function gatewayAuth(): GatewayAuthAdapter {
+  const jwksUrl = process.env.JWT_JWKS_URL
+  if (jwksUrl) {
+    return new JwtGatewayAuthAdapter({
+      jwksUrl,
+      issuer: required('JWT_ISSUER'),
+      audience: required('JWT_AUDIENCE'),
+      tenantClaim: process.env.JWT_TENANT_CLAIM,
+      documentsClaim: process.env.JWT_DOCUMENTS_CLAIM,
+    })
+  }
+  if (boolean('ALLOW_INSECURE_IDENTITY')) return new InsecureDevelopmentAuthAdapter()
+  throw new Error('gateway requires JWT_JWKS_URL or explicit ALLOW_INSECURE_IDENTITY=true for local development')
 }
 
 export async function startDistributedNodeFromEnvironment<TState extends JsonObject>(domainPack: DomainPack<TState>): Promise<DistributedNodeHandle> {
@@ -59,8 +83,17 @@ export async function startDistributedNodeFromEnvironment<TState extends JsonObj
       })
     : new CollaborationGateway({
         instanceId, port, internalToken, coordinator, store,
+        auth: gatewayAuth(),
         router: new HttpWorkerRouter(coordinator, internalToken),
         maxBufferedBytes: integer('MAX_SOCKET_BUFFER_BYTES', 512 * 1024),
+        maxConnections: integer('MAX_GATEWAY_CONNECTIONS', 10_000),
+        maxConnectionsPerIp: integer('MAX_CONNECTIONS_PER_IP', 50),
+        operationRatePerSecond: integer('OPERATION_RATE_PER_SECOND', 30),
+        operationBurst: integer('OPERATION_BURST', 60),
+        httpRatePerSecond: integer('HTTP_RATE_PER_SECOND', 20),
+        httpBurst: integer('HTTP_BURST', 40),
+        allowedOrigins: process.env.ALLOWED_ORIGINS?.split(',').map((value) => value.trim()).filter(Boolean),
+        trustProxyHeaders: boolean('TRUST_PROXY_HEADERS'),
       })
 
   await runtime.start()

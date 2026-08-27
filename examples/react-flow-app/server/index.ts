@@ -10,6 +10,13 @@ const port = Number(process.env.PORT ?? process.env.COLLABHUB_REACT_FLOW_PORT ??
 const host = process.env.COLLABHUB_HOST ?? '127.0.0.1'
 const staticDirectory = process.env.COLLABHUB_DEMO_STATIC_DIR
 const storage = new InMemoryStorageAdapter()
+const maxConnections = positiveInteger('COLLABHUB_DEMO_MAX_CONNECTIONS', 250)
+const maxConnectionsPerIp = positiveInteger('COLLABHUB_DEMO_MAX_CONNECTIONS_PER_IP', 8)
+const maxActiveRooms = positiveInteger('COLLABHUB_DEMO_MAX_ACTIVE_ROOMS', 500)
+const messageRatePerSecond = positiveInteger('COLLABHUB_DEMO_MESSAGE_RATE_PER_SECOND', 30)
+const messageBurst = positiveInteger('COLLABHUB_DEMO_MESSAGE_BURST', 60)
+const trustProxyHeaders = process.env.COLLABHUB_DEMO_TRUST_PROXY_HEADERS === 'true'
+const allowedOrigins = new Set((process.env.COLLABHUB_DEMO_ALLOWED_ORIGINS ?? '').split(',').map((value) => value.trim()).filter(Boolean))
 const core = new CollaborationServerCore({
   domainPack: GraphDocumentDomainPack,
   storage,
@@ -23,6 +30,7 @@ const core = new CollaborationServerCore({
   roomDataRetention: 'delete',
 })
 const socketsByDocument = new Map<string, Set<WebSocket>>()
+const connectionsByIp = new Map<string, number>()
 const app = express()
 app.get('/health', (_request, response) => response.json({ ok: true, example: 'react-flow' }))
 app.get('/healthz', (_request, response) => response.json({ status: 'ok', version: '0.1.0', example: 'react-flow', warmRooms: core.warmRoomCount }))
@@ -38,8 +46,16 @@ server.keepAliveTimeout = 120_000
 server.headersTimeout = 121_000
 const webSockets = new WebSocketServer({ server, path: '/collab', maxPayload: 128 * 1024 })
 
-webSockets.on('connection', (socket) => {
+webSockets.on('connection', (socket, request) => {
+  const ip = clientIp(trustProxyHeaders ? request.headers['x-forwarded-for'] : undefined, request.socket.remoteAddress)
+  const origin = request.headers.origin
+  if (allowedOrigins.size > 0 && (!origin || !allowedOrigins.has(origin))) { socket.close(1008, 'origin not allowed'); return }
+  if (webSockets.clients.size > maxConnections || (connectionsByIp.get(ip) ?? 0) >= maxConnectionsPerIp) { socket.close(1013, 'connection limit reached'); return }
+  connectionsByIp.set(ip, (connectionsByIp.get(ip) ?? 0) + 1)
+  let tokens = messageBurst
+  let tokenUpdatedAt = Date.now()
   let roomKey: string | undefined
+  let connectionContext: { tenantId: string; documentId: string; actorId: string; clientId: string } | undefined
   let roomLease: Awaited<ReturnType<typeof core.acquireRoom>> | undefined
   let roomGeneration = 0
   let unsubscribe: () => void = () => undefined
@@ -56,15 +72,23 @@ webSockets.on('connection', (socket) => {
     roomKey = undefined
   }
   socket.on('message', async (raw) => {
+    const now = Date.now()
+    tokens = Math.min(messageBurst, tokens + ((now - tokenUpdatedAt) / 1000) * messageRatePerSecond)
+    tokenUpdatedAt = now
+    if (tokens < 1) { socket.close(1013, 'message rate exceeded'); return }
+    tokens--
     let message: ClientWireMessage
     try { message = JSON.parse(raw.toString()) as ClientWireMessage }
     catch { socket.close(1003, 'invalid JSON'); return }
     if (message.kind === 'hello') {
       if (message.protocolVersion !== PROTOCOL_VERSION) { socket.close(1002, 'protocol mismatch'); return }
+      if (![message.tenantId, message.documentId, message.actorId, message.clientId].every(validIdentity)) { socket.close(1008, 'invalid identity'); return }
       leaveRoom()
       const expectedGeneration = roomGeneration
       const nextRoomKey = `${message.tenantId}\u0000${message.documentId}`
+      if (!socketsByDocument.has(nextRoomKey) && socketsByDocument.size >= maxActiveRooms) { socket.close(1013, 'room capacity reached'); return }
       roomKey = nextRoomKey
+      connectionContext = { tenantId: message.tenantId, documentId: message.documentId, actorId: message.actorId, clientId: message.clientId }
       const roomSockets = socketsByDocument.get(nextRoomKey) ?? new Set<WebSocket>()
       roomSockets.add(socket)
       socketsByDocument.set(nextRoomKey, roomSockets)
@@ -85,7 +109,8 @@ webSockets.on('connection', (socket) => {
     }
     if (!roomKey || !roomLease) { socket.close(1008, 'hello required'); return }
     if (message.kind === 'submit') {
-      const result = await roomLease.session.submit(message.operation)
+      const operation = { ...message.operation, ...connectionContext! }
+      const result = await roomLease.session.submit(operation)
       console.log(`[react-flow:trace] ${JSON.stringify({ event: 'operation_result', operationType: message.operation.operationType, operationId: message.operation.operationId, result: result.kind, canonicalVersion: result.canonicalVersion, payloadBytes: JSON.stringify(message.operation.payload).length })}`)
       socket.send(JSON.stringify(result))
       return
@@ -96,10 +121,15 @@ webSockets.on('connection', (socket) => {
       socket.send(JSON.stringify(session.snapshot()))
       return
     }
-    const presence = message as PresenceMessage
+    const presence = { ...(message as PresenceMessage), ...connectionContext }
     for (const peer of socketsByDocument.get(roomKey) ?? []) if (peer !== socket && peer.readyState === peer.OPEN) peer.send(JSON.stringify(presence))
   })
-  socket.on('close', leaveRoom)
+  socket.on('close', () => {
+    leaveRoom()
+    const remaining = Math.max(0, (connectionsByIp.get(ip) ?? 1) - 1)
+    if (remaining === 0) connectionsByIp.delete(ip)
+    else connectionsByIp.set(ip, remaining)
+  })
 })
 
 server.listen(port, host, () => {
@@ -111,3 +141,10 @@ function positiveInteger(name: string, fallback: number): number {
   if (!Number.isSafeInteger(value) || value <= 0) throw new Error(`${name} must be a positive integer`)
   return value
 }
+
+function clientIp(forwarded: string | string[] | undefined, remoteAddress: string | undefined): string {
+  const value = Array.isArray(forwarded) ? forwarded[0] : forwarded?.split(',')[0]
+  return value?.trim() || remoteAddress || 'unknown'
+}
+
+function validIdentity(value: string): boolean { return value.length > 0 && value.length <= 256 }
