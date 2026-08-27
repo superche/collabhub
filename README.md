@@ -79,6 +79,26 @@ https://github.com/user-attachments/assets/6a90ca9d-ef9b-4d1b-a105-2e542c80b189
 
 *双客户端冒烟：富文本输入、断线恢复与块排序。*
 
+### 3. React Flow
+
+React Flow 作为受控画布接入；宿主继续持有与渲染器无关的 `GraphDocument`。
+
+```bash
+pnpm dev:react-flow
+```
+
+| 进程 | 地址 |
+|---|---|
+| Server / WebSocket | `http://127.0.0.1:4300` |
+| Alice | `http://127.0.0.1:5193/?client=alice` |
+| Bob | `http://127.0.0.1:5194/?client=bob` |
+
+验证通过：节点/边增删、重命名合并、拖拽松手单次提交、断线重放，以及删除节点时原子删除关联边。详见 [React Flow 接入说明](docs/integration/react-flow.md)。
+
+https://github.com/user-attachments/assets/14766fef-c0ba-4bbb-a09e-7a1c9a14536e
+
+*双客户端冒烟：节点编辑、拖拽合并、断线恢复与关联边联动删除。*
+
 ## 接入案例
 
 React 组件不接触 WebSocket 或 operation。应用保留自己的 Store 和 Command，只在 composition root 选择 transport。
@@ -167,6 +187,7 @@ packages/
 examples/
   todo-list-app/   REST baseline 与协同接入样板
   blocknote-app/   BlockNote 增量块协同适配
+  react-flow-app/  React Flow 增量图协同适配
 docs/              架构、接入与验收文档
 ```
 
@@ -180,8 +201,10 @@ pnpm dev             # TODO List server + Alice + Bob
 pnpm record:todo-list # 另开终端录制 TODO List 冒烟视频
 pnpm dev:blocknote   # BlockNote server + Alice + Bob
 pnpm record:blocknote # 另开终端录制 BlockNote 冒烟视频
+pnpm dev:react-flow  # React Flow server + Alice + Bob
+pnpm record:react-flow # 另开终端录制 React Flow 冒烟视频
 pnpm check           # build + tests + benchmark
-pnpm test:e2e        # 两套双浏览器验收
+pnpm test:e2e        # 双浏览器回归验收
 ```
 
 ## 文档
@@ -191,6 +214,7 @@ pnpm test:e2e        # 两套双浏览器验收
 - [接入条件](docs/integration/readiness.md)
 - [TODO List 接入](docs/integration/todo-list-tutorial.md)
 - [BlockNote 接入](docs/integration/blocknote.md)
+- [React Flow 接入](docs/integration/react-flow.md)
 - [验收记录](docs/acceptance.md)
 - [已知限制](docs/known-limitations.md)
 

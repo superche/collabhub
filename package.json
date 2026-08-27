@@ -9,12 +9,14 @@
     "build": "tsc -b",
     "dev": "concurrently -k -n server,alice,bob -c blue,green,magenta \"pnpm --filter @collabhub/todo-list-app dev:server\" \"pnpm --filter @collabhub/todo-list-app dev:web:a\" \"pnpm --filter @collabhub/todo-list-app dev:web:b\"",
     "dev:blocknote": "concurrently -k -n server,alice,bob -c blue,green,magenta \"pnpm --filter @collabhub/blocknote-app dev:server\" \"pnpm --filter @collabhub/blocknote-app dev:web:a\" \"pnpm --filter @collabhub/blocknote-app dev:web:b\"",
+    "dev:react-flow": "concurrently -k -n server,alice,bob -c blue,green,magenta \"pnpm --filter @collabhub/react-flow-app dev:server\" \"pnpm --filter @collabhub/react-flow-app dev:web:a\" \"pnpm --filter @collabhub/react-flow-app dev:web:b\"",
     "record:todo-list": "node scripts/record-todo-list-smoke.mjs",
     "record:blocknote": "node scripts/record-blocknote-smoke.mjs",
+    "record:react-flow": "node scripts/record-react-flow-smoke.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "check": "pnpm build && pnpm --filter @collabhub/todo-list-app build && pnpm --filter @collabhub/blocknote-app build && pnpm test && pnpm benchmark",
+    "check": "pnpm build && pnpm --filter @collabhub/todo-list-app build && pnpm --filter @collabhub/blocknote-app build && pnpm --filter @collabhub/react-flow-app build && pnpm test && pnpm benchmark",
     "benchmark": "tsc -b packages/domain-json && node scripts/benchmark.mjs"
   },
   "devDependencies": {

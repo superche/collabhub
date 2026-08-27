@@ -10,7 +10,8 @@
 - TypeScript project references：通过。
 - Vite production build：41 modules；JS 213.79 KB / 66.38 KB gzip，CSS 4.54 KB / 1.64 KB gzip。
 - BlockNote Vite production build：914 modules；主 JS 1,131.76 KB / 343.38 KB gzip，CSS 243.00 KB / 38.62 KB gzip；大 chunk 警告记录为已知限制。
-- Vitest：8 files / 23 tests passed。
+- React Flow Vite production build：199 modules；JS 392.29 KB / 124.88 KB gzip，CSS 20.12 KB / 4.01 KB gzip。
+- Vitest：11 files / 30 tests passed。
 - 1,000-section patch benchmark：1,000 samples，p95 0.014 ms，gate 4 ms，通过。
 
 `pnpm test:e2e`：2 tests passed（7.3 s；TODO List 1.8 s，BlockNote 2.6 s）。
@@ -34,6 +35,14 @@ BlockNote 最终 Playwright 验收使用 `pnpm dev:blocknote`：
 | BlockNote Bob Vite | 96081 | `127.0.0.1:5184` |
 
 Alice 与 Bob 使用两个独立 Chromium BrowserContext，而不是一个模拟 store。Server、两个 Vite client 和浏览器均由 Playwright 在验收结束后正常回收。
+
+React Flow 手工 Playwright CLI 验收使用 `pnpm dev:react-flow`：
+
+| 角色 | PID | 监听 |
+|---|---:|---|
+| React Flow CollabHub WebSocket | 54147 | `127.0.0.1:4300`, `/collab` |
+| React Flow Alice Vite | 54131 | `127.0.0.1:5193` |
+| React Flow Bob Vite | 54130 | `127.0.0.1:5194` |
 
 ## 故障 trace
 
@@ -88,6 +97,24 @@ Alice 在 v2 断线；Bob 插入块推进到 v3；Alice 以 v2 重连取得 snap
   <img src="assets/blocknote-bob.png" alt="BlockNote Bob acceptance" width="49%">
 </p>
 
+## React Flow 验收
+
+录制文档：`react-flow-smoke-1787824705658`。左右画面来自两个独立 Chromium BrowserContext；视频为 1920×820、H.264、30 fps，鼠标移动 0.7–0.9 秒，按键间隔 82 ms。
+
+```json
+{"event":"node_add_converged","aliceVersion":"1","bobVersion":"1"}
+{"event":"rename_coalesced","aliceVersion":"2","bobVersion":"2"}
+{"event":"drag_stop_converged","aliceVersion":"3","bobVersion":"3","aliceMoves":"1"}
+{"event":"offline_pending","aliceVersion":"3","bobVersion":"3","bobPending":"1"}
+{"event":"online_client_advanced","aliceVersion":"4","bobVersion":"3","bobPending":"1"}
+{"event":"reconnect_converged","aliceVersion":"5","bobVersion":"5","bobPending":"0","bobRecovery":"1 / 0"}
+{"event":"linked_delete_converged","aliceVersion":"6","bobVersion":"6","alicePending":"0","bobPending":"0"}
+```
+
+浏览器验收还断言：断线操作未提前出现在 Alice；重连后两端均为 6 个节点；删除 Build 的一个 `node.delete` 在 v6 同步节点删除与两条关联边删除，两端均显示 `5 nodes · 0 edges`。
+
+Server trace 中 `node.add` 108 bytes、`node.rename` 64 bytes、`node.move` 66 bytes、`node.delete` 39 bytes；编辑热路径没有完整 graph。全新浏览器会话控制台为 0 errors / 0 warnings。
+
 ## 验收矩阵
 
 | 场景 | 自动化证据 |
@@ -108,6 +135,11 @@ Alice 在 v2 断线；Bob 插入块推进到 v3；Alice 以 v2 重连取得 snap
 | BlockNote 插入与排序 | 双浏览器 e2e 检查 `block.insert`、`block.move` 与最终顺序 |
 | BlockNote 断线恢复 | Alice 离线 pending，Bob 推进版本，Alice snapshot recovery 后重放 |
 | BlockNote 依赖边界 | components/application/domain 禁止 `@collabhub/*`；canonical domain/server pack 禁止 `@blocknote/*` |
+| React Flow 增量图操作 | adapter 测试断言 `node.move` payload 不含完整 nodes/edges |
+| React Flow 拖拽合并 | 真实双客户端验收中多帧拖拽只产生 1 个 `node.move` |
+| React Flow 断线恢复 | Bob pending 1，Alice 推进版本，Bob 重连重放后双方 v5 / pending 0 |
+| React Flow 联动删除 | 一个 `node.delete` 原子发布节点与两条关联边删除，双方 v6 收敛 |
+| React Flow 依赖边界 | components/application/domain 禁止 `@collabhub/*`；canonical domain/server pack 禁止 `@xyflow/*` |
 
 ## 可复现命令
 
@@ -117,7 +149,9 @@ pnpm check
 pnpm test:e2e
 pnpm dev
 pnpm dev:blocknote
+pnpm dev:react-flow
 # 另开终端
 pnpm record:todo-list
 pnpm record:blocknote
+pnpm record:react-flow
 ```

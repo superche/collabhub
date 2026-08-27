@@ -8,6 +8,7 @@
     { "path": "packages/client-core" },
     { "path": "packages/testkit" },
     { "path": "examples/todo-list-app" },
-    { "path": "examples/blocknote-app" }
+    { "path": "examples/blocknote-app" },
+    { "path": "examples/react-flow-app" }
   ]
 }
