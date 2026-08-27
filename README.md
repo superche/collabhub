@@ -14,8 +14,8 @@
 </p>
 
 <p align="center">
+  <a href="#案例">案例</a> ·
   <a href="#接入案例">接入案例</a> ·
-  <a href="docs/assets/collabhub-v0.1-smoke.mp4">双客户端演示</a> ·
   <a href="docs/architecture/overview.md">架构文档</a>
 </p>
 
@@ -36,9 +36,27 @@
 
 ## 案例
 
-### 1. TODO List
+### 1. React Draft
 
-最小协同示例，覆盖任务增删、状态修改、排序与在线成员。规划中。
+经典 React 草稿业务：保留 DraftDocument、Store、CommandBus 与 REST API，通过 Transport、Adapter 和 Domain Pack 接入协同。
+
+```bash
+pnpm dev
+```
+
+| 进程 | 地址 |
+|---|---|
+| Server / REST / WebSocket | `http://127.0.0.1:4100` |
+| Alice | `http://127.0.0.1:5173/?client=alice` |
+| Bob | `http://127.0.0.1:5174/?client=bob` |
+
+验证通过：属性编辑、section 排序、断线重放、snapshot recovery、REST/Collab 切换与协同期间防双写。详见 [React Draft 接入说明](docs/integration/react-draft-tutorial.md)。
+
+<a href="docs/assets/collabhub-v0.1-smoke.mp4" title="播放 React Draft 双客户端冒烟视频">
+  <img src="docs/assets/collabhub-smoke-poster.jpg" alt="React Draft multiplayer smoke test" width="100%">
+</a>
+
+<p align="center"><a href="docs/assets/collabhub-v0.1-smoke.mp4">播放 28 秒 React Draft 双客户端冒烟视频</a></p>
 
 ### 2. BlockNote
 
@@ -67,62 +85,59 @@ pnpm dev:blocknote
 React 组件不接触 WebSocket 或 operation。应用保留自己的 Store 和 Command，只在 composition root 选择 transport。
 
 ```tsx
-// 1. 用业务 Command 定义一个稳定端口
-interface DraftCommandTransport {
-  execute(command: DraftCommand): Promise<DraftCommandResult>
-  subscribe(listener: (event: DraftDomainEvent) => void): () => void
+// 1. 先定义应用自己的端口；React 不依赖 CollabHub
+interface CommandTransport {
+  execute(command: AppCommand): Promise<void>
+  subscribe(listener: (patch: DomainPatch) => void): () => void
   close(): void
 }
 
-// 2. 在 composition root 接入 CollabHub；关闭协同时仍走原 REST
-function createDraftRuntime({ collabEnabled, draftId, actorId }: {
-  collabEnabled: boolean
-  draftId: string
-  actorId: string
-}) {
-  const store = new DraftStore(initialDraft(draftId))
-  const transport: DraftCommandTransport = collabEnabled
-    ? new CollabHubDraftTransport(
-        'ws://127.0.0.1:4100/collab', actorId, crypto.randomUUID(), store,
-      )
-    : new RestDraftTransport('http://127.0.0.1:4100', draftId)
+// 2. 只在 composition root 选择协同或原 REST
+function createAppRuntime(options: RuntimeOptions) {
+  const store = new AppStore(options.initialDocument)
+  const transport: CommandTransport = options.collabEnabled
+    ? new CollabHubTransport({
+        wsUrl: options.wsUrl,
+        documentId: options.documentId,
+        actorId: options.actorId,
+      })
+    : new RestTransport({
+        apiBase: options.apiBase,
+        documentId: options.documentId,
+      })
 
-  transport.subscribe((event) => store.publish(event))
+  transport.subscribe((patch) => store.apply(patch))
 
   return {
     store,
-    commands: new DraftCommandBus(transport),
+    execute: (command: AppCommand) => transport.execute(command),
+    close: () => transport.close(),
   }
 }
 
-// 3. 组件仍然是普通 React：读 Store，发业务 Command
-function DraftTitle({ store, commands }: ReturnType<typeof createDraftRuntime>) {
-  const draft = useSyncExternalStore(store.subscribe, store.getSnapshot)
-  const [title, setTitle] = useState(draft.title)
+// 3. 组件仍只读业务 Store、发送业务 Command
+function DocumentTitle({ runtime }: { runtime: AppRuntime }) {
+  const document = useSyncExternalStore(
+    runtime.store.subscribe,
+    runtime.store.getSnapshot,
+  )
+  const [title, setTitle] = useState(document.title)
 
-  useEffect(() => setTitle(draft.title), [draft.title]) // 接收远端 canonical patch
+  useEffect(() => setTitle(document.title), [document.title])
 
   return (
     <input
       value={title}
       onChange={(event) => setTitle(event.target.value)}
-      onBlur={() => commands.execute({ type: 'draft.rename', title })}
+      onBlur={() => runtime.execute({ type: 'document.rename', title })}
     />
   )
 }
 ```
 
-`CollabHubDraftTransport` 集中完成 `Command → operation` 和 `canonical patch → DraftDomainEvent`；React 组件与领域模型无需 import CollabHub。
+`CollabHubTransport` 集中完成 `Command → operation` 和 `canonical patch → DomainPatch`；关闭协同时换回 `RestTransport`，React 组件与领域模型无需修改。
 
-参考实现：[composition root](examples/react-draft-app/src/app/composition-root.ts)、[command adapter](examples/react-draft-app/src/collab/draft-command-adapter.ts)、[projection adapter](examples/react-draft-app/src/collab/draft-projection-adapter.ts)、[server Domain Pack](examples/react-draft-app/server/draft-domain-pack.ts)。
-
-### 双客户端演示
-
-<a href="docs/assets/collabhub-v0.1-smoke.mp4" title="播放 CollabHub 双客户端冒烟视频">
-  <img src="docs/assets/collabhub-smoke-poster.jpg" alt="CollabHub multiplayer smoke test" width="100%">
-</a>
-
-<p align="center"><a href="docs/assets/collabhub-v0.1-smoke.mp4">播放 28 秒双客户端冒烟视频</a></p>
+完整实现：[composition root](examples/react-draft-app/src/app/composition-root.ts)、[command adapter](examples/react-draft-app/src/collab/draft-command-adapter.ts)、[projection adapter](examples/react-draft-app/src/collab/draft-projection-adapter.ts)、[server Domain Pack](examples/react-draft-app/server/draft-domain-pack.ts)。
 
 ## 仓库结构
 
@@ -152,12 +167,6 @@ pnpm record:blocknote # 另开终端录制 BlockNote 冒烟视频
 pnpm check           # build + tests + benchmark
 pnpm test:e2e        # 两套双浏览器验收
 ```
-
-| 服务 | 地址 |
-|---|---|
-| Server / REST / WebSocket | `http://127.0.0.1:4100` |
-| Alice | `http://127.0.0.1:5173/?client=alice` |
-| Bob | `http://127.0.0.1:5174/?client=bob` |
 
 ## 文档
 
