@@ -1,1 +1,0 @@
-{"version":3,"file":"draft-api.d.ts","sourceRoot":"","sources":["../../server/draft-api.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,OAAO,EAAE,MAAM,SAAS,CAAA;AAEtC,OAAO,KAAK,EAAE,eAAe,EAAE,MAAM,uBAAuB,CAAA;AAE5D,wBAAgB,gBAAgB,CAAC,GAAG,EAAE,OAAO,EAAE,UAAU,EAAE,eAAe,EAAE,eAAe,EAAE,CAAC,EAAE,EAAE,MAAM,KAAK,OAAO,QAmBnH"}

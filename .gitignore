@@ -1,10 +1,13 @@
 node_modules/
 dist/
+dist-types/
 .vite/
 coverage/
 playwright-report/
 test-results/
 examples/react-draft-app/.data/
+/outputs/
+artifacts/
 *.log
 *.tsbuildinfo
 .DS_Store

@@ -1,1 +1,0 @@
-{"version":3,"file":"draft-store.d.ts","sourceRoot":"","sources":["../../../src/application/draft-store.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,aAAa,EAAE,gBAAgB,EAAE,MAAM,oBAAoB,CAAA;AAEzE,qBAAa,UAAU;IAET,OAAO,CAAC,OAAO;IAD3B,OAAO,CAAC,SAAS,CAAwB;gBACrB,OAAO,EAAE,aAAa;IAC1C,WAAW,sBAAqB;IAChC,SAAS,GAAI,UAAU,MAAM,IAAI,mBAAmF;IACpH,OAAO,CAAC,KAAK,EAAE,gBAAgB;CAChC"}

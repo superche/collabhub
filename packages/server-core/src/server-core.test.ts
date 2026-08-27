@@ -76,4 +76,13 @@ describe('authoritative document session', () => {
     expect(duplicate.kind === 'accepted' && duplicate.duplicate).toBe(true)
     expect(recovered.canonicalState.title).toBe('three')
   })
+
+  it('requires snapshot resync when a client falls outside the configured recovery window', async () => {
+    const session = new AuthoritativeDocumentSession({ tenantId: 't', documentId: 'd', domainPack: pack, storage: new InMemoryStorageAdapter(), maxRecoveryGap: 0 })
+    await session.submit(op({ operationId: 'advance-gap', operationType: 'property.set', strategyId: 'json.property-lww', payload: { path: '/title', value: 'New' } }))
+    const result = await session.submit(op({ operationId: 'too-old', operationType: 'property.set', strategyId: 'json.property-lww', baseVersion: 0, payload: { path: '/title', value: 'Old' } }))
+    expect(result.kind).toBe('resyncRequired')
+    expect(result.kind === 'resyncRequired' && result.snapshotRef).toContain('/1')
+    expect(session.canonicalVersion).toBe(1)
+  })
 })
