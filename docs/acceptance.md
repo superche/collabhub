@@ -65,6 +65,21 @@ Alice 与 Bob 使用两个独立 Chromium BrowserContext，而不是一个模拟
 
 Alice 在 v2 断线；Bob 插入块推进到 v3；Alice 以 v2 重连取得 snapshot，并把离线 insert 重放为 v4。随后 5 个真实 BlockNote move transaction 推进到 v9，两端顺序一致。E2E 同时解析双方 WebSocket frame，断言 submit payload 只有单块 `block`，不存在 `document` 或 `blocks`，且远端 projection 不产生回声 update。
 
+### 双客户端冒烟视频
+
+[播放 26 秒视频](assets/collabhub-blocknote-smoke.mp4)：1920×1080、H.264、30 fps。Alice 与 Bob 来自两个独立 Chromium BrowserContext，鼠标移动 0.8–1.0 秒、按键间隔 92 ms；只有 Alice 在故障段断网。
+
+录制 trace：`blocknote-smoke-1787819407857`。
+
+```json
+{"event":"alice_typing_converged","aliceVersion":"2","bobVersion":"2"}
+{"event":"bob_insert_converged","aliceVersion":"3","bobVersion":"3"}
+{"event":"alice_offline_pending","aliceVersion":"3","bobVersion":"3","alicePending":"1"}
+{"event":"bob_advances_canonical","aliceVersion":"3","bobVersion":"4","alicePending":"1"}
+{"event":"reconnect_replay_converged","aliceVersion":"5","bobVersion":"5","alicePending":"0","aliceRecovery":"1 / 0"}
+{"event":"block_order_converged","aliceVersion":"10","bobVersion":"10","alicePending":"0"}
+```
+
 <p>
   <img src="assets/blocknote-alice.png" alt="BlockNote Alice acceptance" width="49%">
   <img src="assets/blocknote-bob.png" alt="BlockNote Bob acceptance" width="49%">
@@ -98,4 +113,6 @@ pnpm check
 pnpm test:e2e
 pnpm dev
 pnpm dev:blocknote
+# 另开终端
+pnpm record:blocknote
 ```

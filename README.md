@@ -56,6 +56,12 @@ pnpm dev:blocknote
 
 验证通过：富文本更新、块增删、块排序、连续输入合并、断线重放与 snapshot recovery。详见 [BlockNote 接入说明](docs/integration/blocknote.md)。
 
+<a href="docs/assets/collabhub-blocknote-smoke.mp4" title="播放 BlockNote 双客户端冒烟视频">
+  <img src="docs/assets/collabhub-blocknote-smoke-poster.jpg" alt="BlockNote multiplayer smoke test" width="100%">
+</a>
+
+<p align="center"><a href="docs/assets/collabhub-blocknote-smoke.mp4">播放 26 秒 BlockNote 双客户端冒烟视频</a></p>
+
 ## 接入案例
 
 React 组件不接触 WebSocket 或 operation。应用保留自己的 Store 和 Command，只在 composition root 选择 transport。
@@ -142,6 +148,7 @@ docs/              架构、接入与验收文档
 pnpm install
 pnpm dev             # Draft server + Alice + Bob
 pnpm dev:blocknote   # BlockNote server + Alice + Bob
+pnpm record:blocknote # 另开终端录制 BlockNote 冒烟视频
 pnpm check           # build + tests + benchmark
 pnpm test:e2e        # 两套双浏览器验收
 ```

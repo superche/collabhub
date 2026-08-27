@@ -9,6 +9,7 @@
     "build": "tsc -b",
     "dev": "concurrently -k -n server,alice,bob -c blue,green,magenta \"pnpm --filter @collabhub/react-draft-app dev:server\" \"pnpm --filter @collabhub/react-draft-app dev:web:a\" \"pnpm --filter @collabhub/react-draft-app dev:web:b\"",
     "dev:blocknote": "concurrently -k -n server,alice,bob -c blue,green,magenta \"pnpm --filter @collabhub/blocknote-app dev:server\" \"pnpm --filter @collabhub/blocknote-app dev:web:a\" \"pnpm --filter @collabhub/blocknote-app dev:web:b\"",
+    "record:blocknote": "node scripts/record-blocknote-smoke.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
