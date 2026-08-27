@@ -20,6 +20,7 @@
 
 <p align="center">
   <a href="docs/getting-started.zh-CN.md">快速接入</a> ·
+  <a href="https://collabhub-demo.onrender.com/demo.html">在线 Demo</a> ·
   <a href="#案例">案例</a> ·
   <a href="#接入案例">接入案例</a> ·
   <a href="docs/capabilities.md">能力矩阵</a>
@@ -54,12 +55,6 @@
 ```bash
 pnpm dev
 ```
-
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/superche/collabhub)
-
-[打开在线 Alice/Bob Demo](https://collabhub-demo.onrender.com/demo.html)
-
-免费部署在 `/demo.html` 左右展示 Alice 与 Bob；服务闲置后可能休眠，Demo 数据为临时数据。详见 [Demo 部署](docs/demo.md)。
 
 | 进程 | 地址 |
 |---|---|
@@ -102,6 +97,12 @@ React Flow 作为受控画布接入；宿主继续持有与渲染器无关的 `G
 ```bash
 pnpm dev:react-flow
 ```
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/superche/collabhub)
+
+[打开在线 Alice/Bob React Flow Demo](https://collabhub-demo.onrender.com/demo.html)
+
+免费部署让两个 React Flow 客户端连接同一中心权威图文档；服务闲置后可能休眠，Demo 状态仅保存在内存。详见 [Demo 部署](docs/demo.md)。
 
 | 进程 | 地址 |
 |---|---|

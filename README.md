@@ -20,6 +20,7 @@
 
 <p align="center">
   <a href="docs/getting-started.md">Quick start</a> ·
+  <a href="https://collabhub-demo.onrender.com/demo.html">Live demo</a> ·
   <a href="#examples">Examples</a> ·
   <a href="#integration">Integration</a> ·
   <a href="docs/capabilities.md">Capabilities</a>
@@ -54,12 +55,6 @@ A classic React TODO app keeps its own Domain, Store, CommandBus, REST API, and 
 ```bash
 pnpm dev
 ```
-
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/superche/collabhub)
-
-[Open the live Alice/Bob demo](https://collabhub-demo.onrender.com/demo.html)
-
-The free deployment opens Alice and Bob side by side at `/demo.html`. It can sleep when idle and stores only ephemeral demo data. See [demo deployment](docs/demo.md).
 
 | Process | Address |
 |---|---|
@@ -102,6 +97,12 @@ React Flow runs as a controlled canvas while the host keeps a renderer-independe
 ```bash
 pnpm dev:react-flow
 ```
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/superche/collabhub)
+
+[Open the live Alice/Bob React Flow demo](https://collabhub-demo.onrender.com/demo.html)
+
+The free deployment opens two React Flow clients against one authoritative graph. It can sleep when idle and keeps demo state in memory. See [demo deployment](docs/demo.md).
 
 | Process | Address |
 |---|---|

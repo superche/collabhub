@@ -26,7 +26,7 @@
     "benchmark:distributed": "node scripts/distributed-benchmark.mjs",
     "dev:todo-cluster": "pnpm build && node scripts/start-local-todo-cluster.mjs",
     "smoke:todo-cluster": "pnpm build && node scripts/smoke-local-todo-cluster.mjs",
-    "smoke:demo": "pnpm build && pnpm --filter @collabhub/todo-list-app build && pnpm --filter @collabhub/todo-list-app build:server && node scripts/smoke-public-demo.mjs",
+    "smoke:demo": "pnpm build && pnpm --filter @collabhub/react-flow-app build && pnpm --filter @collabhub/react-flow-app build:server && node scripts/smoke-public-demo.mjs",
     "release:check": "pnpm check && pnpm build:distributed && node scripts/check-package-artifacts.mjs",
     "pack:packages": "pnpm build && pnpm build:distributed && node scripts/check-package-artifacts.mjs --output artifacts/packages"
   },

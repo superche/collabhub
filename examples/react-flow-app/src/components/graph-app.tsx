@@ -99,7 +99,13 @@ export function GraphApp({ runtime }: { runtime: GraphApplicationRuntime }) {
   return <main>
     <header>
       <div><span className="eyebrow">COLLABHUB EXAMPLE</span><h1>React Flow adapter</h1><p>React Flow renders the graph. GraphDocument remains canonical and renderer-independent.</p></div>
-      <div className="actor"><span>Client</span><strong>{runtime.actorId}</strong></div>
+      <div className="header-actions">
+        <a className="github-star" href="https://github.com/superche/collabhub" target="_blank" rel="noreferrer" aria-label="Star CollabHub on GitHub">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m12 2.7 2.84 5.76 6.36.92-4.6 4.49 1.09 6.33L12 17.21 6.31 20.2l1.09-6.33-4.6-4.49 6.36-.92L12 2.7Z" /></svg>
+          <span>Star on GitHub</span>
+        </a>
+        <div className="actor"><span>Client</span><strong>{runtime.actorId}</strong></div>
+      </div>
     </header>
     <section className="layout">
       <article className="canvas-card">

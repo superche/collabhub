@@ -1,16 +1,29 @@
 import { createServer } from 'node:http'
+import { resolve } from 'node:path'
 import express from 'express'
 import { WebSocketServer, type WebSocket } from 'ws'
 import { PROTOCOL_VERSION, type ClientWireMessage, type PresenceMessage } from '@collabhub/protocol'
 import { CollaborationServerCore, InMemoryStorageAdapter } from '@collabhub/server-core'
 import { GraphDocumentDomainPack } from './graph-domain-pack.js'
 
-const port = Number(process.env.COLLABHUB_REACT_FLOW_PORT ?? 4300)
+const port = Number(process.env.PORT ?? process.env.COLLABHUB_REACT_FLOW_PORT ?? 4300)
+const host = process.env.COLLABHUB_HOST ?? '127.0.0.1'
+const staticDirectory = process.env.COLLABHUB_DEMO_STATIC_DIR
 const core = new CollaborationServerCore({ domainPack: GraphDocumentDomainPack, storage: new InMemoryStorageAdapter(), snapshotInterval: 10, maxRecoveryGap: 50 })
 const socketsByDocument = new Map<string, Set<WebSocket>>()
 const app = express()
 app.get('/health', (_request, response) => response.json({ ok: true, example: 'react-flow' }))
+app.get('/healthz', (_request, response) => response.json({ status: 'ok', version: '0.1.0', example: 'react-flow' }))
+if (staticDirectory) {
+  app.use(express.static(staticDirectory, { index: 'index.html', maxAge: '1h' }))
+  app.use((request, response, next) => {
+    if (request.method !== 'GET' || !request.accepts('html')) return next()
+    response.sendFile(resolve(staticDirectory, 'index.html'))
+  })
+}
 const server = createServer(app)
+server.keepAliveTimeout = 120_000
+server.headersTimeout = 121_000
 const webSockets = new WebSocketServer({ server, path: '/collab', maxPayload: 128 * 1024 })
 
 webSockets.on('connection', (socket) => {
@@ -56,6 +69,6 @@ webSockets.on('connection', (socket) => {
   })
 })
 
-server.listen(port, '127.0.0.1', () => {
-  console.log(`[collabhub:react-flow] server pid=${process.pid} http=127.0.0.1:${port} ws=ws://127.0.0.1:${port}/collab`)
+server.listen(port, host, () => {
+  console.log(`[collabhub:react-flow] server pid=${process.pid} http=${host}:${port} ws=ws://${host}:${port}/collab static=${staticDirectory ?? 'disabled'}`)
 })

@@ -1,21 +1,18 @@
 import { chromium, expect } from '@playwright/test'
 import { spawn } from 'node:child_process'
-import { rm } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const port = 4400
 const documentId = `public-demo-${Date.now()}`
-const dataFile = resolve('/tmp', `${documentId}.json`)
-const server = spawn(process.execPath, [resolve(root, 'examples/todo-list-app/dist-server/collabhub-demo.mjs')], {
+const server = spawn(process.execPath, [resolve(root, 'examples/react-flow-app/dist-server/collabhub-react-flow-demo.mjs')], {
   cwd: root,
   env: {
     ...process.env,
     PORT: String(port),
     COLLABHUB_HOST: '127.0.0.1',
-    COLLABHUB_DATA_FILE: dataFile,
-    COLLABHUB_DEMO_STATIC_DIR: resolve(root, 'examples/todo-list-app/dist'),
+    COLLABHUB_DEMO_STATIC_DIR: resolve(root, 'examples/react-flow-app/dist'),
   },
   stdio: ['ignore', 'pipe', 'pipe'],
 })
@@ -34,19 +31,20 @@ try {
     expect(alice.getByText('online', { exact: true })).toBeVisible(),
     expect(bob.getByText('online', { exact: true })).toBeVisible(),
   ])
-  await alice.getByTestId('draft-title').fill('Public demo converged')
-  await alice.getByTestId('draft-title').blur()
-  await expect(bob.getByTestId('draft-title')).toHaveValue('Public demo converged')
-  await alice.getByTestId('complete-intro').check()
-  await expect(bob.getByTestId('completion-percent')).toHaveText('50%')
-  await expect(bob.getByTestId('canonical-version')).toHaveText('2')
-  console.log(JSON.stringify({ event: 'public_demo_smoke_passed', url: `http://127.0.0.1:${port}/demo.html`, documentId, canonicalVersion: 2, linkedPercent: 50 }))
+  await expect(page.getByRole('link', { name: 'Star CollabHub on GitHub' })).toHaveAttribute('href', 'https://github.com/superche/collabhub')
+  await alice.getByTestId('add-node').click()
+  await expect(bob.locator('.react-flow__node')).toHaveCount(4)
+  await bob.locator('[data-id="build"]').click()
+  await bob.getByTestId('node-label').fill('Build together')
+  await bob.getByTestId('node-label').press('Enter')
+  await expect(alice.getByText('Build together', { exact: true })).toBeVisible()
+  await expect(bob.getByTestId('react-flow-version')).toHaveText('2')
+  console.log(JSON.stringify({ event: 'react_flow_public_demo_smoke_passed', url: `http://127.0.0.1:${port}/demo.html`, documentId, canonicalVersion: 2, nodeCount: 4, starLink: true }))
 } finally {
   await browser?.close().catch(() => undefined)
   server.kill('SIGTERM')
   await Promise.race([new Promise((resolveExit) => server.once('exit', resolveExit)), new Promise((resolveWait) => setTimeout(resolveWait, 3000))])
   if (server.exitCode === null) server.kill('SIGKILL')
-  await Promise.all([rm(dataFile, { force: true }), rm(`${dataFile}.tmp`, { force: true })])
 }
 
 async function waitFor(url) {
