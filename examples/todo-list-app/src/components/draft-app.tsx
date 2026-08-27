@@ -26,6 +26,11 @@ export function DraftApp({ runtime }: { runtime: DraftApplicationRuntime }) {
         <label className="field-label" htmlFor="title">List title</label>
         <input data-testid="draft-title" id="title" className="title-input" value={draft.title} onChange={(event) => runtime.store.publish({ type: 'draft.changed', draft: { ...draft, title: event.target.value } })} onBlur={(event) => void execute({ type: 'draft.rename', title: event.target.value })} />
         <div className="meta"><span>{draft.status}</span><span>revision {draft.revision}</span><span>{draft.sections.length} tasks</span></div>
+        <div className="completion-card" data-testid="completion-summary">
+          <div><strong>{draft.completion.completed}/{draft.completion.total} completed</strong><span data-testid="completion-percent">{draft.completion.percent}%</span></div>
+          <div className="completion-track" aria-hidden="true"><span style={{ width: `${draft.completion.percent}%` }} /></div>
+          <p>One task command updates the task and this aggregate in one canonical commit.</p>
+        </div>
         <div className="sections" data-testid="sections">
           {draft.sections.map((section, index) => <SectionCard key={section.id} section={section} index={index} onCommand={execute} previousId={draft.sections[index - 1]?.id} />)}
         </div>
@@ -51,8 +56,8 @@ const SectionCard = memo(function SectionCard({ section, index, previousId, onCo
   const [body, setBody] = useState(section.body)
   useEffect(() => setHeading(section.heading), [section.heading])
   useEffect(() => setBody(section.body), [section.body])
-  return <section className="section-card" data-section-id={section.id}>
-    <div className="section-index">{String(index + 1).padStart(2, '0')}</div>
+  return <section className={`section-card${section.completed ? ' completed' : ''}`} data-section-id={section.id}>
+    <label className="task-check"><input data-testid={`complete-${section.id}`} aria-label={`Complete ${section.id}`} type="checkbox" checked={section.completed} onChange={(event) => void onCommand({ type: 'section.setCompleted', sectionId: section.id, completed: event.target.checked })} /><span>{String(index + 1).padStart(2, '0')}</span></label>
     <div className="section-content">
       <input aria-label={`Heading ${section.id}`} value={heading} onChange={(event) => setHeading(event.target.value)} onBlur={() => void onCommand({ type: 'section.update', sectionId: section.id, patch: { heading } })} />
       <textarea aria-label={`Body ${section.id}`} value={body} onChange={(event) => setBody(event.target.value)} onBlur={() => void onCommand({ type: 'section.update', sectionId: section.id, patch: { body } })} />

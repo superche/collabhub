@@ -8,12 +8,12 @@
 `pnpm check`：通过。
 
 - TypeScript project references：通过。
-- Vite production build：40 modules；JS 211.14 KB / 65.78 KB gzip，CSS 3.65 KB / 1.41 KB gzip。
+- Vite production build：41 modules；JS 213.79 KB / 66.38 KB gzip，CSS 4.54 KB / 1.64 KB gzip。
 - BlockNote Vite production build：914 modules；主 JS 1,131.76 KB / 343.38 KB gzip，CSS 243.00 KB / 38.62 KB gzip；大 chunk 警告记录为已知限制。
-- Vitest：7 files / 17 tests passed。
+- Vitest：8 files / 23 tests passed。
 - 1,000-section patch benchmark：1,000 samples，p95 0.014 ms，gate 4 ms，通过。
 
-`pnpm test:e2e`：2 tests passed（9.0 s；TODO List 2.8 s，BlockNote 3.9 s）。
+`pnpm test:e2e`：2 tests passed（7.3 s；TODO List 1.8 s，BlockNote 2.6 s）。
 
 ## 真实进程与网络
 
@@ -21,34 +21,37 @@
 
 | 角色 | 最终验收 PID | 监听 |
 |---|---:|---|
-| TODO List API + CollabHub WebSocket | 24743 | `127.0.0.1:4100`, `/collab` |
-| React Alice Vite | 24721 | `127.0.0.1:5173` |
-| React Bob Vite | 24727 | `127.0.0.1:5174` |
+| TODO List API + CollabHub WebSocket | 95984 | `127.0.0.1:4100`, `/collab` |
+| React Alice Vite | 95964 | `127.0.0.1:5173` |
+| React Bob Vite | 95958 | `127.0.0.1:5174` |
 
 BlockNote 最终 Playwright 验收使用 `pnpm dev:blocknote`：
 
 | 角色 | PID | 监听 |
 |---|---:|---|
-| BlockNote CollabHub WebSocket | 73788 | `127.0.0.1:4200`, `/collab` |
-| BlockNote Alice Vite | 73748 | `127.0.0.1:5183` |
-| BlockNote Bob Vite | 73772 | `127.0.0.1:5184` |
+| BlockNote CollabHub WebSocket | 96154 | `127.0.0.1:4200`, `/collab` |
+| BlockNote Alice Vite | 96108 | `127.0.0.1:5183` |
+| BlockNote Bob Vite | 96081 | `127.0.0.1:5184` |
 
 Alice 与 Bob 使用两个独立 Chromium BrowserContext，而不是一个模拟 store。Server、两个 Vite client 和浏览器均由 Playwright 在验收结束后正常回收。
 
 ## 故障 trace
 
-最终 trace 文档：`e2e-1787813081729`。
+最终 trace 文档：`e2e-1787822432763`。
 
 ```json
 {"event":"client_connected","actorId":"alice","lastKnownVersion":0,"canonicalVersion":0,"snapshotRecovery":false}
 {"event":"client_connected","actorId":"bob","lastKnownVersion":0,"canonicalVersion":0,"snapshotRecovery":false}
-{"event":"operation_result","operationType":"property.set","baseVersion":0,"result":"accepted","canonicalVersion":1,"latencyMs":6.21}
-{"event":"operation_result","operationType":"property.set","baseVersion":1,"result":"accepted","canonicalVersion":2,"latencyMs":3.04}
-{"event":"client_connected","actorId":"alice","lastKnownVersion":1,"canonicalVersion":2,"snapshotRecovery":true}
-{"event":"operation_result","operationType":"property.set","baseVersion":2,"result":"accepted","canonicalVersion":3,"latencyMs":2.26}
+{"event":"operation_result","operationType":"property.set","baseVersion":0,"result":"accepted","canonicalVersion":1,"latencyMs":7.43}
+{"event":"operation_result","operationType":"section.setCompleted","baseVersion":1,"result":"accepted","canonicalVersion":2,"latencyMs":5}
+{"event":"operation_result","operationType":"property.set","baseVersion":2,"result":"accepted","canonicalVersion":3,"latencyMs":4.44}
+{"event":"client_connected","actorId":"alice","lastKnownVersion":2,"canonicalVersion":3,"snapshotRecovery":true}
+{"event":"operation_result","operationType":"property.set","baseVersion":3,"result":"accepted","canonicalVersion":4,"latencyMs":4.74}
 ```
 
-这条 trace 证明：Alice v1 断线；Bob 推进到 v2；Alice 以 `lastKnownVersion=1` 重连并收到 v2 snapshot；其 pending intent 改写 baseVersion 为 2 后重放，被接受为 v3。截图中的诊断面显示 canonical version 3、pending 0、reconnect 1、resync 0。
+`section.setCompleted` 只提交一次业务 intent。E2E 解析 Bob 的 WebSocket canonical frame，断言同一个 v2 event 同时包含 task `entityUpsert`、`/completion/percent` 与 `/revision` patches；Alice、Bob 均显示 `1/2 completed`、`50%`。
+
+故障段中 Alice v2 断线；Bob 推进到 v3；Alice 以 `lastKnownVersion=2` 重连并收到 v3 snapshot；其 pending intent 改写 baseVersion 为 3 后重放，被接受为 v4。最终 canonical version 4、pending 0、reconnect 1、resync 0。
 
 ## BlockNote 验收
 
@@ -97,6 +100,7 @@ Alice 在 v2 断线；Bob 插入块推进到 v3；Alice 以 v2 重连取得 snap
 | snapshot + WAL recovery | 同上，从 v2 snapshot 回放 v3 WAL |
 | 断线重连与 pending replay | `client-core.test.ts` + 双浏览器 e2e |
 | REST baseline | `draft-domain.test.ts` 与真实 REST API |
+| 服务端权威联动 | `draft-domain-pack.test.ts` + 双浏览器 WebSocket frame；一个 op 原子同步任务、汇总与 revision |
 | REST/Collab transport 切换 | 双浏览器 e2e；两端退出后 REST 命令成功 |
 | 防双写 | 活跃协同时 e2e 的 REST PUT 返回 409 collaborativeSessionActive |
 | host import boundary | components/domain 扫描测试禁止 `@collabhub/*` |
@@ -114,5 +118,6 @@ pnpm test:e2e
 pnpm dev
 pnpm dev:blocknote
 # 另开终端
+pnpm record:todo-list
 pnpm record:blocknote
 ```

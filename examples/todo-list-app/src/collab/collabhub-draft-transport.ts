@@ -21,8 +21,7 @@ export class CollabHubDraftTransport implements DraftCommandTransport {
     })
     this.diagnosticsValue = this.client.diagnostics
     this.client.subscribe((state) => {
-      const draft = { ...(state as unknown as DraftDocument), revision: this.client.canonicalVersion }
-      this.publish({ type: 'draft.changed', draft })
+      this.publish({ type: 'draft.changed', draft: state as unknown as DraftDocument })
     })
     this.client.subscribeDiagnostics((diagnostics) => { this.diagnosticsValue = diagnostics })
     window.addEventListener('offline', this.onOffline)

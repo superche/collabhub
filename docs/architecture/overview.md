@@ -29,6 +29,8 @@ WebSocket gateway -> AuthoritativeDocumentSession -> pipeline -> Domain Pack
 5. 先 append WAL，再推进内存 canonical state/version。
 6. 按 interval 保存 snapshot，广播 canonical event，最后运行 afterCommit。
 
+一次 strategy resolution 可以返回多条 patch。Server Core 先将整组 patch 应用为 next state，再运行 invariant，并以一个 WAL record 和 canonical version 提交。因此同一文档内的实体变化、计数器和派生汇总可以原子联动；客户端不能通过先写本地 Store 再依赖副作用获得这一保证。
+
 启动恢复会加载最近 snapshot，再回放其后的 WAL。为了让幂等键跨 snapshot/重启有效，历史 WAL 的 operationId 也会重建进 result index。snapshot 和 WAL 都经 `StorageAdapter`，example 将它们原子保存到中心 DraftRepository 文件。
 
 v0.1 的 `afterCommit` 不是可靠 outbox；不可逆外部副作用不应直接放在 hook 内。生产实现需要 transactional outbox。

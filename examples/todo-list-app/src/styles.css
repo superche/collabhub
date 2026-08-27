@@ -18,9 +18,17 @@ h1 { font-size: clamp(36px, 5vw, 58px); letter-spacing: -.05em; line-height: .95
 .title-input:focus { border-color: #227a53; }
 .meta { display: flex; gap: 8px; margin: 14px 0 28px; }
 .meta span { background: #edf2ed; color: #5d6962; border-radius: 7px; padding: 5px 8px; font: 500 11px 'DM Mono', monospace; }
+.completion-card { margin: -14px 0 24px; padding: 15px 17px; border: 1px solid #dbe5dc; border-radius: 12px; background: #f5f8f4; }
+.completion-card > div:first-child { display: flex; justify-content: space-between; font: 500 12px 'DM Mono', monospace; }
+.completion-card strong { font-weight: 500; }.completion-card span { color: #227a53; }
+.completion-track { height: 6px; margin-top: 10px; overflow: hidden; border-radius: 999px; background: #dfe7df; }
+.completion-track span { display: block; height: 100%; border-radius: inherit; background: #2a8a5f; transition: width 180ms ease; }
+.completion-card p { margin: 10px 0 0; color: #718078; font-size: 11px; }
 .sections { display: grid; gap: 10px; }
 .section-card { display: grid; grid-template-columns: 40px 1fr auto; gap: 14px; padding: 18px; border: 1px solid #dde3dc; border-radius: 13px; background: #fbfcfa; }
-.section-index { color: #9aa49d; font: 500 12px 'DM Mono', monospace; padding-top: 5px; }
+.task-check { display: grid; justify-items: center; align-content: start; gap: 6px; color: #9aa49d; font: 500 11px 'DM Mono', monospace; }
+.task-check input { width: 18px; height: 18px; margin: 0; accent-color: #227a53; cursor: pointer; }
+.section-card.completed { background: #f2f6f1; }.section-card.completed .section-content { opacity: .62; }.section-card.completed .section-content input { text-decoration: line-through; }
 .section-content { display: grid; gap: 8px; }
 .section-content input, .section-content textarea { border: 0; outline: 0; background: transparent; padding: 0; resize: vertical; }
 .section-content input { font-weight: 600; font-size: 16px; }

@@ -21,10 +21,10 @@ PUT  /api/drafts/:id
 必须新增的代码面：
 
 1. `DraftCommandTransport` 保持为应用 port；composition root 在 REST/Collab 实现间选择。
-2. `draft-command-adapter.ts` 将每个 DraftCommand 集中映射为 operation + optimistic patch。
+2. `draft-command-adapter.ts` 将每个 DraftCommand 集中映射为 operation + 可丢弃的 optimistic patch。
 3. `draft-projection-adapter.ts` 将 canonical patches 投影回原 DraftDocument，并保持 section 排序。
 4. `collabhub-draft-transport.ts` 托管 Client Core 的连接/reject/resync 状态机。
-5. `DraftDomainPack` 组合内置 JSON 策略与 Draft invariants，不修改 Server Core。
+5. `DraftDomainPack` 组合内置 JSON 策略、服务端业务策略与 Draft invariants，不修改 Server Core。
 6. `DraftRepositoryStorageAdapter` 让 WAL commit 更新原中心 DraftRepository。
 7. Draft API 在存在协同 writer 时拒绝直接写，避免 split brain。
 
@@ -40,6 +40,30 @@ PUT  /api/drafts/:id
 - 在 projection adapter 支持对应 canonical patch（若现有 patch 不足）。
 
 不需要修改 WebSocket gateway、AuthoritativeDocumentSession、Client Core 或 React 组件的协同状态机。
+
+## 服务端权威联动
+
+勾选任务时，React 仍只发送原业务命令：
+
+```ts
+commandBus.execute({
+  type: 'section.setCompleted',
+  sectionId: 'intro',
+  completed: true,
+})
+```
+
+`draft-command-adapter.ts` 将其映射为 `section.setCompleted@draft.section-command`。服务端 strategy 使用当前 canonical `DraftDocument` 执行相同领域规则，生成：
+
+```text
+entityUpsert sections/:id.completed
+set /completion/completed
+set /completion/total
+set /completion/percent
+set /revision
+```
+
+这些 patch 共用一个 `operationId` 和 canonical version，一起通过 invariant、WAL 与广播。并发勾选会在服务端最新状态上重新计算汇总；optimistic patches 只负责即时反馈，不能成为权威结果。
 
 ## 退出协同
 

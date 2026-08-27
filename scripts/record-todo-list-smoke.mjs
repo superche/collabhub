@@ -51,6 +51,24 @@ try {
   record('alice_title_converged', await diagnostics(alice, bob))
   await pause(1_300)
 
+  await activate(alice, bob, 'One command updates task + aggregate')
+  await humanClick(alice, alice.getByTestId('complete-intro'))
+  await bob.getByTestId('complete-intro').waitFor({ state: 'attached' })
+  await bob.waitForFunction(() => document.querySelector('[data-testid="complete-intro"]')?.checked === true)
+  await Promise.all([alice.getByTestId('completion-percent').waitFor(), bob.getByTestId('completion-percent').waitFor()])
+  await Promise.all([
+    alice.waitForFunction(() => document.querySelector('[data-testid="completion-percent"]')?.textContent === '50%'),
+    bob.waitForFunction(() => document.querySelector('[data-testid="completion-percent"]')?.textContent === '50%'),
+  ])
+  await waitForMatchingVersions(alice, bob, lastCanonicalVersion)
+  lastCanonicalVersion = await versionOf(bob)
+  record('linked_completion_converged', {
+    ...(await diagnostics(alice, bob)),
+    aliceCompletion: (await alice.getByTestId('completion-summary').textContent())?.trim(),
+    bobCompletion: (await bob.getByTestId('completion-summary').textContent())?.trim(),
+  })
+  await pause(1_500)
+
   await activate(bob, alice, 'Bob adds a task')
   await humanClick(bob, bob.getByTestId('add-section'))
   await Promise.all([

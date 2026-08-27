@@ -4,6 +4,7 @@
 
 - 单节点进程内 document ownership；没有 Redis room directory、跨实例 pub/sub 或跨 region leader。
 - example 使用本地 JSON 文件的 DraftRepositoryStorageAdapter；没有 PostgreSQL 原子 WAL/outbox、compaction 或备份工具。
+- 多 patch 联动只保证单个 document 内原子提交；跨 document、外部数据库或第三方系统需要事务协调与 outbox，v0.1 未实现。
 - trusted in-process strategy；没有 WASM/进程沙箱、CPU/内存硬限制、签名与 canary 治理。
 - 没有 Yjs/OT 长文本 subdocument、per-user undo/redo、tree reparent、schema migration runner 或操作历史压缩。
 - example auth 是 actor query 参数；没有 JWT/JWKS、document capability 或生产租户隔离。

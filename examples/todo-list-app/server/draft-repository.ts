@@ -2,7 +2,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import type { CanonicalPatch, CollaborationOperation } from '@collabhub/protocol'
 import { applyDraftPatches } from '../src/collab/draft-projection-adapter.js'
-import { applyDraftCommand, initialDraft, type DraftCommand, type DraftDocument } from '../src/domain/draft.js'
+import { applyDraftCommand, initialDraft, normalizeDraftDocument, type DraftCommand, type DraftDocument } from '../src/domain/draft.js'
 
 export interface PersistedWalRecord {
   version: number
@@ -23,8 +23,9 @@ export class DraftRepository {
 
   async get(id: string): Promise<DraftDocument> {
     await this.ready
-    const draft = this.data.drafts[id] ?? initialDraft(id)
-    if (!this.data.drafts[id]) { this.data.drafts[id] = draft; await this.persist() }
+    const stored = this.data.drafts[id]
+    const draft = normalizeDraftDocument(stored ?? initialDraft(id))
+    if (!stored || JSON.stringify(stored) !== JSON.stringify(draft)) { this.data.drafts[id] = draft; await this.persist() }
     return structuredClone(draft)
   }
 

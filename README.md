@@ -28,6 +28,7 @@
 | 能力 | 保证 |
 |---|---|
 | **Server authoritative** | 服务端定序、校验并发布 canonical patch |
+| **Atomic linked updates** | 一个业务 intent 可原子更新实体、汇总与派生字段 |
 | **Host-owned domain** | 无需迁移到 CollabHub 或 CRDT 数据模型 |
 | **Pluggable strategies** | LWW、实体生命周期、列表排序、严格事务 |
 | **Reliable recovery** | 幂等 operation、pending replay、WAL、snapshot recovery |
@@ -50,7 +51,9 @@ pnpm dev
 | Alice | `http://127.0.0.1:5173/?client=alice` |
 | Bob | `http://127.0.0.1:5174/?client=bob` |
 
-验证通过：任务编辑、排序、断线重放、snapshot recovery、REST/Collab 切换与协同期间防双写。详见 [TODO List 接入说明](docs/integration/todo-list-tutorial.md)。
+联动演示：Alice 勾选一项任务，只提交一个 `section.setCompleted` intent；服务端在同一 canonical version 更新任务状态、完成数、任务总数与进度，Bob 同步收到完整结果。
+
+验证通过：权威联动、任务编辑、排序、断线重放、snapshot recovery、REST/Collab 切换与协同期间防双写。详见 [TODO List 接入说明](docs/integration/todo-list-tutorial.md)。
 
 https://github.com/user-attachments/assets/58963835-fffe-43ff-875b-617e635ec282
 
@@ -132,6 +135,22 @@ function DocumentTitle({ runtime }: { runtime: AppRuntime }) {
 ```
 
 `CollabHubTransport` 集中完成 `Command → operation` 和 `canonical patch → DomainPatch`；关闭协同时换回 `RestTransport`，React 组件与领域模型无需修改。
+
+业务联动放在服务端 Domain Pack。客户端发送 intent，不提交权威计算结果：
+
+```ts
+resolve({ currentState, operation }) {
+  const command = operation.payload as AppCommand
+  const next = applyCommand(currentState, command)
+
+  return {
+    kind: 'accept',
+    patches: diffCanonicalState(currentState, next),
+  }
+}
+```
+
+`patches` 在一个 canonical version 中校验、写 WAL 并广播；其他设备不会看到只更新一半的中间状态。
 
 完整实现：[composition root](examples/todo-list-app/src/app/composition-root.ts)、[command adapter](examples/todo-list-app/src/collab/draft-command-adapter.ts)、[projection adapter](examples/todo-list-app/src/collab/draft-projection-adapter.ts)、[server Domain Pack](examples/todo-list-app/server/draft-domain-pack.ts)。
 
