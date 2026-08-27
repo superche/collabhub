@@ -21,11 +21,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
         with:
           version: 10.11.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -34,7 +34,7 @@ jobs:
       - run: node scripts/check-release-version.mjs "${{ inputs.expected_version }}"
       - run: pnpm release:check
       - run: pnpm pack:packages
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: collabhub-${{ inputs.expected_version }}-packages
           path: artifacts/packages/*.tgz
