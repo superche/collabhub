@@ -1,0 +1,71 @@
+name: Publish technical preview
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_version:
+        description: Version already committed to every public package
+        required: true
+        default: 0.1.0
+      confirmation:
+        description: Type PUBLISH_TECHNICAL_PREVIEW
+        required: true
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+
+jobs:
+  publish:
+    if: inputs.confirmation == 'PUBLISH_TECHNICAL_PREVIEW'
+    environment: release-approval
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.11.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      - run: node scripts/check-release-version.mjs "${{ inputs.expected_version }}"
+      - run: pnpm release:check
+      - run: pnpm smoke:fresh-react
+      - run: pnpm test:e2e
+      - run: pnpm smoke:demo
+      - run: pnpm pack:packages
+      - name: Publish npm packages with provenance
+        run: node scripts/publish-packages.mjs --input artifacts/packages --expected-version "${{ inputs.expected_version }}"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ghcr.io/superche/collabhub:${{ inputs.expected_version }}
+            ghcr.io/superche/collabhub:0.1
+          provenance: mode=max
+          sbom: true
+      - name: Create immutable prerelease
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.expected_version }}
+        run: |
+          git tag -a "v${VERSION}" -m "CollabHub ${VERSION} technical preview"
+          git push origin "v${VERSION}"
+          gh release create "v${VERSION}" artifacts/packages/*.tgz \
+            --prerelease --verify-tag --title "CollabHub ${VERSION} technical preview" \
+            --notes-file docs/release-notes-0.1.0.md

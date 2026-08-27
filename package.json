@@ -27,8 +27,10 @@
     "dev:todo-cluster": "pnpm build && node scripts/start-local-todo-cluster.mjs",
     "smoke:todo-cluster": "pnpm build && node scripts/smoke-local-todo-cluster.mjs",
     "smoke:demo": "pnpm build && pnpm --filter @collabhub/react-flow-app build && pnpm --filter @collabhub/react-flow-app build:server && node scripts/smoke-public-demo.mjs",
+    "smoke:fresh-react": "pnpm build && node scripts/smoke-fresh-react.mjs",
     "release:check": "pnpm check && pnpm build:distributed && node scripts/check-package-artifacts.mjs",
-    "pack:packages": "pnpm build && pnpm build:distributed && node scripts/check-package-artifacts.mjs --output artifacts/packages"
+    "pack:packages": "pnpm build && pnpm build:distributed && node scripts/check-package-artifacts.mjs --output artifacts/packages",
+    "publish:dry-run": "pnpm pack:packages && node scripts/publish-packages.mjs --input artifacts/packages --expected-version 0.1.0 --dry-run"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",
