@@ -52,11 +52,7 @@ pnpm dev
 
 验证通过：任务编辑、排序、断线重放、snapshot recovery、REST/Collab 切换与协同期间防双写。详见 [TODO List 接入说明](docs/integration/todo-list-tutorial.md)。
 
-<a href="docs/assets/collabhub-todo-list-smoke.mp4" title="播放 TODO List 双客户端冒烟视频">
-  <img src="docs/assets/collabhub-todo-list-smoke-poster.jpg" alt="TODO List multiplayer smoke test" width="100%">
-</a>
-
-<p align="center"><a href="docs/assets/collabhub-todo-list-smoke.mp4">播放 30 秒 TODO List 双客户端冒烟视频</a></p>
+https://github.com/user-attachments/assets/58963835-fffe-43ff-875b-617e635ec282
 
 ### 2. BlockNote
 
@@ -74,11 +70,7 @@ pnpm dev:blocknote
 
 验证通过：富文本更新、块增删、块排序、连续输入合并、断线重放与 snapshot recovery。详见 [BlockNote 接入说明](docs/integration/blocknote.md)。
 
-<a href="docs/assets/collabhub-blocknote-smoke.mp4" title="播放 BlockNote 双客户端冒烟视频">
-  <img src="docs/assets/collabhub-blocknote-smoke-poster.jpg" alt="BlockNote multiplayer smoke test" width="100%">
-</a>
-
-<p align="center"><a href="docs/assets/collabhub-blocknote-smoke.mp4">播放 26 秒 BlockNote 双客户端冒烟视频</a></p>
+https://github.com/user-attachments/assets/6a90ca9d-ef9b-4d1b-a105-2e542c80b189
 
 ## 接入案例
 
