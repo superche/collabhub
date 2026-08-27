@@ -59,6 +59,8 @@ spec:
             - { name: INTERNAL_TOKEN, valueFrom: { secretKeyRef: { name: collabhub-runtime, key: INTERNAL_TOKEN } } }
             - { name: PG_POOL_MAX, value: "10" }
             - { name: MAX_WARM_ROOMS, value: "1000" }
+            - { name: IDLE_ROOM_MS, value: "60000" }
+            - { name: ROOM_CACHE_SCAN_INTERVAL_MS, value: "3000" }
             - { name: NODE_OPTIONS, value: --max-old-space-size=896 }
           resources:
             requests: { cpu: "1", memory: 2Gi }

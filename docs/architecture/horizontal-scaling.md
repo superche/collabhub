@@ -81,8 +81,11 @@ CPU HPA 只是兜底。生产应接入 Prometheus Adapter/KEDA，以 Gateway con
 | `INTERNAL_URL` |  | ✓ | `http://127.0.0.1:PORT` |
 | `PG_POOL_MAX` | ✓ | ✓ | `10` |
 | `MAX_ROOM_MAILBOX` / `MAX_WARM_ROOMS` |  | ✓ | `256` / `1000` |
+| `IDLE_ROOM_MS` / `ROOM_CACHE_SCAN_INTERVAL_MS` |  | ✓ | `60000` / `3000` |
 | `SNAPSHOT_INTERVAL` |  | ✓ | `100` |
 | `RSS_LIMIT_BYTES` | ✓ | ✓ | 3 GiB |
+
+Standalone Server Core 与分布式 Worker 共用 `RoomCachePolicy`：保护排队操作、在 TTL/LRU 淘汰前持久化 snapshot，并限制 warm-room 内存。Standalone 还跟踪活跃 WebSocket lease；分布式淘汰仅释放计算内存和 owner lease，PostgreSQL 权威数据继续保留。持久数据 retention 与 warm-room 淘汰分开配置。
 
 ## 故障语义
 

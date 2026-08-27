@@ -13,6 +13,9 @@ const server = spawn(process.execPath, [resolve(root, 'examples/react-flow-app/d
     PORT: String(port),
     COLLABHUB_HOST: '127.0.0.1',
     COLLABHUB_DEMO_STATIC_DIR: resolve(root, 'examples/react-flow-app/dist'),
+    COLLABHUB_DEMO_ROOM_IDLE_TTL_MS: '200',
+    COLLABHUB_DEMO_MAX_WARM_ROOMS: '2',
+    COLLABHUB_DEMO_ROOM_SCAN_INTERVAL_MS: '50',
   },
   stdio: ['ignore', 'pipe', 'pipe'],
 })
@@ -40,7 +43,17 @@ try {
   await expect(alice.getByTestId('react-flow-version')).toHaveText('2')
   await expect(bob.getByText('Selected node', { exact: true })).toHaveCount(0)
   await expect(bob.getByTestId('react-flow-version')).toHaveText('2')
-  console.log(JSON.stringify({ event: 'react_flow_public_demo_smoke_passed', url: `http://127.0.0.1:${port}/demo.html`, documentId, canonicalVersion: 2, nodeCount: 3, starLink: true }))
+  await new Promise((resolveWait) => setTimeout(resolveWait, 300))
+  expect(await warmRoomCount()).toBe(1)
+
+  await page.close()
+  await expect.poll(warmRoomCount, { timeout: 5000 }).toBe(0)
+  const reopened = await browser.newPage({ viewport: { width: 1200, height: 800 } })
+  await reopened.goto(`http://127.0.0.1:${port}/?document=${documentId}&client=reopened`)
+  await expect(reopened.getByText('online', { exact: true })).toBeVisible()
+  await expect(reopened.locator('.react-flow__node')).toHaveCount(2)
+  await expect(reopened.getByTestId('react-flow-version')).toHaveText('0')
+  console.log(JSON.stringify({ event: 'react_flow_public_demo_smoke_passed', url: `http://127.0.0.1:${port}/demo.html`, documentId, canonicalVersion: 2, nodeCount: 3, starLink: true, activeRoomProtected: true, expiredRoomDeleted: true, reopenedVersion: 0 }))
 } finally {
   await browser?.close().catch(() => undefined)
   server.kill('SIGTERM')
@@ -56,4 +69,10 @@ async function waitFor(url) {
     await new Promise((resolveWait) => setTimeout(resolveWait, 100))
   }
   throw new Error(`timed out waiting for ${url}: ${String(lastError)}`)
+}
+
+async function warmRoomCount() {
+  const response = await fetch(`http://127.0.0.1:${port}/healthz`)
+  if (!response.ok) throw new Error(`healthz returned ${response.status}`)
+  return (await response.json()).warmRooms
 }

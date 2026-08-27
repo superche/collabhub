@@ -20,6 +20,7 @@ class MemoryCommitStore implements CommitStore<JsonObject> {
   version = 0
   readonly wal: LoadedRoom['wal'] = []
   readonly receipts = new Map<string, StoredReceipt>()
+  readonly snapshots: Array<{ room: RoomIdentity; version: number; schemaVersion: string; state: JsonObject }> = []
   async migrate() {}
   async ensureDocument() {}
   async claimOwnership() { return 1 }
@@ -49,7 +50,9 @@ class MemoryCommitStore implements CommitStore<JsonObject> {
     this.receipts.set(request.operation.operationId, { fingerprint: request.fingerprint, result })
     return { kind: 'committed', result, event }
   }
-  async saveSnapshot() {}
+  async saveSnapshot(room: RoomIdentity, version: number, schemaVersion: string, state: JsonObject) {
+    this.snapshots.push({ room, version, schemaVersion, state })
+  }
   async snapshot(room: RoomIdentity): Promise<SnapshotMessage<JsonObject>> {
     return { kind: 'snapshot', ...room, canonicalVersion: this.version, schemaVersion: '1.0', snapshotRef: 'memory://snapshot', snapshot: { title: 'Initial' } }
   }
@@ -62,13 +65,14 @@ class MemoryCommitStore implements CommitStore<JsonObject> {
 }
 
 class MemoryCoordinator implements OwnershipCoordinator {
+  readonly released: RoomIdentity[] = []
   async start() {}
   async registerWorker() { return async () => undefined }
   async listWorkers() { return [] }
   async owner(): Promise<OwnerRecord | undefined> { return undefined }
   async publishOwner() {}
   async renewOwner() { return true }
-  async releaseOwner() {}
+  async releaseOwner(room: RoomIdentity) { this.released.push(room) }
   async publishEvent() {}
   async publishPresence() {}
   async subscribe() { return async () => undefined }
@@ -103,5 +107,52 @@ describe('distributed worker semantic parity', () => {
     expect((await worker.submit({ ...context, actorId: first.actorId, clientId: first.clientId }, first)).kind).toBe('accepted')
     expect((await worker.submit(context, second)).kind).toBe('accepted')
     expect(store.version).toBe(2)
+  })
+
+  it('uses the shared TTL policy, snapshots cold state, and releases ownership before eviction', async () => {
+    let now = 0
+    const domainPack = defineDomainPack<JsonObject>({
+      id: 'test.distributed-cache', schemaVersion: '1.0', strategies: jsonStrategies,
+      initialState: () => ({ title: 'Initial' }),
+    })
+    const store = new MemoryCommitStore()
+    const coordinator = new MemoryCoordinator()
+    const worker = new DistributedRoomWorker({
+      instanceId: 'worker', internalUrl: 'http://worker', port: 0, internalToken: 'test',
+      store, coordinator, domainPack,
+      roomCachePolicy: { idleTtlMs: 100, maxWarmRooms: 10, scanIntervalMs: 60_000 },
+      clock: () => now,
+    })
+    await worker.activate({ tenantId: 't', documentId: 'cold' })
+    now = 101
+    const result = await worker.sweepRooms()
+
+    expect(result.evicted).toEqual([{ key: 't\u0000cold', reason: 'idle' }])
+    expect(worker.warmRoomCount).toBe(0)
+    expect(store.snapshots).toEqual([expect.objectContaining({ room: { tenantId: 't', documentId: 'cold' }, version: 0 })])
+    expect(coordinator.released).toEqual([{ tenantId: 't', documentId: 'cold' }])
+  })
+
+  it('applies the shared LRU cap while retaining PostgreSQL-equivalent cold data', async () => {
+    let now = 0
+    const domainPack = defineDomainPack<JsonObject>({
+      id: 'test.distributed-lru', schemaVersion: '1.0', strategies: jsonStrategies,
+      initialState: () => ({ title: 'Initial' }),
+    })
+    const store = new MemoryCommitStore()
+    const coordinator = new MemoryCoordinator()
+    const worker = new DistributedRoomWorker({
+      instanceId: 'worker', internalUrl: 'http://worker', port: 0, internalToken: 'test',
+      store, coordinator, domainPack,
+      roomCachePolicy: { idleTtlMs: 10_000, maxWarmRooms: 1, scanIntervalMs: 60_000 },
+      clock: () => now,
+    })
+    await worker.activate({ tenantId: 't', documentId: 'oldest' })
+    now = 1
+    await worker.activate({ tenantId: 't', documentId: 'newest' })
+
+    expect(worker.warmRoomCount).toBe(1)
+    expect(store.snapshots[0]).toMatchObject({ room: { tenantId: 't', documentId: 'oldest' } })
+    expect(coordinator.released).toEqual([{ tenantId: 't', documentId: 'oldest' }])
   })
 })

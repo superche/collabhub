@@ -2,7 +2,14 @@ import { createServer, type Server } from 'node:http'
 import express from 'express'
 import { applyCanonicalPatches } from '@collabhub/domain-json'
 import { assertOperationEnvelope, type CollaborationOperation, type JsonObject, type OperationResult, type SnapshotMessage } from '@collabhub/protocol'
-import { AuthoritativeOperationPipeline, type OperationPipelineHook } from '@collabhub/server-core'
+import {
+  AuthoritativeOperationPipeline,
+  planRoomEvictions,
+  resolveRoomCachePolicy,
+  type OperationPipelineHook,
+  type RoomCachePolicy,
+  type RoomEvictionDecision,
+} from '@collabhub/server-core'
 import type { CommittedOperation, DomainPack } from '@collabhub/strategy-sdk'
 import { operationFingerprint } from './identity.js'
 import type { CommitStore, ConnectionContext, OwnerRecord, OwnershipCoordinator, RoomIdentity } from './types.js'
@@ -30,8 +37,12 @@ export interface RoomWorkerOptions<TState extends JsonObject> {
   snapshotInterval?: number
   maxRecoveryGap?: number
   maxMailbox?: number
+  roomCachePolicy?: Partial<RoomCachePolicy>
+  /** @deprecated Use roomCachePolicy.maxWarmRooms. */
   maxWarmRooms?: number
+  /** @deprecated Use roomCachePolicy.idleTtlMs. */
   idleRoomMs?: number
+  clock?: () => number
   hooks?: readonly OperationPipelineHook<TState>[]
 }
 
@@ -39,6 +50,7 @@ export class DistributedRoomWorker<TState extends JsonObject> {
   private readonly sessions = new Map<string, WarmRoom<TState>>()
   private readonly activating = new Map<string, Promise<WarmRoom<TState>>>()
   private readonly pipeline: AuthoritativeOperationPipeline<TState>
+  private readonly cachePolicy: RoomCachePolicy
   private server?: Server
   private unregisterWorker?: () => Promise<void>
   private maintenanceTimer?: ReturnType<typeof setInterval>
@@ -47,7 +59,14 @@ export class DistributedRoomWorker<TState extends JsonObject> {
 
   constructor(private readonly options: RoomWorkerOptions<TState>) {
     this.pipeline = new AuthoritativeOperationPipeline(options)
+    this.cachePolicy = resolveRoomCachePolicy({
+      idleTtlMs: options.roomCachePolicy?.idleTtlMs ?? options.idleRoomMs ?? 60_000,
+      maxWarmRooms: options.roomCachePolicy?.maxWarmRooms ?? options.maxWarmRooms ?? 1000,
+      scanIntervalMs: options.roomCachePolicy?.scanIntervalMs ?? 3000,
+    })
   }
+
+  get warmRoomCount(): number { return this.sessions.size }
 
   async start(): Promise<void> {
     await this.options.store.migrate()
@@ -94,7 +113,7 @@ export class DistributedRoomWorker<TState extends JsonObject> {
       this.server!.once('error', reject)
       this.server!.listen(this.options.port, '0.0.0.0', resolve)
     })
-    this.maintenanceTimer = setInterval(() => { void this.maintainSessions() }, 3000)
+    this.maintenanceTimer = setInterval(() => { void this.maintainSessions() }, this.cachePolicy.scanIntervalMs)
     this.maintenanceTimer.unref()
     this.outboxTimer = setInterval(() => { void this.dispatchOutbox() }, 100)
     this.outboxTimer.unref()
@@ -103,7 +122,12 @@ export class DistributedRoomWorker<TState extends JsonObject> {
   async close(): Promise<void> {
     if (this.maintenanceTimer) clearInterval(this.maintenanceTimer)
     if (this.outboxTimer) clearInterval(this.outboxTimer)
-    for (const session of this.sessions.values()) await this.options.coordinator.releaseOwner(session.room, session.owner).catch(() => undefined)
+    for (const session of this.sessions.values()) {
+      await session.serial.catch(() => undefined)
+      await this.options.store.saveSnapshot(session.room, session.version, session.schemaVersion, session.state).catch(() => undefined)
+      await this.options.coordinator.releaseOwner(session.room, session.owner).catch(() => undefined)
+    }
+    this.sessions.clear()
     if (this.unregisterWorker) await this.unregisterWorker().catch(() => undefined)
     if (this.server) await new Promise<void>((resolve) => this.server!.close(() => resolve()))
   }
@@ -111,7 +135,7 @@ export class DistributedRoomWorker<TState extends JsonObject> {
   async activate(room: RoomIdentity): Promise<WarmRoom<TState>> {
     const key = this.key(room)
     const current = this.sessions.get(key)
-    if (current) { current.lastAccessAt = Date.now(); return current }
+    if (current) { current.lastAccessAt = this.now(); return current }
     const inFlight = this.activating.get(key)
     if (inFlight) return inFlight
     const activation = this.doActivate(room).finally(() => this.activating.delete(key))
@@ -128,7 +152,7 @@ export class DistributedRoomWorker<TState extends JsonObject> {
     session.queued++
     const task = session.serial.then(() => this.process(session, operation), () => this.process(session, operation))
     session.serial = task.catch(() => undefined)
-    try { return await task } finally { session.queued--; session.lastAccessAt = Date.now() }
+    try { return await task } finally { session.queued--; session.lastAccessAt = this.now() }
   }
 
   async snapshot(room: RoomIdentity): Promise<SnapshotMessage<TState>> {
@@ -138,7 +162,7 @@ export class DistributedRoomWorker<TState extends JsonObject> {
   }
 
   private async doActivate(room: RoomIdentity): Promise<WarmRoom<TState>> {
-    if (this.sessions.size >= (this.options.maxWarmRooms ?? 1000)) await this.evictOldest()
+    if (this.sessions.size >= this.cachePolicy.maxWarmRooms) await this.evictOldest()
     await this.options.store.ensureDocument(room, this.options.domainPack.schemaVersion, this.options.domainPack.initialState(room.documentId))
     const epoch = await this.options.store.claimOwnership(room, this.options.instanceId)
     const loaded = await this.options.store.loadRoom(room)
@@ -149,7 +173,7 @@ export class DistributedRoomWorker<TState extends JsonObject> {
       room: { tenantId: room.tenantId, documentId: room.documentId }, owner,
       schemaVersion: loaded.schemaVersion, version: loaded.version, state,
       recentOperations: loaded.wal.slice(-500).map((entry) => ({ canonicalVersion: entry.version, operation: entry.operation })),
-      queued: 0, serial: Promise.resolve(), lastAccessAt: Date.now(),
+      queued: 0, serial: Promise.resolve(), lastAccessAt: this.now(),
     }
     this.sessions.set(this.key(room), session)
     await this.options.coordinator.publishOwner(room, owner)
@@ -238,23 +262,44 @@ export class DistributedRoomWorker<TState extends JsonObject> {
   }
 
   private async maintainSessions(): Promise<void> {
-    const now = Date.now()
+    await this.sweepRooms(this.now())
     for (const [key, session] of this.sessions) {
-      if (now - session.lastAccessAt > (this.options.idleRoomMs ?? 60_000) && session.queued === 0) {
-        this.sessions.delete(key)
-        await this.options.coordinator.releaseOwner(session.room, session.owner).catch(() => undefined)
-        continue
-      }
       const renewed = await this.options.coordinator.renewOwner(session.room, session.owner).catch(() => false)
       if (!renewed) this.sessions.delete(key)
     }
   }
 
+  async sweepRooms(now = this.now()): Promise<{ evicted: RoomEvictionDecision[]; warmRooms: number }> {
+    const decisions = planRoomEvictions([...this.sessions.entries()].map(([key, session]) => ({
+      key,
+      lastAccessAt: session.lastAccessAt,
+      activeConnections: 0,
+      queuedOperations: session.queued,
+    })), this.cachePolicy, now)
+    const evicted: RoomEvictionDecision[] = []
+    for (const decision of decisions) {
+      const session = this.sessions.get(decision.key)
+      if (session && await this.evictSession(session)) evicted.push(decision)
+    }
+    return { evicted, warmRooms: this.sessions.size }
+  }
+
   private async evictOldest(): Promise<void> {
     const oldest = [...this.sessions.values()].filter((session) => session.queued === 0).sort((a, b) => a.lastAccessAt - b.lastAccessAt)[0]
     if (!oldest) throw new Error('all room mailboxes are busy')
-    this.sessions.delete(this.key(oldest.room))
-    await this.options.coordinator.releaseOwner(oldest.room, oldest.owner).catch(() => undefined)
+    if (!await this.evictSession(oldest)) throw new Error('oldest room became busy during eviction')
+  }
+
+  private async evictSession(session: WarmRoom<TState>): Promise<boolean> {
+    const key = this.key(session.room)
+    if (this.sessions.get(key) !== session || session.queued > 0) return false
+    await session.serial
+    if (this.sessions.get(key) !== session || session.queued > 0) return false
+    await this.options.store.saveSnapshot(session.room, session.version, session.schemaVersion, session.state)
+    if (this.sessions.get(key) !== session || session.queued > 0) return false
+    this.sessions.delete(key)
+    await this.options.coordinator.releaseOwner(session.room, session.owner).catch(() => undefined)
+    return true
   }
 
   private snapshotOf(session: WarmRoom<TState>): SnapshotMessage<TState> {
@@ -286,4 +331,5 @@ export class DistributedRoomWorker<TState extends JsonObject> {
   }
 
   private key(room: RoomIdentity): string { return `${room.tenantId}\u0000${room.documentId}` }
+  private now(): number { return this.options.clock?.() ?? Date.now() }
 }

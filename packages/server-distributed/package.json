@@ -16,7 +16,7 @@
     "dev": "tsx src/main.ts",
     "build": "node ../../scripts/clean-package-output.mjs && tsc -b --force",
     "build:bundle": "esbuild src/main.ts --bundle --platform=node --target=node22 --format=esm --external:pg-native --banner:js=\"import{createRequire as __cr}from'node:module';const require=__cr(import.meta.url);\" --outfile=dist/bin/collabhub-node.mjs",
-    "test": "vitest run src",
+    "test": "vitest --root ../.. run packages/server-distributed/src",
     "prepack": "pnpm build && pnpm build:bundle"
   },
   "dependencies": {

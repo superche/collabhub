@@ -38,6 +38,8 @@ export interface StorageAdapter<TState extends JsonObject = JsonObject> {
   loadWal(tenantId: string, documentId: string, afterVersion: number): Promise<WalRecord[]>
   appendWal(record: WalRecord): Promise<void>
   saveSnapshot(snapshot: StoredSnapshot<TState>): Promise<void>
+  /** Optional because durable production stores normally retain cold room data. */
+  deleteDocument?(tenantId: string, documentId: string): Promise<void>
 }
 
 export class InMemoryStorageAdapter<TState extends JsonObject = JsonObject> implements StorageAdapter<TState> {
@@ -58,6 +60,74 @@ export class InMemoryStorageAdapter<TState extends JsonObject = JsonObject> impl
   async saveSnapshot(snapshot: StoredSnapshot<TState>) {
     this.snapshots.set(this.key(snapshot.tenantId, snapshot.documentId), snapshot)
   }
+  async deleteDocument(tenantId: string, documentId: string) {
+    const key = this.key(tenantId, documentId)
+    this.snapshots.delete(key)
+    this.wal.delete(key)
+  }
+}
+
+export interface RoomCachePolicy {
+  idleTtlMs: number
+  maxWarmRooms: number
+  scanIntervalMs: number
+}
+
+export const DEFAULT_ROOM_CACHE_POLICY: Readonly<RoomCachePolicy> = {
+  idleTtlMs: 60_000,
+  maxWarmRooms: 1000,
+  scanIntervalMs: 3000,
+}
+
+export type RoomDataRetention = 'retain' | 'delete'
+
+export interface RoomCacheEntry {
+  key: string
+  lastAccessAt: number
+  activeConnections: number
+  queuedOperations: number
+}
+
+export interface RoomEvictionDecision {
+  key: string
+  reason: 'idle' | 'capacity'
+}
+
+export function resolveRoomCachePolicy(
+  input: Partial<RoomCachePolicy> = {},
+  defaults: Readonly<RoomCachePolicy> = DEFAULT_ROOM_CACHE_POLICY,
+): RoomCachePolicy {
+  const policy = { ...defaults, ...input }
+  for (const [key, value] of Object.entries(policy)) {
+    if (!Number.isSafeInteger(value) || value <= 0) throw new Error(`${key} must be a positive integer`)
+  }
+  return policy
+}
+
+/** Shared TTL/LRU selection; persistence and ownership release stay runtime-specific. */
+export function planRoomEvictions(
+  entries: readonly RoomCacheEntry[],
+  policy: Pick<RoomCachePolicy, 'idleTtlMs' | 'maxWarmRooms'>,
+  now: number,
+): RoomEvictionDecision[] {
+  const evictable = entries
+    .filter((entry) => entry.activeConnections === 0 && entry.queuedOperations === 0)
+    .sort((left, right) => left.lastAccessAt - right.lastAccessAt || left.key.localeCompare(right.key))
+  const decisions: RoomEvictionDecision[] = []
+  const selected = new Set<string>()
+  for (const entry of evictable) {
+    if (now - entry.lastAccessAt < policy.idleTtlMs) continue
+    decisions.push({ key: entry.key, reason: 'idle' })
+    selected.add(entry.key)
+  }
+  let remaining = entries.length - decisions.length
+  for (const entry of evictable) {
+    if (remaining <= policy.maxWarmRooms) break
+    if (selected.has(entry.key)) continue
+    decisions.push({ key: entry.key, reason: 'capacity' })
+    remaining--
+  }
+  return decisions
 }
 
 export type PipelineStage = 'authenticate' | 'authorize' | 'schemaValidate' | 'normalize' | 'beforeResolve' | 'invariantCheck' | 'beforeCommit' | 'afterCommit'
@@ -225,6 +295,8 @@ export class AuthoritativeDocumentSession<TState extends JsonObject = JsonObject
   private readonly listeners = new Set<CanonicalListener>()
   private serial: Promise<unknown> = Promise.resolve()
   private initialized = false
+  private initialization?: Promise<void>
+  private queuedOperations = 0
 
   constructor(private readonly options: AuthoritativeSessionOptions<TState>) {
     this.pipeline = new AuthoritativeOperationPipeline(options)
@@ -232,6 +304,12 @@ export class AuthoritativeDocumentSession<TState extends JsonObject = JsonObject
 
   async initialize(): Promise<void> {
     if (this.initialized) return
+    if (this.initialization) return this.initialization
+    this.initialization = this.load().finally(() => { this.initialization = undefined })
+    return this.initialization
+  }
+
+  private async load(): Promise<void> {
     const snapshot = await this.options.storage.loadSnapshot(this.options.tenantId, this.options.documentId)
     this.state = snapshot?.state ?? this.options.domainPack.initialState(this.options.documentId)
     this.version = snapshot?.version ?? 0
@@ -254,6 +332,7 @@ export class AuthoritativeDocumentSession<TState extends JsonObject = JsonObject
 
   get canonicalVersion(): number { return this.version }
   get canonicalState(): Readonly<TState> { return this.state }
+  get queuedOperationCount(): number { return this.queuedOperations }
 
   subscribe(listener: CanonicalListener): () => void {
     this.listeners.add(listener)
@@ -273,9 +352,10 @@ export class AuthoritativeDocumentSession<TState extends JsonObject = JsonObject
   }
 
   submit(operation: CollaborationOperation): Promise<OperationResult> {
+    this.queuedOperations++
     const task = this.serial.then(() => this.process(operation), () => this.process(operation))
     this.serial = task.catch(() => undefined)
-    return task
+    return task.finally(() => { this.queuedOperations-- })
   }
 
   private async process(operation: CollaborationOperation): Promise<OperationResult> {
@@ -336,6 +416,7 @@ export class AuthoritativeDocumentSession<TState extends JsonObject = JsonObject
   }
 
   async persistSnapshot(): Promise<void> {
+    await this.initialize()
     await this.options.storage.saveSnapshot({
       tenantId: this.options.tenantId,
       documentId: this.options.documentId,
@@ -358,20 +439,183 @@ export interface SessionFactoryOptions<TState extends JsonObject> {
   snapshotInterval?: number
   maxRecoveryGap?: number
   hooks?: readonly OperationPipelineHook<TState>[]
+  /** Omit to preserve the legacy unbounded standalone cache. */
+  roomCachePolicy?: Partial<RoomCachePolicy>
+  /** Warm-room eviction and durable data retention are intentionally separate. */
+  roomDataRetention?: RoomDataRetention
+  clock?: () => number
+}
+
+export interface RoomSessionLease<TState extends JsonObject> {
+  session: AuthoritativeDocumentSession<TState>
+  release(): void
+}
+
+export interface WarmRoomStats {
+  tenantId: string
+  documentId: string
+  activeConnections: number
+  queuedOperations: number
+  lastAccessAt: number
+  evicting: boolean
+}
+
+export interface RoomSweepResult {
+  evicted: RoomEvictionDecision[]
+  warmRooms: number
+}
+
+interface ManagedDocumentSession<TState extends JsonObject> {
+  tenantId: string
+  documentId: string
+  session: AuthoritativeDocumentSession<TState>
+  activeConnections: number
+  lastAccessAt: number
+  initializing: boolean
+  eviction?: Promise<boolean>
 }
 
 export class CollaborationServerCore<TState extends JsonObject = JsonObject> {
-  private readonly sessions = new Map<string, AuthoritativeDocumentSession<TState>>()
-  constructor(private readonly options: SessionFactoryOptions<TState>) {}
+  private readonly sessions = new Map<string, ManagedDocumentSession<TState>>()
+  private readonly cachePolicy?: RoomCachePolicy
+  private readonly roomDataRetention: RoomDataRetention
+  private maintenanceTimer?: ReturnType<typeof setInterval>
+  private maintenance?: Promise<RoomSweepResult>
+
+  constructor(private readonly options: SessionFactoryOptions<TState>) {
+    this.cachePolicy = options.roomCachePolicy ? resolveRoomCachePolicy(options.roomCachePolicy) : undefined
+    this.roomDataRetention = options.roomDataRetention ?? 'retain'
+    if (this.roomDataRetention === 'delete' && !options.storage.deleteDocument) {
+      throw new Error('roomDataRetention=delete requires StorageAdapter.deleteDocument')
+    }
+    if (this.cachePolicy) {
+      this.maintenanceTimer = setInterval(() => { void this.sweepRooms().catch(() => undefined) }, this.cachePolicy.scanIntervalMs)
+      this.maintenanceTimer.unref?.()
+    }
+  }
+
+  get warmRoomCount(): number { return this.sessions.size }
+
+  warmRooms(): WarmRoomStats[] {
+    return [...this.sessions.values()].map((entry) => ({
+      tenantId: entry.tenantId,
+      documentId: entry.documentId,
+      activeConnections: entry.activeConnections,
+      queuedOperations: entry.session.queuedOperationCount,
+      lastAccessAt: entry.lastAccessAt,
+      evicting: entry.eviction !== undefined,
+    }))
+  }
 
   async session(tenantId: string, documentId: string): Promise<AuthoritativeDocumentSession<TState>> {
-    const key = `${tenantId}\u0000${documentId}`
-    let session = this.sessions.get(key)
-    if (!session) {
-      session = new AuthoritativeDocumentSession({ tenantId, documentId, ...this.options })
-      this.sessions.set(key, session)
+    const key = this.key(tenantId, documentId)
+    while (true) {
+      let entry = this.sessions.get(key)
+      if (entry?.eviction) {
+        await entry.eviction
+        continue
+      }
+      if (!entry) {
+        if (this.cachePolicy && this.sessions.size >= this.cachePolicy.maxWarmRooms) {
+          await this.runSweep(this.now(), Math.max(0, this.cachePolicy.maxWarmRooms - 1))
+        }
+        const session = new AuthoritativeDocumentSession({
+          tenantId,
+          documentId,
+          domainPack: this.options.domainPack,
+          storage: this.options.storage,
+          snapshotInterval: this.options.snapshotInterval,
+          maxRecoveryGap: this.options.maxRecoveryGap,
+          hooks: this.options.hooks,
+        })
+        entry = { tenantId, documentId, session, activeConnections: 0, lastAccessAt: this.now(), initializing: true }
+        this.sessions.set(key, entry)
+      } else {
+        entry.lastAccessAt = this.now()
+      }
+      try {
+        await entry.session.initialize()
+        entry.initializing = false
+        return entry.session
+      } catch (error) {
+        if (this.sessions.get(key) === entry) this.sessions.delete(key)
+        throw error
+      }
     }
-    await session.initialize()
-    return session
   }
+
+  async acquireRoom(tenantId: string, documentId: string): Promise<RoomSessionLease<TState>> {
+    const session = await this.session(tenantId, documentId)
+    const key = this.key(tenantId, documentId)
+    const entry = this.sessions.get(key)
+    if (!entry || entry.session !== session) return this.acquireRoom(tenantId, documentId)
+    entry.activeConnections++
+    entry.lastAccessAt = this.now()
+    let released = false
+    return {
+      session,
+      release: () => {
+        if (released) return
+        released = true
+        if (this.sessions.get(key) !== entry) return
+        entry.activeConnections = Math.max(0, entry.activeConnections - 1)
+        entry.lastAccessAt = this.now()
+      },
+    }
+  }
+
+  async sweepRooms(now = this.now()): Promise<RoomSweepResult> {
+    if (!this.cachePolicy) return { evicted: [], warmRooms: this.sessions.size }
+    if (this.maintenance) return this.maintenance
+    this.maintenance = this.runSweep(now, this.cachePolicy.maxWarmRooms).finally(() => { this.maintenance = undefined })
+    return this.maintenance
+  }
+
+  async close(): Promise<void> {
+    if (this.maintenanceTimer) clearInterval(this.maintenanceTimer)
+    await this.maintenance?.catch(() => undefined)
+    for (const entry of this.sessions.values()) await entry.session.persistSnapshot()
+    this.sessions.clear()
+  }
+
+  private async runSweep(now: number, maxWarmRooms: number): Promise<RoomSweepResult> {
+    if (!this.cachePolicy) return { evicted: [], warmRooms: this.sessions.size }
+    const decisions = planRoomEvictions(this.cacheEntries(), { ...this.cachePolicy, maxWarmRooms }, now)
+    const evicted: RoomEvictionDecision[] = []
+    for (const decision of decisions) if (await this.evict(decision.key)) evicted.push(decision)
+    return { evicted, warmRooms: this.sessions.size }
+  }
+
+  private cacheEntries(): RoomCacheEntry[] {
+    return [...this.sessions.entries()].map(([key, entry]) => ({
+      key,
+      lastAccessAt: entry.lastAccessAt,
+      activeConnections: entry.activeConnections,
+      queuedOperations: entry.session.queuedOperationCount + (entry.initializing ? 1 : 0),
+    }))
+  }
+
+  private async evict(key: string): Promise<boolean> {
+    const entry = this.sessions.get(key)
+    if (!entry) return false
+    if (entry.eviction) return entry.eviction
+    const eviction = this.finishEviction(key, entry).finally(() => {
+      if (this.sessions.get(key) === entry) entry.eviction = undefined
+    })
+    entry.eviction = eviction
+    return eviction
+  }
+
+  private async finishEviction(key: string, entry: ManagedDocumentSession<TState>): Promise<boolean> {
+    if (entry.initializing || entry.activeConnections > 0 || entry.session.queuedOperationCount > 0) return false
+    await entry.session.persistSnapshot()
+    if (this.sessions.get(key) !== entry || entry.initializing || entry.activeConnections > 0 || entry.session.queuedOperationCount > 0) return false
+    if (this.roomDataRetention === 'delete') await this.options.storage.deleteDocument!(entry.tenantId, entry.documentId)
+    if (this.sessions.get(key) !== entry) return false
+    this.sessions.delete(key)
+    return true
+  }
+
+  private now(): number { return this.options.clock?.() ?? Date.now() }
+  private key(tenantId: string, documentId: string): string { return `${tenantId}\u0000${documentId}` }
 }

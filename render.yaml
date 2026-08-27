@@ -6,3 +6,7 @@ services:
     dockerfilePath: ./deploy/demo.Dockerfile
     dockerContext: .
     healthCheckPath: /healthz
+    envVars:
+      - { key: COLLABHUB_DEMO_ROOM_IDLE_TTL_MS, value: "1800000" }
+      - { key: COLLABHUB_DEMO_MAX_WARM_ROOMS, value: "500" }
+      - { key: COLLABHUB_DEMO_ROOM_SCAN_INTERVAL_MS, value: "60000" }

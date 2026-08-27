@@ -102,7 +102,7 @@ pnpm dev:react-flow
 
 [打开在线 Alice/Bob React Flow Demo](https://collabhub-demo.onrender.com/demo.html)
 
-免费部署让两个 React Flow 客户端连接同一中心权威图文档；服务闲置后可能休眠，Demo 状态仅保存在内存。详见 [Demo 部署](docs/demo.md)。
+免费部署让两个 React Flow 客户端连接同一中心权威图文档；活跃 WebSocket room 不回收，断开后 30 分钟过期，最多保留 500 个 warm room。Demo 状态仅保存在内存。详见 [Demo 部署](docs/demo.md)。
 打开[单客户端 Demo](https://collabhub-demo.onrender.com/)会在 `?document=...` 中生成 room ID；分享该 URL 即可邀请其他客户端。
 
 | 进程 | 地址 |
@@ -111,7 +111,7 @@ pnpm dev:react-flow
 | Alice | `http://127.0.0.1:5193/?client=alice` |
 | Bob | `http://127.0.0.1:5194/?client=bob` |
 
-验证通过：节点/边增删、重命名合并、拖拽松手单次提交、断线重放，以及删除节点时原子删除关联边。详见 [React Flow 接入说明](docs/integration/react-flow.md)。
+验证通过：节点/边增量编辑、拖拽松手单次提交、断线重放，以及删除节点时原子删除关联边。详见 [React Flow 接入说明](docs/integration/react-flow.md)。
 
 https://github.com/user-attachments/assets/14766fef-c0ba-4bbb-a09e-7a1c9a14536e
 

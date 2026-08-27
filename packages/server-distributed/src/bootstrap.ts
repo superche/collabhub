@@ -51,8 +51,11 @@ export async function startDistributedNodeFromEnvironment<TState extends JsonObj
         snapshotInterval: integer('SNAPSHOT_INTERVAL', 100),
         maxRecoveryGap: nonNegativeInteger('MAX_RECOVERY_GAP', 100),
         maxMailbox: integer('MAX_ROOM_MAILBOX', 256),
-        maxWarmRooms: integer('MAX_WARM_ROOMS', 1000),
-        idleRoomMs: integer('IDLE_ROOM_MS', 60_000),
+        roomCachePolicy: {
+          maxWarmRooms: integer('MAX_WARM_ROOMS', 1000),
+          idleTtlMs: integer('IDLE_ROOM_MS', 60_000),
+          scanIntervalMs: integer('ROOM_CACHE_SCAN_INTERVAL_MS', 3000),
+        },
       })
     : new CollaborationGateway({
         instanceId, port, internalToken, coordinator, store,

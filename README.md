@@ -102,7 +102,7 @@ pnpm dev:react-flow
 
 [Open the live Alice/Bob React Flow demo](https://collabhub-demo.onrender.com/demo.html)
 
-The free deployment opens two React Flow clients against one authoritative graph. It can sleep when idle and keeps demo state in memory. See [demo deployment](docs/demo.md).
+The free deployment opens two React Flow clients against one authoritative graph. Active WebSocket rooms are protected; disconnected rooms expire after 30 minutes, with at most 500 warm rooms. Demo state is in memory. See [demo deployment](docs/demo.md).
 Opening the [single-client demo](https://collabhub-demo.onrender.com/) creates a room ID in `?document=...`; share that URL to invite another client.
 
 | Process | Address |
@@ -111,7 +111,7 @@ Opening the [single-client demo](https://collabhub-demo.onrender.com/) creates a
 | Alice | `http://127.0.0.1:5193/?client=alice` |
 | Bob | `http://127.0.0.1:5194/?client=bob` |
 
-Verified: node/edge lifecycle, rename coalescing, one commit per completed drag, offline replay, and atomic removal of edges linked to a deleted node. See the [React Flow integration guide](docs/integration/react-flow.md).
+Verified: incremental node/edge edits, one commit per completed drag, offline replay, and atomic removal of edges linked to a deleted node. See the [React Flow integration guide](docs/integration/react-flow.md).
 
 https://github.com/user-attachments/assets/14766fef-c0ba-4bbb-a09e-7a1c9a14536e
 

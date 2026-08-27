@@ -19,7 +19,14 @@ const repository = new DraftRepository(dataFile)
 const storage = new DraftRepositoryStorageAdapter(repository)
 // The zero-sized default window makes the example exercise DraftDomainPack's
 // explicit stale-operation policy for every concurrent edit.
-const core = new CollaborationServerCore({ domainPack: DraftDomainPack, storage, snapshotInterval: 1, maxRecoveryGap: 0 })
+const core = new CollaborationServerCore({
+  domainPack: DraftDomainPack,
+  storage,
+  snapshotInterval: 1,
+  maxRecoveryGap: 0,
+  roomCachePolicy: { idleTtlMs: 30 * 60_000, maxWarmRooms: 500, scanIntervalMs: 60_000 },
+  roomDataRetention: 'retain',
+})
 const activeCounts = new Map<string, number>()
 const socketsByDocument = new Map<string, Set<WebSocket>>()
 
@@ -45,36 +52,56 @@ const webSockets = new WebSocketServer({ server, path: '/collab', maxPayload: 64
 
 webSockets.on('connection', (socket) => {
   let documentId: string | undefined
+  let roomLease: Awaited<ReturnType<typeof core.acquireRoom>> | undefined
+  let roomGeneration = 0
   let unsubscribe: () => void = () => undefined
+  const leaveRoom = () => {
+    roomGeneration++
+    unsubscribe()
+    unsubscribe = () => undefined
+    roomLease?.release()
+    roomLease = undefined
+    if (!documentId) return
+    const next = Math.max(0, (activeCounts.get(documentId) ?? 1) - 1)
+    if (next === 0) activeCounts.delete(documentId); else activeCounts.set(documentId, next)
+    const roomSockets = socketsByDocument.get(documentId)
+    roomSockets?.delete(socket)
+    if (roomSockets?.size === 0) socketsByDocument.delete(documentId)
+    documentId = undefined
+  }
   socket.on('message', async (raw) => {
     let message: ClientWireMessage
     try { message = JSON.parse(raw.toString()) as ClientWireMessage }
     catch { socket.close(1003, 'invalid JSON'); return }
     if (message.kind === 'hello') {
       if (message.protocolVersion !== PROTOCOL_VERSION) { socket.close(1002, 'protocol mismatch'); return }
+      leaveRoom()
+      const expectedGeneration = roomGeneration
+      const nextLease = await core.acquireRoom(message.tenantId, message.documentId)
+      if (roomGeneration !== expectedGeneration || socket.readyState !== socket.OPEN) { nextLease.release(); return }
       documentId = message.documentId
+      roomLease = nextLease
       activeCounts.set(documentId, (activeCounts.get(documentId) ?? 0) + 1)
       const roomSockets = socketsByDocument.get(documentId) ?? new Set<WebSocket>()
       roomSockets.add(socket)
       socketsByDocument.set(documentId, roomSockets)
-      const session = await core.session(message.tenantId, message.documentId)
+      const session = nextLease.session
       unsubscribe = session.subscribe((event) => { if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(event)) })
       console.log(`[collabhub:trace] ${JSON.stringify({ event: 'client_connected', documentId, actorId: message.actorId, clientId: message.clientId, lastKnownVersion: message.lastKnownVersion, canonicalVersion: session.canonicalVersion, snapshotRecovery: message.lastKnownVersion !== session.canonicalVersion })}`)
       socket.send(JSON.stringify(session.snapshot()))
       socket.send(JSON.stringify({ kind: 'ready', canonicalVersion: session.canonicalVersion }))
       return
     }
-    if (!documentId) { socket.close(1008, 'hello required'); return }
+    if (!documentId || !roomLease) { socket.close(1008, 'hello required'); return }
     if (message.kind === 'submit') {
-      const session = await core.session(message.operation.tenantId, message.operation.documentId)
       const started = performance.now()
-      const result = await session.submit(message.operation)
+      const result = await roomLease.session.submit(message.operation)
       console.log(`[collabhub:trace] ${JSON.stringify({ event: 'operation_result', documentId, operationId: message.operation.operationId, operationType: message.operation.operationType, baseVersion: message.operation.baseVersion, result: result.kind, canonicalVersion: result.canonicalVersion, duplicate: result.kind === 'accepted' && result.duplicate === true, latencyMs: Number((performance.now() - started).toFixed(2)) })}`)
       socket.send(JSON.stringify(result))
       return
     }
     if (message.kind === 'recover') {
-      const session = await core.session(message.tenantId, message.documentId)
+      const session = roomLease.session
       console.log(`[collabhub:trace] ${JSON.stringify({ event: 'snapshot_recovery', documentId, sinceVersion: message.sinceVersion, canonicalVersion: session.canonicalVersion })}`)
       socket.send(JSON.stringify(session.snapshot()))
       return
@@ -82,13 +109,7 @@ webSockets.on('connection', (socket) => {
     const presence = message as PresenceMessage
     for (const peer of socketsByDocument.get(documentId) ?? []) if (peer !== socket && peer.readyState === peer.OPEN) peer.send(JSON.stringify(presence))
   })
-  socket.on('close', () => {
-    unsubscribe()
-    if (!documentId) return
-    const next = Math.max(0, (activeCounts.get(documentId) ?? 1) - 1)
-    if (next === 0) activeCounts.delete(documentId); else activeCounts.set(documentId, next)
-    socketsByDocument.get(documentId)?.delete(socket)
-  })
+  socket.on('close', leaveRoom)
 })
 
 server.listen(port, host, () => {

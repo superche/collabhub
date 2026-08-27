@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { jsonStrategies } from '@collabhub/domain-json'
 import type { CollaborationOperation, JsonObject } from '@collabhub/protocol'
 import { defineDomainPack, type ConflictStrategy } from '@collabhub/strategy-sdk'
-import { AuthoritativeDocumentSession, InMemoryStorageAdapter } from './index.js'
+import { AuthoritativeDocumentSession, CollaborationServerCore, InMemoryStorageAdapter } from './index.js'
 
 const pack = defineDomainPack<JsonObject>({
   id: 'test.json', schemaVersion: '1.0', strategies: jsonStrategies,
@@ -155,5 +155,102 @@ describe('authoritative document session', () => {
     expect(session.canonicalVersion).toBe(1)
     expect(session.canonicalState.title).toBe('Durable')
     expect((await storage.loadWal('t', 'd', 0))).toHaveLength(1)
+  })
+})
+
+describe('standalone room cache lifecycle', () => {
+  it('protects active connections and starts the idle TTL when the last lease releases', async () => {
+    let now = 0
+    const core = new CollaborationServerCore({
+      domainPack: pack,
+      storage: new InMemoryStorageAdapter(),
+      roomCachePolicy: { idleTtlMs: 100, maxWarmRooms: 10, scanIntervalMs: 60_000 },
+      clock: () => now,
+    })
+    const lease = await core.acquireRoom('t', 'd')
+    now = 101
+    expect((await core.sweepRooms()).evicted).toEqual([])
+    expect(core.warmRooms()[0]).toMatchObject({ activeConnections: 1, queuedOperations: 0 })
+
+    lease.release()
+    now = 200
+    expect((await core.sweepRooms()).evicted).toEqual([])
+    now = 201
+    expect((await core.sweepRooms()).evicted).toEqual([{ key: 't\u0000d', reason: 'idle' }])
+    expect(core.warmRoomCount).toBe(0)
+    await core.close()
+  })
+
+  it('forces a snapshot, deletes demo WAL/snapshot, and recreates an expired room from initial state', async () => {
+    let now = 0
+    const storage = new InMemoryStorageAdapter<JsonObject>()
+    const core = new CollaborationServerCore({
+      domainPack: pack,
+      storage,
+      roomCachePolicy: { idleTtlMs: 100, maxWarmRooms: 10, scanIntervalMs: 60_000 },
+      roomDataRetention: 'delete',
+      clock: () => now,
+    })
+    const session = await core.session('t', 'd')
+    await session.submit(op({ operationId: 'expiring', operationType: 'property.set', strategyId: 'json.property-lww', payload: { path: '/title', value: 'Temporary' } }))
+    now = 101
+    expect((await core.sweepRooms()).evicted).toHaveLength(1)
+    expect(await storage.loadSnapshot('t', 'd')).toBeUndefined()
+    expect(await storage.loadWal('t', 'd', -1)).toEqual([])
+
+    const recreated = await core.session('t', 'd')
+    expect(recreated.canonicalVersion).toBe(0)
+    expect(recreated.canonicalState.title).toBe('Initial')
+    await core.close()
+  })
+
+  it('evicts the least-recently-used inactive room when the warm-room cap is reached', async () => {
+    let now = 0
+    const storage = new InMemoryStorageAdapter<JsonObject>()
+    const core = new CollaborationServerCore({
+      domainPack: pack,
+      storage,
+      roomCachePolicy: { idleTtlMs: 10_000, maxWarmRooms: 2, scanIntervalMs: 60_000 },
+      clock: () => now,
+    })
+    await core.session('t', 'oldest')
+    now = 10
+    await core.session('t', 'newer')
+    now = 20
+    await core.session('t', 'newest')
+
+    expect(core.warmRooms().map((entry) => entry.documentId).sort()).toEqual(['newer', 'newest'])
+    expect(await storage.loadSnapshot('t', 'oldest')).toMatchObject({ version: 0 })
+    await core.close()
+  })
+
+  it('does not evict a room while an operation is queued or committing', async () => {
+    class GatedStorage extends InMemoryStorageAdapter<JsonObject> {
+      release!: () => void
+      private readonly gate = new Promise<void>((resolve) => { this.release = resolve })
+      override async appendWal(record: Parameters<InMemoryStorageAdapter<JsonObject>['appendWal']>[0]) {
+        await this.gate
+        await super.appendWal(record)
+      }
+    }
+    let now = 0
+    const storage = new GatedStorage()
+    const core = new CollaborationServerCore({
+      domainPack: pack,
+      storage,
+      roomCachePolicy: { idleTtlMs: 100, maxWarmRooms: 10, scanIntervalMs: 60_000 },
+      clock: () => now,
+    })
+    const session = await core.session('t', 'd')
+    const submitting = session.submit(op({ operationId: 'queued', operationType: 'property.set', strategyId: 'json.property-lww', payload: { path: '/title', value: 'Committed' } }))
+    now = 101
+    expect((await core.sweepRooms()).evicted).toEqual([])
+    expect(core.warmRooms()[0]?.queuedOperations).toBe(1)
+
+    storage.release()
+    await submitting
+    now = 202
+    expect((await core.sweepRooms()).evicted).toHaveLength(1)
+    await core.close()
   })
 })
