@@ -21,24 +21,57 @@
 
 ## 接入案例
 
-[`examples/react-draft-app`](examples/react-draft-app) 保留原有 `DraftDocument`、`DraftStore`、`DraftCommandBus`、REST API 与 `DraftRepository`，协同依赖仅位于 adapter、composition root 与服务端 Domain Pack。
+现有 React 组件不接触 WebSocket 或 operation。应用层保留自己的 Store 和 Command，只在 composition root 切换 transport。
 
-```ts
-const transport: DraftCommandTransport = collabEnabled
-  ? new CollabHubDraftTransport(wsUrl, actorId, clientId, draftStore)
-  : new RestDraftTransport(apiUrl, draftId)
+```tsx
+// 1. 用业务 Command 定义一个稳定端口
+interface DraftCommandTransport {
+  execute(command: DraftCommand): Promise<DraftCommandResult>
+  subscribe(listener: (event: DraftDomainEvent) => void): () => void
+  close(): void
+}
 
-const commandBus = new DraftCommandBus(transport)
-await commandBus.execute({ type: 'draft.rename', title: 'Launch plan' })
+// 2. 在 composition root 接入 CollabHub；关闭协同时仍走原 REST
+function createDraftRuntime({ collabEnabled, draftId, actorId }: {
+  collabEnabled: boolean
+  draftId: string
+  actorId: string
+}) {
+  const store = new DraftStore(initialDraft(draftId))
+  const transport: DraftCommandTransport = collabEnabled
+    ? new CollabHubDraftTransport(
+        'ws://127.0.0.1:4100/collab', actorId, crypto.randomUUID(), store,
+      )
+    : new RestDraftTransport('http://127.0.0.1:4100', draftId)
 
-export const DraftDomainPack = defineDomainPack({
-  id: 'example.draft',
-  schemaVersion: '1.0',
-  strategies: jsonStrategies,
-  invariants: [uniqueSectionId, validDraftStatus],
-  initialState: (documentId) => initialDraft(documentId),
-})
+  transport.subscribe((event) => store.publish(event))
+
+  return {
+    store,
+    commands: new DraftCommandBus(transport),
+  }
+}
+
+// 3. 组件仍然是普通 React：读 Store，发业务 Command
+function DraftTitle({ store, commands }: ReturnType<typeof createDraftRuntime>) {
+  const draft = useSyncExternalStore(store.subscribe, store.getSnapshot)
+  const [title, setTitle] = useState(draft.title)
+
+  useEffect(() => setTitle(draft.title), [draft.title]) // 接收远端 canonical patch
+
+  return (
+    <input
+      value={title}
+      onChange={(event) => setTitle(event.target.value)}
+      onBlur={() => commands.execute({ type: 'draft.rename', title })}
+    />
+  )
+}
 ```
+
+`CollabHubDraftTransport` 集中完成 `Command → operation` 和 `canonical patch → DraftDomainEvent`；React 组件与领域模型无需 import CollabHub。
+
+参考实现：[composition root](examples/react-draft-app/src/app/composition-root.ts)、[command adapter](examples/react-draft-app/src/collab/draft-command-adapter.ts)、[projection adapter](examples/react-draft-app/src/collab/draft-projection-adapter.ts)、[server Domain Pack](examples/react-draft-app/server/draft-domain-pack.ts)。
 
 <a href="docs/assets/collabhub-v0.1-smoke.mp4">
   <img src="docs/assets/collabhub-smoke-poster.jpg" alt="CollabHub multiplayer smoke test" width="100%">
