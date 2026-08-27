@@ -1,0 +1,24 @@
+{
+  "name": "collabhub",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.11.0",
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "concurrently -k -n server,alice,bob -c blue,green,magenta \"pnpm --filter @collabhub/react-draft-app dev:server\" \"pnpm --filter @collabhub/react-draft-app dev:web:a\" \"pnpm --filter @collabhub/react-draft-app dev:web:b\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "check": "pnpm build && pnpm --filter @collabhub/react-draft-app build && pnpm test && pnpm benchmark",
+    "benchmark": "tsc -b packages/domain-json && node scripts/benchmark.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "@types/node": "^24.3.0",
+    "concurrently": "^9.2.1",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

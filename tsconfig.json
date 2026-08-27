@@ -1,0 +1,12 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/protocol" },
+    { "path": "packages/strategy-sdk" },
+    { "path": "packages/domain-json" },
+    { "path": "packages/server-core" },
+    { "path": "packages/client-core" },
+    { "path": "packages/testkit" },
+    { "path": "examples/react-draft-app" }
+  ]
+}
