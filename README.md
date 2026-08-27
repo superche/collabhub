@@ -1,17 +1,38 @@
-# CollabHub
+<h1 align="center">CollabHub</h1>
 
-中心权威、业务无关、可扩展的多人协同内核。
+<p align="center"><strong>给现有应用外挂多人协同。</strong></p>
 
-宿主保留自己的领域模型，通过 operation、canonical patch 与 Domain Pack 接入。
+<p align="center">
+  不接管领域模型，不要求迁移 CRDT。<br>
+  协同代码收敛在 Transport、Adapter 与 Domain Pack，业务组件保持原样。
+</p>
+
+<p align="center">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.1-1f6f4a">
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.9-3178c6?logo=typescript&logoColor=white">
+  <img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-4c566a">
+</p>
+
+<p align="center">
+  <a href="#接入案例">接入案例</a> ·
+  <a href="docs/assets/collabhub-v0.1-smoke.mp4">双客户端演示</a> ·
+  <a href="docs/architecture/overview.md">架构文档</a>
+</p>
+
+| 宿主继续拥有 | 协同只新增 | 关闭协同 |
+|---|---|---|
+| Domain、Store、React Components | Command Transport、Projection Adapter、Domain Pack | 切回原 REST transport |
 
 ## Features
 
-- **Server authoritative**：服务端定序、校验并发布 canonical patch。
-- **Host-owned domain**：不要求宿主迁移到 CRDT 数据模型。
-- **Pluggable strategies**：支持 LWW、实体生命周期、列表排序与严格事务。
-- **Reliable recovery**：幂等 operation、pending replay、WAL 与 snapshot recovery。
-- **Single writer**：协同会话内阻止 REST 与 room 双写。
-- **Ephemeral presence**：presence 不进入 WAL、snapshot 或文档版本。
+| 能力 | 保证 |
+|---|---|
+| **Server authoritative** | 服务端定序、校验并发布 canonical patch |
+| **Host-owned domain** | 无需迁移到 CollabHub 或 CRDT 数据模型 |
+| **Pluggable strategies** | LWW、实体生命周期、列表排序、严格事务 |
+| **Reliable recovery** | 幂等 operation、pending replay、WAL、snapshot recovery |
+| **Single writer** | 协同会话内阻止 REST 与 room 双写 |
+| **Ephemeral presence** | presence 不进入 WAL、snapshot 或文档版本 |
 
 ## 案例
 
@@ -21,7 +42,7 @@
 
 ## 接入案例
 
-现有 React 组件不接触 WebSocket 或 operation。应用层保留自己的 Store 和 Command，只在 composition root 切换 transport。
+React 组件不接触 WebSocket 或 operation。应用保留自己的 Store 和 Command，只在 composition root 选择 transport。
 
 ```tsx
 // 1. 用业务 Command 定义一个稳定端口
@@ -73,11 +94,13 @@ function DraftTitle({ store, commands }: ReturnType<typeof createDraftRuntime>) 
 
 参考实现：[composition root](examples/react-draft-app/src/app/composition-root.ts)、[command adapter](examples/react-draft-app/src/collab/draft-command-adapter.ts)、[projection adapter](examples/react-draft-app/src/collab/draft-projection-adapter.ts)、[server Domain Pack](examples/react-draft-app/server/draft-domain-pack.ts)。
 
-<a href="docs/assets/collabhub-v0.1-smoke.mp4">
+### 双客户端演示
+
+<a href="docs/assets/collabhub-v0.1-smoke.mp4" title="播放 CollabHub 双客户端冒烟视频">
   <img src="docs/assets/collabhub-smoke-poster.jpg" alt="CollabHub multiplayer smoke test" width="100%">
 </a>
 
-[播放双客户端冒烟视频](docs/assets/collabhub-v0.1-smoke.mp4)
+<p align="center"><a href="docs/assets/collabhub-v0.1-smoke.mp4">播放 28 秒双客户端冒烟视频</a></p>
 
 ## 仓库结构
 
