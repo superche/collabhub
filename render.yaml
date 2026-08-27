@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: collabhub-demo
+    runtime: docker
+    plan: free
+    dockerfilePath: ./deploy/demo.Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    envVars:
+      - key: COLLABHUB_DATA_FILE
+        value: /tmp/collabhub-demo/drafts.json

@@ -12,5 +12,8 @@ export default defineConfig({
   }, {
     command: 'pnpm dev:blocknote', url: 'http://127.0.0.1:5183', timeout: 60_000,
     reuseExistingServer: true, stdout: 'pipe', stderr: 'pipe',
+  }, {
+    command: 'pnpm dev:react-flow', url: 'http://127.0.0.1:5193', timeout: 60_000,
+    reuseExistingServer: true, stdout: 'pipe', stderr: 'pipe',
   }],
 })

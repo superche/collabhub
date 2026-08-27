@@ -1,7 +1,18 @@
 {
   "name": "@collabhub/strategy-sdk",
   "version": "0.1.0",
+  "description": "Strategy and Domain Pack SPI for CollabHub",
   "type": "module",
-  "exports": "./src/index.ts",
+  "license": "Apache-2.0",
+  "repository": { "type": "git", "url": "git+https://github.com/superche/collabhub.git", "directory": "packages/strategy-sdk" },
+  "homepage": "https://github.com/superche/collabhub#readme",
+  "bugs": "https://github.com/superche/collabhub/issues",
+  "files": ["dist"],
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js", "default": "./dist/index.js" } },
+  "sideEffects": false,
+  "engines": { "node": ">=22" },
+  "publishConfig": { "access": "public", "provenance": true },
+  "scripts": { "build": "node ../../scripts/clean-package-output.mjs && tsc -b --force", "prepack": "pnpm build" },
   "dependencies": { "@collabhub/protocol": "workspace:*" }
 }

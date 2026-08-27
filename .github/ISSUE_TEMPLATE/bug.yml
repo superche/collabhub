@@ -1,0 +1,34 @@
+name: Bug report
+description: Report a reproducible CollabHub defect
+title: "bug: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Do not report security vulnerabilities here. Use the private process in SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      placeholder: 0.1.0 or commit SHA
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [Client Core, Server Core, Distributed runtime, Protocol, Domain Pack, Example, Documentation]
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Include operations, versions, expected state, actual state, and a repository or test when possible.
+    validations:
+      required: true
+  - type: textarea
+    id: trace
+    attributes:
+      label: Diagnostics / trace
+      description: Remove credentials and personal data.

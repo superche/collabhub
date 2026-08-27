@@ -1,0 +1,26 @@
+name: Feature request
+description: Propose a collaboration capability or integration
+title: "feat: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use case
+      description: Describe the host domain, user intent, conflict semantics, and recovery expectation.
+    validations:
+      required: true
+  - type: textarea
+    id: boundary
+    attributes:
+      label: Proposed boundary
+      description: Which behavior belongs in protocol, core, strategy, Domain Pack, or adapter?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance evidence
+      description: Describe the concurrent or failure scenario that should prove correctness.
+    validations:
+      required: true

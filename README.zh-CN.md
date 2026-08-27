@@ -1,6 +1,6 @@
 <h1 align="center">CollabHub</h1>
 
-<p align="center"><strong>给现有应用外挂多人协同。</strong></p>
+<p align="center"><strong>给现有 React 应用低侵入地外挂中心权威协同。</strong></p>
 
 <p align="center">
   不接管领域模型，不要求迁移 CRDT。<br>
@@ -8,7 +8,8 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.1-1f6f4a">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.1.0-1f6f4a">
+  <a href="https://github.com/superche/collabhub/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/superche/collabhub/actions/workflows/ci.yml/badge.svg"></a>
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.9-3178c6?logo=typescript&logoColor=white">
   <img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-4c566a">
 </p>
@@ -18,14 +19,17 @@
 </p>
 
 <p align="center">
+  <a href="docs/getting-started.zh-CN.md">快速接入</a> ·
   <a href="#案例">案例</a> ·
   <a href="#接入案例">接入案例</a> ·
-  <a href="docs/architecture/overview.md">架构文档</a>
+  <a href="docs/capabilities.md">能力矩阵</a>
 </p>
 
 | 宿主继续拥有 | 协同只新增 | 关闭协同 |
 |---|---|---|
 | Domain、Store、React Components | Command Transport、Projection Adapter、Domain Pack | 切回原 REST transport |
+
+> **发布状态：** 当前保持 `0.1.0` 验收版本。包产物与发布门禁已就绪；npm 包和 `v1.0.0` 在仓库所有者批准前不会发布。
 
 ## Features
 
@@ -49,6 +53,10 @@
 ```bash
 pnpm dev
 ```
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/superche/collabhub)
+
+免费部署在 `/demo.html` 左右展示 Alice 与 Bob；服务闲置后可能休眠，Demo 数据为临时数据。详见 [Demo 部署](docs/demo.md)。
 
 | 进程 | 地址 |
 |---|---|
@@ -106,40 +114,35 @@ https://github.com/user-attachments/assets/14766fef-c0ba-4bbb-a09e-7a1c9a14536e
 
 ## 接入案例
 
-React 组件不接触 WebSocket 或 operation。应用保留自己的 Store 和 Command，只在 composition root 选择 transport。
+React 组件不接触 WebSocket 或 operation。`CollaborationStore` 托管连接、pending、恢复和 canonical state；应用继续拥有 Command 与 patch 语义。
 
 ```tsx
-// 1. 定义应用自己的端口；React 不依赖 CollabHub
-interface CommandTransport {
-  execute(command: AppCommand): Promise<void>
-  subscribe(listener: (patch: DomainPatch) => void): () => void
-  close(): void
-}
+import { CollaborationStore } from '@collabhub/client-core'
 
-// 2. 只在 composition root 选择协同或原 REST
+// composition-root.ts — 唯一感知 CollabHub 的边界
 function createAppRuntime(options: RuntimeOptions) {
-  const store = new AppStore(options.initialDocument)
-  const transport: CommandTransport = options.collabEnabled
-    ? new CollabHubTransport({
-        wsUrl: options.wsUrl,
-        documentId: options.documentId,
-        actorId: options.actorId,
-      })
-    : new RestTransport({
-        apiBase: options.apiBase,
-        documentId: options.documentId,
-      })
+  if (!options.collabEnabled) return createRestRuntime(options)
 
-  transport.subscribe((patch) => store.apply(patch))
+  const store = new CollaborationStore<AppDocument, AppCommand>({
+    url: options.wsUrl,
+    tenantId: options.tenantId,
+    documentId: options.documentId,
+    actorId: options.actorId,
+    clientId: crypto.randomUUID(),
+    schemaVersion: '1.0',
+    initialState: options.initialDocument,
+    applyPatches,
+    adaptCommand,
+  })
 
   return {
     store,
-    execute: (command: AppCommand) => transport.execute(command),
-    close: () => transport.close(),
+    execute: (command: AppCommand) => store.execute(command),
+    close: () => store.close(),
   }
 }
 
-// 3. 组件仍只读业务 Store、发送业务 Command
+// 组件仍只读业务 Store、发送业务 Command
 function DocumentTitle({ runtime }: { runtime: AppRuntime }) {
   const document = useSyncExternalStore(
     runtime.store.subscribe,
@@ -159,7 +162,7 @@ function DocumentTitle({ runtime }: { runtime: AppRuntime }) {
 }
 ```
 
-`CollabHubTransport` 集中完成 `Command → operation` 和 `canonical patch → DomainPatch`；关闭协同时换回 `RestTransport`，React 组件与领域模型无需修改。
+`adaptCommand` 负责 `Command → operation`，`applyPatches` 负责 `canonical patch → AppDocument`。切回 REST runtime 时，React 组件与领域模型无需修改。详见 [React 快速接入](docs/getting-started.zh-CN.md)。
 
 业务联动放在服务端 Domain Pack。客户端发送 intent，不提交权威计算结果：
 
@@ -208,6 +211,8 @@ pnpm dev:blocknote      # BlockNote server + Alice + Bob
 pnpm dev:react-flow     # React Flow server + Alice + Bob
 pnpm check              # build + tests + benchmark
 pnpm test:e2e           # 双浏览器回归验收
+pnpm smoke:demo         # 生产 bundle + 双窗口公开 Demo
+pnpm release:check      # 包元数据、ESM/types、tarball 审计
 
 # 本机独立进程：2 Gateway + 2 Worker + 2 TODO List 前端
 pnpm dev:todo-cluster
@@ -222,6 +227,9 @@ pnpm smoke:distributed
 
 ## 文档
 
+- [React 快速接入](docs/getting-started.zh-CN.md)
+- [能力矩阵](docs/capabilities.md)
+- [免费公开 Demo](docs/demo.md)
 - [架构](docs/architecture/overview.md)
 - [协议与 Pipeline](docs/architecture/protocol.md)
 - [水平扩容与云部署](docs/architecture/horizontal-scaling.md)
@@ -232,6 +240,8 @@ pnpm smoke:distributed
 - [React Flow 接入](docs/integration/react-flow.md)
 - [验收记录](docs/acceptance.md)
 - [已知限制](docs/known-limitations.md)
+- [发布流程](docs/releasing.md)
+- [贡献指南](CONTRIBUTING.md) · [安全策略](SECURITY.md) · [变更记录](CHANGELOG.md)
 
 ## License
 

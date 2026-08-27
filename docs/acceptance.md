@@ -11,10 +11,18 @@
 - Vite production build：41 modules；JS 213.79 KB / 66.38 KB gzip，CSS 4.54 KB / 1.64 KB gzip。
 - BlockNote Vite production build：914 modules；主 JS 1,131.76 KB / 343.38 KB gzip，CSS 243.00 KB / 38.62 KB gzip；大 chunk 警告记录为已知限制。
 - React Flow Vite production build：199 modules；JS 392.29 KB / 124.88 KB gzip，CSS 20.12 KB / 4.01 KB gzip。
-- Vitest：12 files / 34 tests passed。
-- 1,000-section patch benchmark：1,000 samples，p95 0.014 ms，gate 4 ms，通过。
+- Vitest：12 files / 35 tests passed。
+- 1,000-section patch benchmark：1,000 samples，p95 0.019 ms，gate 4 ms，通过。
 
-`pnpm test:e2e`：2 tests passed（7.3 s；TODO List 1.8 s，BlockNote 2.6 s）。
+`pnpm test:e2e`：3 tests passed（8.0 s；TODO List 1.6 s，React Flow 1.9 s，BlockNote 2.5 s）。
+
+## 发布与公开 Demo 门禁
+
+`pnpm release:check` 通过。7 个 `0.1.0` package 均生成只含编译 ESM、declaration、source map 与 manifest 的 tarball；审计确认没有 `src`、test 或 `workspace:` 依赖泄漏。`Prepare release artifacts` workflow 只能上传待检 tarball，不包含 tag、GitHub Release 或 npm publish 权限。
+
+`pnpm smoke:demo` 通过：生产 Vite 资源与 bundled Node server 在 `127.0.0.1:4400` 启动，`/demo.html` 中 Alice/Bob 两个 iframe 经真实 WebSocket 收敛；标题更新为 v1，任务联动更新为 v2 / 50%。
+
+`deploy/demo.Dockerfile` 与主 `Dockerfile` 均完成本机 Docker 构建。Demo 镜像以 UID/GID `10001:10001` 运行，容器 `/healthz` 返回 `{"status":"ok","version":"0.1.0"}`，并正确提供 Alice/Bob 双窗口页面。
 
 ## 真实进程与网络
 

@@ -9,8 +9,12 @@ export function createDraftApplication(): DraftApplicationRuntime {
   const query = new URLSearchParams(location.search)
   const actor = query.get('client') ?? crypto.randomUUID().slice(0, 8)
   const draftId = query.get('draft') ?? 'launch-plan'
-  const collabUrl = query.get('collabUrl') ?? import.meta.env.VITE_COLLABHUB_WS_URL ?? 'ws://127.0.0.1:4100/collab'
-  const restBase = import.meta.env.VITE_DRAFT_API_URL ?? 'http://127.0.0.1:4100'
+  const defaultOrigin = import.meta.env.DEV ? 'http://127.0.0.1:4100' : location.origin
+  const defaultSocket = import.meta.env.DEV
+    ? 'ws://127.0.0.1:4100/collab'
+    : `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/collab`
+  const collabUrl = query.get('collabUrl') ?? import.meta.env.VITE_COLLABHUB_WS_URL ?? defaultSocket
+  const restBase = import.meta.env.VITE_DRAFT_API_URL ?? defaultOrigin
   const store = new DraftStore(initialDraft(draftId))
   let transport: DraftCommandTransport
   let unsubscribe: () => void = () => undefined

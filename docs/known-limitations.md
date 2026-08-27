@@ -2,6 +2,8 @@
 
 ## 明确未实现
 
+- `0.1.0` package tarball 已通过发布审计，但尚未发布到公共 npm；`v1.0.0` 必须在完整验收后由仓库所有者明确批准。
+- 免费公开 Demo 使用 Render ephemeral filesystem，闲置会休眠，冷启动与数据重置属于演示环境限制。
 - 分布式 runtime 支持单 region 水平扩容；没有跨 region active-active、自动 global failover 或数据主权路由。
 - PostgreSQL snapshot 目前存 JSONB；没有对象存储 adapter、WAL compaction、PITR/备份自动化工具。
 - 多 patch 联动只保证单个 document 内原子提交；跨 document、外部业务数据库或第三方系统仍需要事务协调。

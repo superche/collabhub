@@ -1,5 +1,6 @@
 import { createServer } from 'node:http'
 import { fileURLToPath } from 'node:url'
+import { resolve } from 'node:path'
 import cors from 'cors'
 import express from 'express'
 import { WebSocketServer, type WebSocket } from 'ws'
@@ -10,7 +11,9 @@ import { registerDraftApi } from './draft-api.js'
 import { DraftRepository } from './draft-repository.js'
 import { DraftRepositoryStorageAdapter } from './draft-storage-adapter.js'
 
-const port = Number(process.env.COLLABHUB_PORT ?? 4100)
+const port = Number(process.env.PORT ?? process.env.COLLABHUB_PORT ?? 4100)
+const host = process.env.COLLABHUB_HOST ?? '127.0.0.1'
+const staticDirectory = process.env.COLLABHUB_DEMO_STATIC_DIR
 const dataFile = process.env.COLLABHUB_DATA_FILE ?? fileURLToPath(new URL('../.data/drafts.json', import.meta.url))
 const repository = new DraftRepository(dataFile)
 const storage = new DraftRepositoryStorageAdapter(repository)
@@ -21,7 +24,15 @@ const socketsByDocument = new Map<string, Set<WebSocket>>()
 const app = express()
 app.use(cors())
 app.use(express.json({ limit: '64kb' }))
+app.get('/healthz', (_request, response) => response.json({ status: 'ok', version: '0.1.0' }))
 registerDraftApi(app, repository, (id) => (activeCounts.get(id) ?? 0) > 0)
+if (staticDirectory) {
+  app.use(express.static(staticDirectory, { index: 'index.html', maxAge: '1h' }))
+  app.use((request, response, next) => {
+    if (request.method !== 'GET' || !request.accepts('html')) return next()
+    response.sendFile(resolve(staticDirectory, 'index.html'))
+  })
+}
 const server = createServer(app)
 const webSockets = new WebSocketServer({ server, path: '/collab', maxPayload: 64 * 1024 })
 
@@ -73,6 +84,6 @@ webSockets.on('connection', (socket) => {
   })
 })
 
-server.listen(port, '127.0.0.1', () => {
-  console.log(`[collabhub] server pid=${process.pid} http=127.0.0.1:${port} ws=ws://127.0.0.1:${port}/collab data=${dataFile}`)
+server.listen(port, host, () => {
+  console.log(`[collabhub] server pid=${process.pid} http=${host}:${port} ws=ws://${host}:${port}/collab data=${dataFile} static=${staticDirectory ?? 'disabled'}`)
 })

@@ -6,17 +6,18 @@
   "type": "module",
   "packageManager": "pnpm@10.11.0",
   "scripts": {
-    "build": "tsc -b",
+    "build": "node scripts/clean-package-output.mjs --all && tsc -b --force",
     "dev": "concurrently -k -n server,alice,bob -c blue,green,magenta \"pnpm --filter @collabhub/todo-list-app dev:server\" \"pnpm --filter @collabhub/todo-list-app dev:web:a\" \"pnpm --filter @collabhub/todo-list-app dev:web:b\"",
     "dev:blocknote": "concurrently -k -n server,alice,bob -c blue,green,magenta \"pnpm --filter @collabhub/blocknote-app dev:server\" \"pnpm --filter @collabhub/blocknote-app dev:web:a\" \"pnpm --filter @collabhub/blocknote-app dev:web:b\"",
     "dev:react-flow": "concurrently -k -n server,alice,bob -c blue,green,magenta \"pnpm --filter @collabhub/react-flow-app dev:server\" \"pnpm --filter @collabhub/react-flow-app dev:web:a\" \"pnpm --filter @collabhub/react-flow-app dev:web:b\"",
     "record:todo-list": "node scripts/record-todo-list-smoke.mjs",
     "record:blocknote": "node scripts/record-blocknote-smoke.mjs",
     "record:react-flow": "node scripts/record-react-flow-smoke.mjs",
-    "test": "vitest run",
+    "test": "pnpm build && pnpm test:unit",
+    "test:unit": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "check": "pnpm build && pnpm --filter @collabhub/todo-list-app build && pnpm --filter @collabhub/blocknote-app build && pnpm --filter @collabhub/react-flow-app build && pnpm test && pnpm benchmark",
+    "check": "pnpm build && pnpm --filter @collabhub/todo-list-app build && pnpm --filter @collabhub/blocknote-app build && pnpm --filter @collabhub/react-flow-app build && pnpm test:unit && pnpm benchmark",
     "benchmark": "tsc -b packages/domain-json && node scripts/benchmark.mjs",
     "build:distributed": "pnpm --filter @collabhub/server-distributed build:bundle",
     "dev:distributed": "pnpm --filter @collabhub/server-distributed dev",
@@ -24,7 +25,10 @@
     "smoke:distributed": "node scripts/distributed-smoke.mjs",
     "benchmark:distributed": "node scripts/distributed-benchmark.mjs",
     "dev:todo-cluster": "node scripts/start-local-todo-cluster.mjs",
-    "smoke:todo-cluster": "node scripts/smoke-local-todo-cluster.mjs"
+    "smoke:todo-cluster": "node scripts/smoke-local-todo-cluster.mjs",
+    "smoke:demo": "pnpm build && pnpm --filter @collabhub/todo-list-app build && pnpm --filter @collabhub/todo-list-app build:server && node scripts/smoke-public-demo.mjs",
+    "release:check": "pnpm check && pnpm build:distributed && node scripts/check-package-artifacts.mjs",
+    "pack:packages": "pnpm build && pnpm build:distributed && node scripts/check-package-artifacts.mjs --output artifacts/packages"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",

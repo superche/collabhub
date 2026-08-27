@@ -1,6 +1,6 @@
 <h1 align="center">CollabHub</h1>
 
-<p align="center"><strong>Drop-in multiplayer collaboration for existing applications.</strong></p>
+<p align="center"><strong>Low-intrusion, server-authoritative collaboration for existing React applications.</strong></p>
 
 <p align="center">
   Keep your domain model. Keep your React components. No CRDT migration required.<br>
@@ -8,7 +8,8 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.1-1f6f4a">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.1.0-1f6f4a">
+  <a href="https://github.com/superche/collabhub/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/superche/collabhub/actions/workflows/ci.yml/badge.svg"></a>
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.9-3178c6?logo=typescript&logoColor=white">
   <img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-4c566a">
 </p>
@@ -18,14 +19,17 @@
 </p>
 
 <p align="center">
+  <a href="docs/getting-started.md">Quick start</a> ·
   <a href="#examples">Examples</a> ·
   <a href="#integration">Integration</a> ·
-  <a href="docs/architecture/overview.md">Architecture</a>
+  <a href="docs/capabilities.md">Capabilities</a>
 </p>
 
 | Your app keeps | CollabHub adds | Collaboration off |
 |---|---|---|
 | Domain, Store, React components | Command Transport, Projection Adapter, Domain Pack | Fall back to the existing REST transport |
+
+> **Release status:** `0.1.0` validation. Package artifacts and release gates are ready, but npm packages and `v1.0.0` are intentionally unpublished pending owner approval.
 
 ## Features
 
@@ -49,6 +53,10 @@ A classic React TODO app keeps its own Domain, Store, CommandBus, REST API, and 
 ```bash
 pnpm dev
 ```
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/superche/collabhub)
+
+The free deployment opens Alice and Bob side by side at `/demo.html`. It can sleep when idle and stores only ephemeral demo data. See [demo deployment](docs/demo.md).
 
 | Process | Address |
 |---|---|
@@ -106,40 +114,35 @@ https://github.com/user-attachments/assets/14766fef-c0ba-4bbb-a09e-7a1c9a14536e
 
 ## Integration
 
-React components never touch WebSocket or collaboration operations. Keep the application Store and Commands; choose the transport only at the composition root.
+React components never touch WebSocket or collaboration operations. `CollaborationStore` owns connection, pending, recovery, and canonical state; your application owns commands and patch semantics.
 
 ```tsx
-// 1. Define an application-owned port. React does not depend on CollabHub.
-interface CommandTransport {
-  execute(command: AppCommand): Promise<void>
-  subscribe(listener: (patch: DomainPatch) => void): () => void
-  close(): void
-}
+import { CollaborationStore } from '@collabhub/client-core'
 
-// 2. Select collaboration or the existing REST path at the composition root.
+// composition-root.ts — the only CollabHub-aware boundary
 function createAppRuntime(options: RuntimeOptions) {
-  const store = new AppStore(options.initialDocument)
-  const transport: CommandTransport = options.collabEnabled
-    ? new CollabHubTransport({
-        wsUrl: options.wsUrl,
-        documentId: options.documentId,
-        actorId: options.actorId,
-      })
-    : new RestTransport({
-        apiBase: options.apiBase,
-        documentId: options.documentId,
-      })
+  if (!options.collabEnabled) return createRestRuntime(options)
 
-  transport.subscribe((patch) => store.apply(patch))
+  const store = new CollaborationStore<AppDocument, AppCommand>({
+    url: options.wsUrl,
+    tenantId: options.tenantId,
+    documentId: options.documentId,
+    actorId: options.actorId,
+    clientId: crypto.randomUUID(),
+    schemaVersion: '1.0',
+    initialState: options.initialDocument,
+    applyPatches,
+    adaptCommand,
+  })
 
   return {
     store,
-    execute: (command: AppCommand) => transport.execute(command),
-    close: () => transport.close(),
+    execute: (command: AppCommand) => store.execute(command),
+    close: () => store.close(),
   }
 }
 
-// 3. Components still read the business Store and send business Commands.
+// React still reads a Store and sends business Commands.
 function DocumentTitle({ runtime }: { runtime: AppRuntime }) {
   const document = useSyncExternalStore(
     runtime.store.subscribe,
@@ -159,7 +162,7 @@ function DocumentTitle({ runtime }: { runtime: AppRuntime }) {
 }
 ```
 
-`CollabHubTransport` owns `Command → operation` and `canonical patch → DomainPatch`. Switching back to `RestTransport` leaves React components and the domain model unchanged.
+`adaptCommand` owns `Command → operation`; `applyPatches` owns `canonical patch → AppDocument`. Switching to the REST runtime leaves React components and the domain model unchanged. Follow the [React quick start](docs/getting-started.md).
 
 Linked business rules stay in the server Domain Pack. Clients send intent, not authoritative computed state:
 
@@ -208,6 +211,8 @@ pnpm dev:blocknote      # BlockNote server + Alice + Bob
 pnpm dev:react-flow     # React Flow server + Alice + Bob
 pnpm check              # Build + tests + benchmark
 pnpm test:e2e           # Real two-browser regression
+pnpm smoke:demo         # Production bundle + two-frame public demo
+pnpm release:check      # Package metadata, ESM/types, tarball audit
 
 # Local independent processes: 2 Gateways + 2 Workers + 2 TODO clients
 pnpm dev:todo-cluster
@@ -222,6 +227,9 @@ Recording commands: `pnpm record:todo-list`, `pnpm record:blocknote`, and `pnpm 
 
 ## Documentation
 
+- [React quick start](docs/getting-started.md)
+- [Capability matrix](docs/capabilities.md)
+- [Free public demo](docs/demo.md)
 - [Architecture](docs/architecture/overview.md)
 - [Protocol and pipeline](docs/architecture/protocol.md)
 - [Horizontal scaling and cloud deployment](docs/architecture/horizontal-scaling.md)
@@ -232,6 +240,8 @@ Recording commands: `pnpm record:todo-list`, `pnpm record:blocknote`, and `pnpm 
 - [React Flow integration](docs/integration/react-flow.md)
 - [Acceptance evidence](docs/acceptance.md)
 - [Known limitations](docs/known-limitations.md)
+- [Release process](docs/releasing.md)
+- [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md)
 
 ## License
 

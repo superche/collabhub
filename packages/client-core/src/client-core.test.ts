@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ClientWireMessage, JsonObject, ServerWireMessage } from '@collabhub/protocol'
-import { CollaborationClient, type SocketLike } from './index.js'
+import { CollaborationClient, CollaborationStore, type SocketLike } from './index.js'
 
 class FakeSocket implements SocketLike {
   readyState = 0
@@ -66,6 +66,30 @@ describe('collaboration client recovery', () => {
     expect(client.diagnostics.pendingCount).toBe(0)
     expect(client.diagnostics.reconnectCount).toBe(1)
     client.disconnect()
+  })
+
+  it('exposes a React-compatible external store with application-owned commands', async () => {
+    const server = new FakeServer()
+    const store = new CollaborationStore<JsonObject, { type: 'rename'; title: string }>({
+      url: 'fake://', tenantId: 't', documentId: 'd', actorId: 'a', clientId: 'c', schemaVersion: '1.0',
+      initialState: { title: 'Loading' }, socketFactory: server.create,
+      applyPatches: (state, patches) => patches.reduce((next, patch) => patch.op === 'set' ? { ...next, [patch.path.slice(1)]: patch.value } : next, state),
+      adaptCommand: (command) => ({
+        operation: { operationType: 'property.set', strategyId: 'json.property-lww', strategyVersion: '1.0', payload: { path: '/title', value: command.title } },
+        optimisticPatches: [{ op: 'set', path: '/title', value: command.title }],
+      }),
+    })
+    let notifications = 0
+    const unsubscribe = store.subscribe(() => { notifications++ })
+    await new Promise((resolve) => setTimeout(resolve, 1))
+    expect(store.getSnapshot().title).toBe('Initial')
+    const result = await store.execute({ type: 'rename', title: 'Recovered' })
+    expect(result.kind).toBe('accepted')
+    expect(store.getSnapshot().title).toBe('Recovered')
+    expect(store.diagnostics.pendingCount).toBe(0)
+    expect(notifications).toBeGreaterThan(0)
+    unsubscribe()
+    store.close()
   })
 
   it('keeps the same pending operation through retryLater and an accepted version gap', async () => {

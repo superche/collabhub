@@ -10,7 +10,8 @@
     "dev:server": "tsx server/index.ts",
     "dev:distributed-node": "tsx server/distributed-node.ts",
     "start:server": "tsx server/index.ts",
-    "build": "vite build"
+    "build": "vite build",
+    "build:server": "esbuild server/index.ts --bundle --platform=node --target=node22 --format=esm --banner:js=\"import{createRequire as __cr}from'node:module';const require=__cr(import.meta.url);\" --outfile=dist-server/collabhub-demo.mjs"
   },
   "dependencies": {
     "@collabhub/client-core": "workspace:*",
@@ -32,6 +33,7 @@
     "@types/react-dom": "^19.1.9",
     "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^5.0.2",
+    "esbuild": "^0.28.2",
     "vite": "^7.1.3"
   }
 }

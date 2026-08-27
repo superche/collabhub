@@ -1,13 +1,23 @@
 {
   "name": "@collabhub/server-distributed",
   "version": "0.1.0",
-  "private": true,
+  "description": "Horizontally scalable CollabHub Gateway and Room Worker runtime",
   "type": "module",
-  "exports": "./src/index.ts",
+  "license": "Apache-2.0",
+  "repository": { "type": "git", "url": "git+https://github.com/superche/collabhub.git", "directory": "packages/server-distributed" },
+  "homepage": "https://github.com/superche/collabhub#readme",
+  "bugs": "https://github.com/superche/collabhub/issues",
+  "files": ["dist"],
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js", "default": "./dist/index.js" } },
+  "engines": { "node": ">=22" },
+  "publishConfig": { "access": "public", "provenance": true },
   "scripts": {
     "dev": "tsx src/main.ts",
-    "build:bundle": "esbuild src/main.ts --bundle --platform=node --target=node22 --format=esm --external:pg-native --banner:js=\"import{createRequire as __cr}from'node:module';const require=__cr(import.meta.url);\" --outfile=dist/collabhub-node.mjs",
-    "test": "vitest run src"
+    "build": "node ../../scripts/clean-package-output.mjs && tsc -b --force",
+    "build:bundle": "esbuild src/main.ts --bundle --platform=node --target=node22 --format=esm --external:pg-native --banner:js=\"import{createRequire as __cr}from'node:module';const require=__cr(import.meta.url);\" --outfile=dist/bin/collabhub-node.mjs",
+    "test": "vitest run src",
+    "prepack": "pnpm build && pnpm build:bundle"
   },
   "dependencies": {
     "@collabhub/domain-json": "workspace:*",

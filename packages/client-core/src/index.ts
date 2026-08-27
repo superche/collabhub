@@ -55,6 +55,11 @@ export interface CollaborationClientOptions<TState extends JsonObject> {
   reconnectDelayMs?: number
 }
 
+export type CollaborationOperationInput = Omit<
+  CollaborationOperation,
+  'tenantId' | 'documentId' | 'actorId' | 'clientId' | 'operationId' | 'baseVersion' | 'schemaVersion'
+> & { operationId?: string }
+
 type StateListener<TState> = (state: Readonly<TState>) => void
 type DiagnosticListener = (diagnostics: Readonly<ClientDiagnostics>) => void
 type PresenceListener = (presence: PresenceMessage) => void
@@ -133,7 +138,7 @@ export class CollaborationClient<TState extends JsonObject> {
     if (!this.manuallyClosed) this.connect()
   }
 
-  submit(input: Omit<CollaborationOperation, 'tenantId' | 'documentId' | 'actorId' | 'clientId' | 'operationId' | 'baseVersion' | 'schemaVersion'> & { operationId?: string }, optimisticPatches: CanonicalPatch[] = []): Promise<OperationResult> {
+  submit(input: CollaborationOperationInput, optimisticPatches: CanonicalPatch[] = []): Promise<OperationResult> {
     const operation: CollaborationOperation = {
       ...input,
       tenantId: this.options.tenantId,
@@ -308,4 +313,55 @@ export class CollaborationClient<TState extends JsonObject> {
     this.diagnosticsValue = { ...this.diagnosticsValue, ...patch }
     for (const listener of this.diagnosticListeners) listener(this.diagnosticsValue)
   }
+}
+
+export interface AdaptedCollaborationCommand {
+  operation: CollaborationOperationInput
+  optimisticPatches?: CanonicalPatch[]
+}
+
+export interface CollaborationStoreOptions<TState extends JsonObject, TCommand> extends CollaborationClientOptions<TState> {
+  initialState: TState
+  adaptCommand(command: TCommand, currentState: Readonly<TState>): AdaptedCollaborationCommand
+  autoConnect?: boolean
+}
+
+/**
+ * Framework-neutral external store designed for React's useSyncExternalStore.
+ * Domain-specific command and patch semantics remain application-owned.
+ */
+export class CollaborationStore<TState extends JsonObject, TCommand> {
+  private readonly client: CollaborationClient<TState>
+  private readonly listeners = new Set<() => void>()
+  private current: Readonly<TState>
+
+  constructor(private readonly options: CollaborationStoreOptions<TState, TCommand>) {
+    this.current = options.initialState
+    this.client = new CollaborationClient(options)
+    this.client.subscribe((state) => {
+      this.current = state
+      for (const listener of this.listeners) listener()
+    })
+    if (options.autoConnect !== false) this.client.connect()
+  }
+
+  readonly getSnapshot = (): Readonly<TState> => this.current
+
+  readonly subscribe = (listener: () => void): (() => void) => {
+    this.listeners.add(listener)
+    return () => this.listeners.delete(listener)
+  }
+
+  execute(command: TCommand): Promise<OperationResult> {
+    const adapted = this.options.adaptCommand(command, this.current)
+    return this.client.submit(adapted.operation, adapted.optimisticPatches)
+  }
+
+  get diagnostics(): Readonly<ClientDiagnostics> { return this.client.diagnostics }
+  subscribeDiagnostics(listener: DiagnosticListener): () => void { return this.client.subscribeDiagnostics(listener) }
+  subscribePresence(listener: PresenceListener): () => void { return this.client.subscribePresence(listener) }
+  sendPresence(data: Record<string, unknown>): void { this.client.sendPresence(data) }
+  setNetworkAvailable(available: boolean): void { this.client.setNetworkAvailable(available) }
+  connect(): void { this.client.connect() }
+  close(): void { this.client.disconnect(); this.listeners.clear() }
 }
