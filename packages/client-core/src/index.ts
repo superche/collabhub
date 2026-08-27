@@ -65,6 +65,7 @@ export class CollaborationClient<TState extends JsonObject> {
   private pending: PendingOperation[] = []
   private reconnectTimer?: ReturnType<typeof setTimeout>
   private manuallyClosed = false
+  private networkAvailable = true
   private operationSequence = 0
   private readonly stateListeners = new Set<StateListener<TState>>()
   private readonly diagnosticListeners = new Set<DiagnosticListener>()
@@ -81,6 +82,7 @@ export class CollaborationClient<TState extends JsonObject> {
 
   connect(): void {
     this.manuallyClosed = false
+    if (!this.networkAvailable) return
     if (this.socket && (this.socket.readyState === 0 || this.socket.readyState === 1)) return
     this.setDiagnostics({ connection: 'connecting' })
     const factory = this.options.socketFactory ?? ((url) => new WebSocket(url))
@@ -105,7 +107,7 @@ export class CollaborationClient<TState extends JsonObject> {
       this.socket = undefined
       this.setDiagnostics({ connection: 'offline' })
       for (const item of this.pending) item.sent = false
-      if (!this.manuallyClosed) this.scheduleReconnect()
+      if (!this.manuallyClosed && this.networkAvailable) this.scheduleReconnect()
     })
     socket.addEventListener('error', () => undefined)
   }
@@ -116,6 +118,18 @@ export class CollaborationClient<TState extends JsonObject> {
     this.socket?.close()
     this.socket = undefined
     this.setDiagnostics({ connection: 'offline' })
+  }
+
+  setNetworkAvailable(available: boolean): void {
+    const wasAvailable = this.networkAvailable
+    this.networkAvailable = available
+    if (!available) {
+      if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
+      this.socket?.close()
+      return
+    }
+    if (!wasAvailable) this.setDiagnostics({ reconnectCount: this.diagnosticsValue.reconnectCount + 1 })
+    if (!this.manuallyClosed) this.connect()
   }
 
   submit(input: Omit<CollaborationOperation, 'tenantId' | 'documentId' | 'actorId' | 'clientId' | 'operationId' | 'baseVersion' | 'schemaVersion'> & { operationId?: string }, optimisticPatches: CanonicalPatch[] = []): Promise<OperationResult> {

@@ -1,0 +1,43 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+
+:root { font-family: 'DM Sans', system-ui, sans-serif; color: #18221d; background: #eef1eb; font-synthesis: none; }
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; min-height: 100vh; background: radial-gradient(circle at 8% 0%, #dce9dc 0, transparent 34%), #eef1eb; }
+button, input, textarea { font: inherit; }
+main { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 36px 0 60px; }
+header { display: flex; align-items: end; justify-content: space-between; margin-bottom: 24px; }
+.eyebrow { color: #227a53; font: 500 12px 'DM Mono', monospace; letter-spacing: .13em; }
+h1 { font-size: clamp(36px, 5vw, 58px); letter-spacing: -.05em; line-height: .95; margin: 10px 0 0; }
+.mode-switch { display: flex; gap: 10px; align-items: center; background: #fff; border: 1px solid #d4dcd3; border-radius: 999px; padding: 10px 15px; font-size: 14px; box-shadow: 0 8px 30px #405a4812; }
+.mode-switch input { accent-color: #227a53; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 18px; align-items: start; }
+.editor-card, .diagnostics { background: rgba(255,255,255,.88); border: 1px solid #d4dcd3; border-radius: 20px; box-shadow: 0 20px 60px #405a4812; }
+.editor-card { padding: 30px; }
+.field-label { color: #6a756e; font: 500 12px 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .08em; }
+.title-input { width: 100%; border: 0; border-bottom: 1px solid #dbe1da; outline: 0; background: transparent; padding: 10px 0 15px; font-size: 30px; font-weight: 600; letter-spacing: -.03em; }
+.title-input:focus { border-color: #227a53; }
+.meta { display: flex; gap: 8px; margin: 14px 0 28px; }
+.meta span { background: #edf2ed; color: #5d6962; border-radius: 7px; padding: 5px 8px; font: 500 11px 'DM Mono', monospace; }
+.sections { display: grid; gap: 10px; }
+.section-card { display: grid; grid-template-columns: 40px 1fr auto; gap: 14px; padding: 18px; border: 1px solid #dde3dc; border-radius: 13px; background: #fbfcfa; }
+.section-index { color: #9aa49d; font: 500 12px 'DM Mono', monospace; padding-top: 5px; }
+.section-content { display: grid; gap: 8px; }
+.section-content input, .section-content textarea { border: 0; outline: 0; background: transparent; padding: 0; resize: vertical; }
+.section-content input { font-weight: 600; font-size: 16px; }
+.section-content textarea { color: #657068; min-height: 44px; line-height: 1.5; }
+.section-tools { display: flex; gap: 5px; }
+.section-tools button { width: 30px; height: 30px; border: 1px solid #d9e0d8; background: #fff; color: #637068; border-radius: 8px; cursor: pointer; }
+.actions { display: flex; gap: 10px; margin-top: 18px; }
+.actions button { border: 0; border-radius: 9px; background: #237a53; color: white; padding: 10px 15px; cursor: pointer; font-weight: 600; }
+.actions .secondary { background: #e8eee8; color: #385044; }
+.error { color: #a13c35; background: #fff0ee; border-radius: 8px; padding: 10px; }
+.diagnostics { padding: 21px; position: sticky; top: 20px; background: #17231c; border-color: #17231c; color: #ecf4ee; }
+.diagnostics-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; }
+.diagnostics h2 { font-size: 16px; margin: 0; }
+.status { font: 500 10px 'DM Mono', monospace; text-transform: uppercase; color: #9dac9f; }
+.status.online { color: #70e3a9; }.status.online::before { content: '● '; }
+.metric { display: flex; justify-content: space-between; gap: 10px; padding: 12px 0; border-bottom: 1px solid #2c3a31; font-size: 13px; }
+.metric span { color: #9dac9f; }.metric strong { font: 500 12px 'DM Mono', monospace; text-align: right; }
+.trace { padding-top: 17px; }.trace span { display: block; color: #9dac9f; font-size: 12px; margin-bottom: 7px; }.trace code { display: block; color: #c5d2c8; white-space: normal; font-size: 11px; }
+.lane-note { color: #7f9284; font-size: 11px; line-height: 1.55; margin: 20px 0 0; }
+@media (max-width: 820px) { .layout { grid-template-columns: 1fr; }.diagnostics { position: static; } header { align-items: start; gap: 20px; flex-direction: column; } }
