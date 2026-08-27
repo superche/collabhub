@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { jsonStrategies } from '@collabhub/domain-json'
 import type { CollaborationOperation, JsonObject } from '@collabhub/protocol'
-import { defineDomainPack } from '@collabhub/strategy-sdk'
+import { defineDomainPack, type ConflictStrategy } from '@collabhub/strategy-sdk'
 import { AuthoritativeDocumentSession, InMemoryStorageAdapter } from './index.js'
 
 const pack = defineDomainPack<JsonObject>({
@@ -84,6 +84,63 @@ describe('authoritative document session', () => {
     expect(result.kind).toBe('resyncRequired')
     expect(result.kind === 'resyncRequired' && result.snapshotRef).toContain('/1')
     expect(session.canonicalVersion).toBe(1)
+  })
+
+  it('lets a domain pack resolve operations outside the default recovery window', async () => {
+    const rebasePack = defineDomainPack<JsonObject>({
+      ...pack,
+      operationVersionPolicy: { decide: () => ({ kind: 'resolve' }) },
+    })
+    const session = new AuthoritativeDocumentSession({
+      tenantId: 't', documentId: 'd', domainPack: rebasePack,
+      storage: new InMemoryStorageAdapter(), maxRecoveryGap: 0,
+    })
+    await session.submit(op({ operationId: 'advance-rebase', operationType: 'property.set', strategyId: 'json.property-lww', payload: { path: '/title', value: 'Advanced' } }))
+    const result = await session.submit(op({ operationId: 'stale-rebase', operationType: 'property.set', strategyId: 'json.property-lww', baseVersion: 0, payload: { path: '/title', value: 'Rebased' } }))
+    expect(result.kind).toBe('accepted')
+    expect(session.canonicalVersion).toBe(2)
+    expect(session.canonicalState.title).toBe('Rebased')
+  })
+
+  it('runs authorization before a stale-version policy and converts policy failures into rejection', async () => {
+    const stages: string[] = []
+    const faultyPack = defineDomainPack<JsonObject>({
+      ...pack,
+      operationVersionPolicy: {
+        decide() {
+          stages.push('versionPolicy')
+          throw new Error('policy failed closed')
+        },
+      },
+    })
+    const session = new AuthoritativeDocumentSession({
+      tenantId: 't', documentId: 'd', domainPack: faultyPack, storage: new InMemoryStorageAdapter(), maxRecoveryGap: 0,
+      hooks: [{ stage: 'authorize', run: () => { stages.push('authorize') } }],
+    })
+    await session.submit(op({ operationId: 'advance-policy', operationType: 'property.set', strategyId: 'json.property-lww', payload: { path: '/title', value: 'Advanced' } }))
+    const result = await session.submit(op({ operationId: 'faulty-policy', operationType: 'property.set', strategyId: 'json.property-lww', payload: { path: '/title', value: 'Ignored' } }))
+    expect(stages).toEqual(['authorize', 'authorize', 'versionPolicy'])
+    expect(result.kind).toBe('rejected')
+    expect(result.kind === 'rejected' && result.reason).toMatchObject({ code: 'strategyFailure', message: 'policy failed closed' })
+    expect(session.canonicalVersion).toBe(1)
+  })
+
+  it('identifies concurrent operations by committed canonical version, not their baseVersion', async () => {
+    let observedVersions: number[] = []
+    const inspectStrategy: ConflictStrategy<JsonObject> = {
+      id: 'test.inspect-concurrency', version: '1.0',
+      supports: (type) => type === 'inspect.concurrent',
+      resolve(context) {
+        observedVersions = context.concurrentOperations.map((entry) => entry.canonicalVersion)
+        return { kind: 'accept', patches: [{ op: 'set', path: '/status', value: 'inspected' }] }
+      },
+    }
+    const inspectPack = defineDomainPack<JsonObject>({ ...pack, strategies: [...pack.strategies, inspectStrategy] })
+    const session = new AuthoritativeDocumentSession({ tenantId: 't', documentId: 'd', domainPack: inspectPack, storage: new InMemoryStorageAdapter() })
+    await session.submit(op({ operationId: 'history-v1', operationType: 'property.set', strategyId: 'json.property-lww', baseVersion: 0, payload: { path: '/title', value: 'One' } }))
+    await session.submit(op({ operationId: 'history-v2', operationType: 'property.set', strategyId: 'json.property-lww', baseVersion: 0, payload: { path: '/title', value: 'Two' } }))
+    await session.submit(op({ operationId: 'inspect-v3', operationType: 'inspect.concurrent', strategyId: 'test.inspect-concurrency', baseVersion: 1, payload: {} }))
+    expect(observedVersions).toEqual([2])
   })
 
   it('never converts a durable commit into a rejection when post-commit effects fail', async () => {

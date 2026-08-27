@@ -17,7 +17,9 @@ const staticDirectory = process.env.COLLABHUB_DEMO_STATIC_DIR
 const dataFile = process.env.COLLABHUB_DATA_FILE ?? fileURLToPath(new URL('../.data/drafts.json', import.meta.url))
 const repository = new DraftRepository(dataFile)
 const storage = new DraftRepositoryStorageAdapter(repository)
-const core = new CollaborationServerCore({ domainPack: DraftDomainPack, storage, snapshotInterval: 1, maxRecoveryGap: 50 })
+// The zero-sized default window makes the example exercise DraftDomainPack's
+// explicit stale-operation policy for every concurrent edit.
+const core = new CollaborationServerCore({ domainPack: DraftDomainPack, storage, snapshotInterval: 1, maxRecoveryGap: 0 })
 const activeCounts = new Map<string, number>()
 const socketsByDocument = new Map<string, Set<WebSocket>>()
 

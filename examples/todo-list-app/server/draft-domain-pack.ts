@@ -50,6 +50,13 @@ const submitReviewStrategy: ConflictStrategy<JsonObject> = {
   },
 }
 
+const rebaseableStrategies = new Set([
+  'json.property-lww',
+  'json.entity-lifecycle',
+  'json.list-order',
+  'draft.section-command',
+])
+
 function withCanonicalRevision(strategy: ConflictStrategy<JsonObject>): ConflictStrategy<JsonObject> {
   return {
     id: strategy.id,
@@ -68,6 +75,13 @@ export const DraftDomainPack = defineDomainPack<JsonObject>({
   id: 'example.draft',
   schemaVersion: '1.0',
   strategies: [...jsonStrategies, sectionCommandStrategy, submitReviewStrategy].map(withCanonicalRevision),
+  operationVersionPolicy: {
+    decide(context) {
+      if (rebaseableStrategies.has(context.operation.strategyId)) return { kind: 'resolve' }
+      if (!context.recoveryWindowExceeded) return { kind: 'resolve' }
+      return { kind: 'resync', reason: `strategy ${context.operation.strategyId} requires current state after a ${context.versionGap}-version gap` }
+    },
+  },
   invariants: [{
     id: 'draft.unique-section-id',
     check(state) {

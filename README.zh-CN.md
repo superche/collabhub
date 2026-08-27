@@ -39,6 +39,7 @@
 | **Atomic linked updates** | 一个业务 intent 可原子更新实体、汇总与派生字段 |
 | **Host-owned domain** | 无需迁移到 CollabHub 或 CRDT 数据模型 |
 | **Pluggable strategies** | LWW、实体生命周期、列表排序、严格事务 |
+| **Business conflict policy** | Domain Pack 可为旧版本 operation 选择 resolve、reject 或 resync |
 | **Reliable recovery** | 幂等 operation、pending replay、WAL、snapshot recovery |
 | **Horizontal scale** | 无状态 Gateway、单写 Room Worker、PostgreSQL fencing/outbox、Redis 临时路由 |
 | **Single writer** | 协同会话内阻止 REST 与 room 双写 |
@@ -66,7 +67,7 @@ pnpm dev
 
 联动演示：Alice 勾选一项任务，只提交一个 `section.setCompleted` intent；服务端在同一 canonical version 更新任务状态、完成数、任务总数与进度，Bob 同步收到完整结果。
 
-验证通过：权威联动、任务编辑、排序、断线重放、snapshot recovery、REST/Collab 切换与协同期间防双写。详见 [TODO List 接入说明](docs/integration/todo-list-tutorial.md)。
+验证通过：权威联动、业务自定义旧版本解冲突、排序、断线重放、snapshot recovery、REST/Collab 切换与协同期间防双写。详见 [TODO List 接入说明](docs/integration/todo-list-tutorial.md)。
 
 https://github.com/user-attachments/assets/58963835-fffe-43ff-875b-617e635ec282
 
@@ -179,6 +180,8 @@ resolve({ currentState, operation }) {
 ```
 
 `patches` 在一个 canonical version 中校验、写 WAL 并广播；其他设备不会看到只更新一半的中间状态。
+
+旧版本 intent 也由 Domain Pack 决策。operation 保留原始 `baseVersion`；安全命令可基于当前权威状态重算，严格事务则拒绝或要求 resync。详见[版本与冲突语义](docs/architecture/protocol.md#版本与冲突)。
 
 完整实现：[composition root](examples/todo-list-app/src/app/composition-root.ts)、[command adapter](examples/todo-list-app/src/collab/draft-command-adapter.ts)、[projection adapter](examples/todo-list-app/src/collab/draft-projection-adapter.ts)、[server Domain Pack](examples/todo-list-app/server/draft-domain-pack.ts)。
 

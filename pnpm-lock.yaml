@@ -238,6 +238,9 @@ importers:
       '@collabhub/protocol':
         specifier: workspace:*
         version: link:../protocol
+      '@collabhub/server-core':
+        specifier: workspace:*
+        version: link:../server-core
       '@collabhub/strategy-sdk':
         specifier: workspace:*
         version: link:../strategy-sdk

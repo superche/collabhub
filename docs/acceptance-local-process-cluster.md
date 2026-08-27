@@ -49,11 +49,11 @@ pnpm smoke:todo-cluster
 {"event":"two_browsers_on_distinct_gateways","gateway1":7011,"gateway2":7012}
 {"event":"cross_gateway_title_converged","canonicalVersion":1}
 {"event":"linked_update_converged","canonicalVersion":2,"completed":1,"total":2,"percent":50}
-{"event":"writer_process_stopped","instanceId":"todo-worker-1","pid":95104}
-{"event":"writer_failover_converged","from":"todo-worker-1","to":"todo-worker-2","canonicalVersion":3}
+{"event":"writer_process_stopped","instanceId":"todo-worker-2","pid":5160}
+{"event":"writer_failover_converged","from":"todo-worker-2","to":"todo-worker-1","canonicalVersion":3}
 {"event":"offline_pending_replayed","canonicalVersion":5,"pending":0}
 {"event":"fresh_browser_snapshot_recovery","canonicalVersion":5}
-{"event":"postgres_evidence","canonicalVersion":5,"ownerEpoch":2,"owner":"todo-worker-2","snapshotVersion":4,"wal":5,"receipts":5,"deliveredOutbox":5}
+{"event":"postgres_evidence","canonicalVersion":5,"ownerEpoch":2,"owner":"todo-worker-1","snapshotVersion":4,"wal":5,"receipts":5,"deliveredOutbox":5}
 ```
 
 并行启动 Worker 时曾触发 PostgreSQL `CREATE TABLE IF NOT EXISTS` 的系统类型唯一键竞态。schema migration 现由 transaction-scoped advisory lock 串行化；修复后重复完整冒烟通过。

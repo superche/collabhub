@@ -23,9 +23,9 @@ WebSocket gateway -> Room Worker -> pipeline -> Domain Pack
 
 权威会话对同一文档的 submit 串行执行：
 
-1. 校验 envelope、document、schema 和 recovery window。
-2. 运行 authenticate/authorize/schema/normalize/beforeResolve hooks。
-3. 按 strategy id/version resolve；reject/resync 不改版本。
+1. 校验 envelope 与 document，运行 authenticate/authorize。
+2. 校验 schema，运行 normalize，再由 Domain Pack version policy 决定 resolve/reject/resync。
+3. 按 strategy id/version resolve；并发历史按已提交 canonical version 筛选，reject/resync 不改版本。
 4. 计算 next state，运行 Domain Pack invariants 与 beforeCommit。
 5. 单机 runtime 先 append WAL，再推进内存 canonical state/version；此后 snapshot/observer/afterCommit 失败不得回滚 accepted。
 6. 分布式 runtime 把 WAL、receipt、head version 与 outbox 放在同一 PostgreSQL 事务，并用 owner epoch fencing 旧 writer。
@@ -44,7 +44,7 @@ Client Core 维护两层状态：
 projected state = canonical state + pending optimistic patches
 ```
 
-accepted 推进 canonical 并移除 pending；rejected 丢弃对应 overlay；resyncRequired 或版本 gap 请求 snapshot，再以新 baseVersion 重放 pending intent。断线期间 operation 只进入有界 pending queue，重连 hello/snapshot/ready 后重放。
+accepted 推进 canonical 并移除 pending；rejected 丢弃对应 overlay；resyncRequired 或版本 gap 请求 snapshot。每个 pending operation 保留创建时的 operationId 与 baseVersion：触发 resync 的 intent 在 snapshot 到达后结算，其他 pending 以原 envelope 重试并由业务 version policy 决定能否基于最新权威状态解析。断线期间 operation 只进入有界 pending queue，重连 hello/snapshot/ready 后重放。
 
 ## Presence
 

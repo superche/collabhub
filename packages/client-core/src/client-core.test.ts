@@ -16,6 +16,7 @@ class FakeSocket implements SocketLike {
 class FakeServer {
   connections: FakeSocket[] = []
   submissions = 0
+  submittedBaseVersions: number[] = []
   create = () => { const socket = new FakeSocket(this); this.connections.push(socket); return socket }
   receive(socket: FakeSocket, message: ClientWireMessage) {
     if (message.kind === 'hello') {
@@ -24,6 +25,7 @@ class FakeServer {
     }
     if (message.kind === 'submit') {
       this.submissions++
+      this.submittedBaseVersions.push(message.operation.baseVersion)
       socket.deliver({ kind: 'accepted', operationId: message.operation.operationId, canonicalVersion: 1, patches: [{ op: 'set', path: '/title', value: 'Recovered' }] })
     }
     if (message.kind === 'recover') socket.deliver({ kind: 'snapshot', tenantId: 't', documentId: 'd', canonicalVersion: 0, schemaVersion: '1.0', snapshotRef: 's0', snapshot: { title: 'Initial' } })
@@ -38,10 +40,28 @@ class ScriptedServer extends FakeServer {
     }
     if (message.kind === 'submit') {
       this.submissions++
+      this.submittedBaseVersions.push(message.operation.baseVersion)
       if (this.submissions === 1) socket.deliver({ kind: 'retryLater', operationId: message.operation.operationId, canonicalVersion: 0, retryAfterMs: 10, reason: 'ownerChanging' })
       else socket.deliver({ kind: 'accepted', operationId: message.operation.operationId, canonicalVersion: 2, patches: [{ op: 'set', path: '/title', value: 'Committed' }] })
     }
     if (message.kind === 'recover') socket.deliver({ kind: 'snapshot', tenantId: 't', documentId: 'd', canonicalVersion: 2, schemaVersion: '1.0', snapshotRef: 's2', snapshot: { title: 'Committed' } })
+  }
+}
+
+class ResyncServer extends FakeServer {
+  override receive(socket: FakeSocket, message: ClientWireMessage) {
+    if (message.kind === 'hello') {
+      socket.deliver({ kind: 'snapshot', tenantId: 't', documentId: 'd', canonicalVersion: 0, schemaVersion: '1.0', snapshotRef: 's0', snapshot: { title: 'Initial' } })
+      socket.deliver({ kind: 'ready', canonicalVersion: 0 })
+    }
+    if (message.kind === 'submit') {
+      this.submissions++
+      this.submittedBaseVersions.push(message.operation.baseVersion)
+      socket.deliver({ kind: 'resyncRequired', operationId: message.operation.operationId, canonicalVersion: 5, snapshotRef: 's5', reason: 'history unavailable' })
+    }
+    if (message.kind === 'recover') {
+      socket.deliver({ kind: 'snapshot', tenantId: 't', documentId: 'd', canonicalVersion: 5, schemaVersion: '1.0', snapshotRef: 's5', snapshot: { title: 'Canonical' } })
+    }
   }
 }
 
@@ -105,8 +125,28 @@ describe('collaboration client recovery', () => {
     expect(result.kind).toBe('accepted')
     expect(result.operationId).toBe('stable-op')
     expect(server.submissions).toBe(2)
+    expect(server.submittedBaseVersions).toEqual([0, 0])
     expect(client.canonicalVersion).toBe(2)
     expect(client.state?.title).toBe('Committed')
+    expect(client.diagnostics.pendingCount).toBe(0)
+    client.disconnect()
+  })
+
+  it('keeps baseVersion immutable and settles an unrebasable operation after snapshot recovery', async () => {
+    const server = new ResyncServer()
+    const client = new CollaborationClient<JsonObject>({
+      url: 'fake://', tenantId: 't', documentId: 'd', actorId: 'a', clientId: 'c', schemaVersion: '1.0',
+      socketFactory: server.create,
+      applyPatches: (state) => state,
+    })
+    client.connect()
+    await new Promise((resolve) => setTimeout(resolve, 1))
+    const result = await client.submit({ operationId: 'stale-op', operationType: 'transaction.apply', strategyId: 'json.reject-if-stale', strategyVersion: '1.0', payload: { patches: [] } })
+    expect(result.kind).toBe('resyncRequired')
+    expect(server.submissions).toBe(1)
+    expect(server.submittedBaseVersions).toEqual([0])
+    expect(client.canonicalVersion).toBe(5)
+    expect(client.state?.title).toBe('Canonical')
     expect(client.diagnostics.pendingCount).toBe(0)
     client.disconnect()
   })

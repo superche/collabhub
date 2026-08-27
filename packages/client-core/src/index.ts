@@ -38,6 +38,7 @@ interface PendingOperation {
   submittedAt: number
   sent: boolean
   acceptedResult?: Extract<OperationResult, { kind: 'accepted' }>
+  resyncResult?: Extract<OperationResult, { kind: 'resyncRequired' }>
   resolve: (result: OperationResult) => void
 }
 
@@ -208,16 +209,19 @@ export class CollaborationClient<TState extends JsonObject> {
     this.setDiagnostics({ connection: awaitingReady ? 'connecting' : 'online', canonicalVersion: message.canonicalVersion })
     const settled: PendingOperation[] = []
     for (const item of this.pending) {
+      if (item.resyncResult) {
+        settled.push(item)
+        continue
+      }
       if (item.acceptedResult && item.acceptedResult.canonicalVersion <= message.canonicalVersion) {
         settled.push(item)
         continue
       }
-      item.operation.baseVersion = message.canonicalVersion
       item.sent = false
     }
     for (const item of settled) {
       this.pending.splice(this.pending.indexOf(item), 1)
-      item.resolve(item.acceptedResult!)
+      item.resolve(item.resyncResult ?? item.acceptedResult!)
       this.setDiagnostics({ lastAckLatencyMs: Math.round((performance.now() - item.submittedAt) * 100) / 100 })
     }
     this.reproject()
@@ -240,7 +244,7 @@ export class CollaborationClient<TState extends JsonObject> {
     const item = index >= 0 ? this.pending[index] : undefined
     if (result.kind === 'resyncRequired') {
       this.setDiagnostics({ connection: 'resyncing', resyncCount: this.diagnosticsValue.resyncCount + 1 })
-      if (item) item.sent = false
+      if (item) item.resyncResult = result
       this.send({ kind: 'recover', tenantId: this.options.tenantId, documentId: this.options.documentId, sinceVersion: this.canonicalVersion })
       return
     }
@@ -291,7 +295,6 @@ export class CollaborationClient<TState extends JsonObject> {
     if (!this.socket || this.socket.readyState !== 1 || this.diagnosticsValue.connection !== 'online') return
     for (const item of this.pending) {
       if (item.sent) continue
-      item.operation.baseVersion = this.canonicalVersion
       this.send({ kind: 'submit', operation: item.operation })
       item.sent = true
     }

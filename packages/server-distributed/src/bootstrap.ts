@@ -26,6 +26,12 @@ function integer(name: string, fallback: number): number {
   return value
 }
 
+function nonNegativeInteger(name: string, fallback: number): number {
+  const value = Number(process.env[name] ?? fallback)
+  if (!Number.isSafeInteger(value) || value < 0) throw new Error(`${name} must be a non-negative integer`)
+  return value
+}
+
 export async function startDistributedNodeFromEnvironment<TState extends JsonObject>(domainPack: DomainPack<TState>): Promise<DistributedNodeHandle> {
   const rawRole = required('COLLABHUB_ROLE', 'gateway')
   if (rawRole !== 'gateway' && rawRole !== 'worker') throw new Error(`COLLABHUB_ROLE must be gateway or worker, received ${rawRole}`)
@@ -43,7 +49,7 @@ export async function startDistributedNodeFromEnvironment<TState extends JsonObj
     ? new DistributedRoomWorker({
         instanceId, internalUrl: required('INTERNAL_URL', `http://127.0.0.1:${port}`), port, internalToken, store, coordinator, domainPack,
         snapshotInterval: integer('SNAPSHOT_INTERVAL', 100),
-        maxRecoveryGap: integer('MAX_RECOVERY_GAP', 1000),
+        maxRecoveryGap: nonNegativeInteger('MAX_RECOVERY_GAP', 100),
         maxMailbox: integer('MAX_ROOM_MAILBOX', 256),
         maxWarmRooms: integer('MAX_WARM_ROOMS', 1000),
         idleRoomMs: integer('IDLE_ROOM_MS', 60_000),

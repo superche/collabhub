@@ -39,6 +39,7 @@
 | **Atomic linked updates** | One business intent atomically updates entities, summaries, and derived fields |
 | **Host-owned domain** | No migration to a CollabHub or CRDT data model |
 | **Pluggable strategies** | LWW, entity lifecycle, list ordering, and strict transactions |
+| **Business conflict policy** | Each Domain Pack chooses resolve, reject, or resync for stale operations |
 | **Reliable recovery** | Idempotent operations, pending replay, WAL, and snapshot recovery |
 | **Horizontal scale** | Stateless Gateways, single-writer Room Workers, PostgreSQL fencing/outbox, and ephemeral Redis routing |
 | **Single writer** | REST cannot bypass an active collaborative room |
@@ -66,7 +67,7 @@ The free deployment opens Alice and Bob side by side at `/demo.html`. It can sle
 
 Linked-update demo: Alice checks one task and sends one `section.setCompleted` intent. The server updates task state, completed count, total count, and progress in one canonical version; Bob receives the complete result.
 
-Verified: authoritative linked updates, editing, ordering, offline replay, snapshot recovery, REST/Collab switching, and double-write prevention. See the [TODO List integration guide](docs/integration/todo-list-tutorial.md).
+Verified: authoritative linked updates, business-defined stale-operation rebase, ordering, offline replay, snapshot recovery, REST/Collab switching, and double-write prevention. See the [TODO List integration guide](docs/integration/todo-list-tutorial.md).
 
 https://github.com/user-attachments/assets/58963835-fffe-43ff-875b-617e635ec282
 
@@ -179,6 +180,8 @@ resolve({ currentState, operation }) {
 ```
 
 The server validates, writes, and broadcasts all `patches` in one canonical version. Other devices never observe a partial linked update.
+
+Stale intent handling is also owned by the Domain Pack. The operation keeps its original `baseVersion`; safe commands can re-run against current canonical state while strict transactions reject or request resync. See [version and conflict semantics](docs/architecture/protocol.md#版本与冲突).
 
 Reference implementation: [composition root](examples/todo-list-app/src/app/composition-root.ts), [command adapter](examples/todo-list-app/src/collab/draft-command-adapter.ts), [projection adapter](examples/todo-list-app/src/collab/draft-projection-adapter.ts), and [server Domain Pack](examples/todo-list-app/server/draft-domain-pack.ts).
 

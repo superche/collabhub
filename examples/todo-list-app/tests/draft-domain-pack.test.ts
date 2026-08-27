@@ -52,6 +52,23 @@ describe('DraftDomainPack linked canonical patches', () => {
     expect(session.canonicalVersion).toBe(2)
   })
 
+  it('uses the business version policy to rebase a stale linked command on authoritative state', async () => {
+    const session = new AuthoritativeDocumentSession({
+      tenantId: 'demo', documentId: 'linked', domainPack: DraftDomainPack,
+      storage: new InMemoryStorageAdapter<JsonObject>(), maxRecoveryGap: 0,
+    })
+    await session.submit(operation('complete-intro', 'section.setCompleted', {
+      type: 'section.setCompleted', sectionId: 'intro', completed: true,
+    }))
+    const stale = await session.submit(operation('complete-plan-stale', 'section.setCompleted', {
+      type: 'section.setCompleted', sectionId: 'plan', completed: true,
+    }, 0))
+    expect(stale.kind).toBe('accepted')
+    const state = session.canonicalState as unknown as DraftDocument
+    expect(state.completion).toEqual({ completed: 2, total: 2, percent: 100 })
+    expect(state.revision).toBe(2)
+  })
+
   it('keeps totals consistent when tasks are added and deleted', async () => {
     const session = new AuthoritativeDocumentSession({
       tenantId: 'demo', documentId: 'linked', domainPack: DraftDomainPack,

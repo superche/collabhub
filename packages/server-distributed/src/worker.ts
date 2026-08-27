@@ -2,7 +2,8 @@ import { createServer, type Server } from 'node:http'
 import express from 'express'
 import { applyCanonicalPatches } from '@collabhub/domain-json'
 import { assertOperationEnvelope, type CollaborationOperation, type JsonObject, type OperationResult, type SnapshotMessage } from '@collabhub/protocol'
-import { StrategyRegistry, type DomainPack } from '@collabhub/strategy-sdk'
+import { AuthoritativeOperationPipeline, type OperationPipelineHook } from '@collabhub/server-core'
+import type { CommittedOperation, DomainPack } from '@collabhub/strategy-sdk'
 import { operationFingerprint } from './identity.js'
 import type { CommitStore, ConnectionContext, OwnerRecord, OwnershipCoordinator, RoomIdentity } from './types.js'
 
@@ -12,7 +13,7 @@ interface WarmRoom<TState extends JsonObject> {
   schemaVersion: string
   version: number
   state: TState
-  recentOperations: CollaborationOperation[]
+  recentOperations: CommittedOperation[]
   queued: number
   serial: Promise<unknown>
   lastAccessAt: number
@@ -31,12 +32,13 @@ export interface RoomWorkerOptions<TState extends JsonObject> {
   maxMailbox?: number
   maxWarmRooms?: number
   idleRoomMs?: number
+  hooks?: readonly OperationPipelineHook<TState>[]
 }
 
 export class DistributedRoomWorker<TState extends JsonObject> {
   private readonly sessions = new Map<string, WarmRoom<TState>>()
   private readonly activating = new Map<string, Promise<WarmRoom<TState>>>()
-  private readonly registry: StrategyRegistry<TState>
+  private readonly pipeline: AuthoritativeOperationPipeline<TState>
   private server?: Server
   private unregisterWorker?: () => Promise<void>
   private maintenanceTimer?: ReturnType<typeof setInterval>
@@ -44,7 +46,7 @@ export class DistributedRoomWorker<TState extends JsonObject> {
   private dispatching = false
 
   constructor(private readonly options: RoomWorkerOptions<TState>) {
-    this.registry = new StrategyRegistry(options.domainPack.strategies)
+    this.pipeline = new AuthoritativeOperationPipeline(options)
   }
 
   async start(): Promise<void> {
@@ -146,7 +148,7 @@ export class DistributedRoomWorker<TState extends JsonObject> {
     const session: WarmRoom<TState> = {
       room: { tenantId: room.tenantId, documentId: room.documentId }, owner,
       schemaVersion: loaded.schemaVersion, version: loaded.version, state,
-      recentOperations: loaded.wal.slice(-500).map((entry) => entry.operation),
+      recentOperations: loaded.wal.slice(-500).map((entry) => ({ canonicalVersion: entry.version, operation: entry.operation })),
       queued: 0, serial: Promise.resolve(), lastAccessAt: Date.now(),
     }
     this.sessions.set(this.key(room), session)
@@ -163,49 +165,29 @@ export class DistributedRoomWorker<TState extends JsonObject> {
       if (prior.fingerprint !== fingerprint) return this.rejected(operation.operationId, session.version, 'invalidOperation', 'operationId was reused with another payload')
       return prior.result.kind === 'accepted' ? { ...prior.result, duplicate: true } : prior.result
     }
-    if (operation.schemaVersion !== session.schemaVersion) {
-      return { kind: 'resyncRequired', operationId: operation.operationId, canonicalVersion: session.version, snapshotRef: this.snapshotRef(session), reason: 'schema version mismatch' }
-    }
-    if (session.version - operation.baseVersion > (this.options.maxRecoveryGap ?? 1000)) {
-      return { kind: 'resyncRequired', operationId: operation.operationId, canonicalVersion: session.version, snapshotRef: this.snapshotRef(session), reason: 'client is outside the recovery window' }
-    }
-
     for (let attempt = 0; attempt < 2; attempt++) {
-      const strategy = this.registry.resolve(operation)
-      if (!strategy) return this.persistRejection(session, fingerprint, this.rejected(operation.operationId, session.version, 'invalidOperation', 'unsupported strategy or operation type'))
-      let resolution
-      try {
-        resolution = strategy.resolve({
-          currentVersion: session.version, currentState: session.state, operation,
-          concurrentOperations: session.recentOperations.filter((candidate) => candidate.baseVersion >= operation.baseVersion),
-        })
-      } catch (error) {
-        return this.persistRejection(session, fingerprint, this.rejected(operation.operationId, session.version, 'strategyFailure', error instanceof Error ? error.message : String(error)))
-      }
-      if (resolution.kind === 'reject') {
-        const result: OperationResult = { kind: 'rejected', operationId: operation.operationId, canonicalVersion: session.version, reason: resolution.reason, correctivePatches: resolution.correctivePatches }
-        return this.persistRejection(session, fingerprint, result)
-      }
-      if (resolution.kind === 'resync') {
-        return { kind: 'resyncRequired', operationId: operation.operationId, canonicalVersion: session.version, snapshotRef: this.snapshotRef(session), reason: resolution.reason }
-      }
-      const nextState = applyCanonicalPatches(session.state, resolution.patches)
-      for (const invariant of this.options.domainPack.invariants ?? []) {
-        const verdict = invariant.check(nextState, operation)
-        if (verdict !== true) return this.persistRejection(session, fingerprint, this.rejected(operation.operationId, session.version, 'invariantViolation', `${invariant.id}: ${verdict}`))
-      }
+      const prepared = await this.pipeline.prepare({
+        operation,
+        state: session.state,
+        currentVersion: session.version,
+        committedOperations: session.recentOperations,
+        snapshotRef: this.snapshotRef(session),
+      })
+      if (prepared.kind === 'rejected') return this.persistRejection(session, fingerprint, prepared)
+      if (prepared.kind === 'resyncRequired') return prepared
       const outcome = await this.options.store.commit({
         ...session.room, ownerEpoch: session.owner.epoch, ownerInstanceId: session.owner.instanceId,
-        resolvedAtVersion: session.version, operation, patches: resolution.patches, fingerprint,
+        resolvedAtVersion: prepared.resolvedAtVersion, operation, patches: prepared.patches, fingerprint,
       })
       if (outcome.kind === 'committed') {
-        session.state = nextState
+        session.state = prepared.nextState
         session.version = outcome.result.canonicalVersion
-        session.recentOperations.push(operation)
+        session.recentOperations.push({ canonicalVersion: session.version, operation })
         if (session.recentOperations.length > 500) session.recentOperations.shift()
         if (session.version % (this.options.snapshotInterval ?? 100) === 0) {
           void this.options.store.saveSnapshot(session.room, session.version, session.schemaVersion, session.state).catch(() => undefined)
         }
+        try { await this.pipeline.afterCommit(prepared, session.state) } catch { /* commit is already durable */ }
         return outcome.result
       }
       if (outcome.kind === 'duplicate') return outcome.result
@@ -225,7 +207,7 @@ export class DistributedRoomWorker<TState extends JsonObject> {
     for (const entry of loaded.wal) state = applyCanonicalPatches(state, entry.patches)
     session.state = state
     session.version = loaded.version
-    session.recentOperations = loaded.wal.slice(-500).map((entry) => entry.operation)
+    session.recentOperations = loaded.wal.slice(-500).map((entry) => ({ canonicalVersion: entry.version, operation: entry.operation }))
   }
 
   private async persistRejection(session: WarmRoom<TState>, fingerprint: string, result: OperationResult): Promise<OperationResult> {

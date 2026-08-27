@@ -22,6 +22,7 @@
   "dependencies": {
     "@collabhub/domain-json": "workspace:*",
     "@collabhub/protocol": "workspace:*",
+    "@collabhub/server-core": "workspace:*",
     "@collabhub/strategy-sdk": "workspace:*",
     "express": "^5.2.1",
     "pg": "^8.16.3",

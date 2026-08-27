@@ -21,7 +21,7 @@
 ## v0.2 优先级
 
 1. 对象存储 snapshot、WAL compaction、备份恢复工具与 crash-injection 长稳测试。
-2. 持久化 client pending intents，加入显式 rebase policy 与过期离线窗口。
+2. 持久化 client pending intents，为业务 version policy 加入过期离线窗口与决策可观测性。
 3. AuthAdapter、capability negotiation、rate limit、payload schema validator 与 OpenTelemetry。
 4. tree/counter/tombstone restore 完整语义、rank rebalance 与 schema migration runner。
 5. 独立 DevTools timeline，记录 strategy decision、outbox age、fencing 与 broadcast latency。

@@ -10,6 +10,7 @@ export interface CollaborationOperation<TPayload = unknown> {
   actorId: string
   clientId: string
   operationId: string
+  /** Canonical version observed when this immutable operation was created. */
   baseVersion: number
   schemaVersion: string
   operationType: string

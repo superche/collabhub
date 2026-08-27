@@ -65,6 +65,12 @@ set /revision
 
 这些 patch 共用一个 `operationId` 和 canonical version，一起通过 invariant、WAL 与广播。并发勾选会在服务端最新状态上重新计算汇总；optimistic patches 只负责即时反馈，不能成为权威结果。
 
+## 业务解冲突
+
+`DraftDomainPack.operationVersionPolicy` 声明 property、entity、list 与 `draft.section-command` 可以基于当前权威状态重新解析，即使客户端提交时观察到的 `baseVersion` 已旧。`draft.submit-review` 不在可重算集合中，仍由严格 revision 规则拒绝或要求 resync。
+
+operation 的 `baseVersion` 不会在重连后改写。服务端用历史记录的提交 `canonicalVersion` 找出真正并发的 operation，再把当前状态与这段历史交给 policy/strategy。测试把 recovery window 设为 0，仍验证两个 baseVersion=0 的完成命令在 v1、v2 依次提交，并将进度收敛到 100%。
+
 ## 退出协同
 
 UI toggle 调用 composition root 的 `setCollaboration(false)`：关闭 socket、卸载 Collab transport、创建 RestDraftTransport 并让相同 DraftCommandBus 继续工作。全部协同连接离开后，REST writer gate 自动解除。

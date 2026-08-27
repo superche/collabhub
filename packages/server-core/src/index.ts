@@ -8,7 +8,12 @@ import {
   type OperationResult,
   type SnapshotMessage,
 } from '@collabhub/protocol'
-import { StrategyRegistry, type DomainPack, type ResolveResult } from '@collabhub/strategy-sdk'
+import {
+  StrategyRegistry,
+  type CommittedOperation,
+  type DomainPack,
+  type ResolveResult,
+} from '@collabhub/strategy-sdk'
 
 export interface StoredSnapshot<TState extends JsonObject = JsonObject> {
   tenantId: string
@@ -69,6 +74,136 @@ export interface OperationPipelineHook<TState extends JsonObject = JsonObject> {
   run(context: PipelineContext<TState>): void | Promise<void>
 }
 
+export interface PrepareOperationInput<TState extends JsonObject = JsonObject> {
+  operation: CollaborationOperation
+  state: TState
+  currentVersion: number
+  committedOperations: readonly CommittedOperation[]
+  snapshotRef: string
+}
+
+export interface PreparedOperation<TState extends JsonObject = JsonObject> {
+  kind: 'prepared'
+  operation: CollaborationOperation
+  resolvedAtVersion: number
+  patches: CanonicalPatch[]
+  nextState: TState
+  context: PipelineContext<TState>
+}
+
+export type PrepareOperationResult<TState extends JsonObject = JsonObject> =
+  | PreparedOperation<TState>
+  | Extract<OperationResult, { kind: 'rejected' | 'resyncRequired' }>
+
+export interface AuthoritativeOperationPipelineOptions<TState extends JsonObject = JsonObject> {
+  domainPack: DomainPack<TState>
+  maxRecoveryGap?: number
+  hooks?: readonly OperationPipelineHook<TState>[]
+}
+
+/** Shared operation semantics used by standalone sessions and distributed workers. */
+export class AuthoritativeOperationPipeline<TState extends JsonObject = JsonObject> {
+  private readonly registry: StrategyRegistry<TState>
+
+  constructor(private readonly options: AuthoritativeOperationPipelineOptions<TState>) {
+    this.registry = new StrategyRegistry(options.domainPack.strategies)
+  }
+
+  async prepare(input: PrepareOperationInput<TState>): Promise<PrepareOperationResult<TState>> {
+    const { operation, state, currentVersion, snapshotRef } = input
+    const context: PipelineContext<TState> = { operation, state, currentVersion }
+    try {
+      for (const stage of ['authenticate', 'authorize'] as const) await this.runHooks(stage, context)
+      if (operation.schemaVersion !== this.options.domainPack.schemaVersion) {
+        return this.resync(operation, currentVersion, snapshotRef, `schema ${operation.schemaVersion} is not supported`)
+      }
+      await this.runHooks('schemaValidate', context)
+      await this.runHooks('normalize', context)
+      if (operation.baseVersion > currentVersion) {
+        return this.resync(operation, currentVersion, snapshotRef, `submitted version ${operation.baseVersion} is ahead of canonical version ${currentVersion}`)
+      }
+
+      const committedOperations = [...input.committedOperations].sort((a, b) => a.canonicalVersion - b.canonicalVersion)
+      const earliestAvailableVersion = committedOperations[0]?.canonicalVersion ?? currentVersion + 1
+      const historyComplete = operation.baseVersion >= earliestAvailableVersion - 1
+      const concurrentOperations = committedOperations.filter((entry) => entry.canonicalVersion > operation.baseVersion)
+      const versionGap = currentVersion - operation.baseVersion
+      const recoveryWindowExceeded = versionGap > (this.options.maxRecoveryGap ?? 100)
+
+      if (versionGap > 0) {
+        const decision = this.options.domainPack.operationVersionPolicy?.decide({
+          currentVersion,
+          submittedVersion: operation.baseVersion,
+          versionGap,
+          recoveryWindowExceeded,
+          currentState: state,
+          operation,
+          concurrentOperations,
+          historyComplete,
+        }) ?? (recoveryWindowExceeded || !historyComplete
+          ? { kind: 'resync' as const, reason: 'client is outside the recoverable operation history' }
+          : { kind: 'resolve' as const })
+        if (decision.kind === 'reject') {
+          return {
+            kind: 'rejected', operationId: operation.operationId, canonicalVersion: currentVersion,
+            reason: decision.reason, correctivePatches: decision.correctivePatches,
+          }
+        }
+        if (decision.kind === 'resync') return this.resync(operation, currentVersion, snapshotRef, decision.reason)
+      }
+
+      await this.runHooks('beforeResolve', context)
+      const strategy = this.registry.resolve(operation)
+      if (!strategy) return this.rejected(operation, currentVersion, 'invalidOperation', `strategy ${operation.strategyId}@${operation.strategyVersion} does not support ${operation.operationType}`)
+      const resolution = strategy.resolve({ currentVersion, currentState: state, operation, concurrentOperations, historyComplete })
+      context.result = resolution
+      if (resolution.kind === 'reject') {
+        return {
+          kind: 'rejected', operationId: operation.operationId, canonicalVersion: currentVersion,
+          reason: resolution.reason, correctivePatches: resolution.correctivePatches,
+        }
+      }
+      if (resolution.kind === 'resync') return this.resync(operation, currentVersion, snapshotRef, resolution.reason)
+      await this.runHooks('invariantCheck', context)
+      const nextState = applyCanonicalPatches(state, resolution.patches)
+      for (const invariant of this.options.domainPack.invariants ?? []) {
+        const verdict = invariant.check(nextState, operation)
+        if (verdict !== true) return this.rejected(operation, currentVersion, 'invariantViolation', `${invariant.id}: ${verdict}`)
+      }
+      await this.runHooks('beforeCommit', { ...context, state: nextState })
+      return { kind: 'prepared', operation, resolvedAtVersion: currentVersion, patches: resolution.patches, nextState, context }
+    } catch (error) {
+      return this.rejected(operation, currentVersion, 'strategyFailure', error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  async afterCommit(prepared: PreparedOperation<TState>, committedState: TState): Promise<void> {
+    await this.runHooks('afterCommit', { ...prepared.context, state: committedState })
+  }
+
+  private rejected(
+    operation: CollaborationOperation,
+    canonicalVersion: number,
+    code: 'invalidOperation' | 'invariantViolation' | 'strategyFailure',
+    message: string,
+  ): Extract<OperationResult, { kind: 'rejected' }> {
+    return { kind: 'rejected', operationId: operation.operationId, canonicalVersion, reason: { code, message } }
+  }
+
+  private resync(
+    operation: CollaborationOperation,
+    canonicalVersion: number,
+    snapshotRef: string,
+    reason: string,
+  ): Extract<OperationResult, { kind: 'resyncRequired' }> {
+    return { kind: 'resyncRequired', operationId: operation.operationId, canonicalVersion, snapshotRef, reason }
+  }
+
+  private async runHooks(stage: PipelineStage, context: PipelineContext<TState>) {
+    for (const hook of this.options.hooks ?? []) if (hook.stage === stage) await hook.run(context)
+  }
+}
+
 export interface AuthoritativeSessionOptions<TState extends JsonObject> {
   tenantId: string
   documentId: string
@@ -84,15 +219,15 @@ type CanonicalListener = (event: CanonicalEvent) => void
 export class AuthoritativeDocumentSession<TState extends JsonObject = JsonObject> {
   private state!: TState
   private version = 0
-  private readonly registry: StrategyRegistry<TState>
+  private readonly pipeline: AuthoritativeOperationPipeline<TState>
   private readonly results = new Map<string, OperationResult>()
-  private readonly operations: CollaborationOperation[] = []
+  private readonly operations: CommittedOperation[] = []
   private readonly listeners = new Set<CanonicalListener>()
   private serial: Promise<unknown> = Promise.resolve()
   private initialized = false
 
   constructor(private readonly options: AuthoritativeSessionOptions<TState>) {
-    this.registry = new StrategyRegistry(options.domainPack.strategies)
+    this.pipeline = new AuthoritativeOperationPipeline(options)
   }
 
   async initialize(): Promise<void> {
@@ -106,7 +241,7 @@ export class AuthoritativeDocumentSession<TState extends JsonObject = JsonObject
         this.state = applyCanonicalPatches(this.state, record.patches)
         this.version = record.version
       }
-      this.operations.push(record.operation)
+      this.operations.push({ canonicalVersion: record.version, operation: record.operation })
       this.results.set(record.operation.operationId, {
         kind: 'accepted',
         operationId: record.operation.operationId,
@@ -155,49 +290,34 @@ export class AuthoritativeDocumentSession<TState extends JsonObject = JsonObject
     }
     const prior = this.results.get(operation.operationId)
     if (prior) return prior.kind === 'accepted' ? { ...prior, duplicate: true } : prior
-    if (operation.schemaVersion !== this.options.domainPack.schemaVersion) {
-      return this.resync(operation, `schema ${operation.schemaVersion} is not supported`)
+    const prepared = await this.pipeline.prepare({
+      operation,
+      state: this.state,
+      currentVersion: this.version,
+      committedOperations: this.operations,
+      snapshotRef: this.snapshotRef(),
+    })
+    if (prepared.kind !== 'prepared') {
+      if (prepared.kind === 'rejected') this.results.set(operation.operationId, prepared)
+      return prepared
     }
-    const maxRecoveryGap = this.options.maxRecoveryGap ?? 100
-    if (this.version - operation.baseVersion > maxRecoveryGap) return this.resync(operation, 'client is outside the recovery window')
-
-    const context: PipelineContext<TState> = { operation, state: this.state, currentVersion: this.version }
     try {
-      for (const stage of ['authenticate', 'authorize', 'schemaValidate', 'normalize', 'beforeResolve'] as const) await this.runHooks(stage, context)
-      const strategy = this.registry.resolve(operation)
-      if (!strategy) return this.rejected(operation.operationId, 'invalidOperation', `strategy ${operation.strategyId}@${operation.strategyVersion} does not support ${operation.operationType}`)
-      const concurrentOperations = this.operations.filter((candidate) => candidate.baseVersion >= operation.baseVersion)
-      const resolution = strategy.resolve({ currentVersion: this.version, currentState: this.state, operation, concurrentOperations })
-      context.result = resolution
-      if (resolution.kind === 'reject') {
-        const result: OperationResult = { kind: 'rejected', operationId: operation.operationId, canonicalVersion: this.version, reason: resolution.reason, correctivePatches: resolution.correctivePatches }
-        this.results.set(operation.operationId, result)
-        return result
-      }
-      if (resolution.kind === 'resync') return this.resync(operation, resolution.reason)
-      await this.runHooks('invariantCheck', context)
-      const nextState = applyCanonicalPatches(this.state, resolution.patches)
-      for (const invariant of this.options.domainPack.invariants ?? []) {
-        const verdict = invariant.check(nextState, operation)
-        if (verdict !== true) return this.rejected(operation.operationId, 'invariantViolation', `${invariant.id}: ${verdict}`)
-      }
-      await this.runHooks('beforeCommit', { ...context, state: nextState })
       const nextVersion = this.version + 1
       const record: WalRecord = {
         tenantId: this.options.tenantId,
         documentId: this.options.documentId,
         version: nextVersion,
         operation,
-        patches: resolution.patches,
+        patches: prepared.patches,
         committedAt: new Date().toISOString(),
       }
       await this.options.storage.appendWal(record)
-      this.state = nextState
+      this.state = prepared.nextState
       this.version = nextVersion
-      this.operations.push(operation)
-      const result: OperationResult = { kind: 'accepted', operationId: operation.operationId, canonicalVersion: nextVersion, patches: resolution.patches }
+      this.operations.push({ canonicalVersion: nextVersion, operation })
+      const result: OperationResult = { kind: 'accepted', operationId: operation.operationId, canonicalVersion: nextVersion, patches: prepared.patches }
       this.results.set(operation.operationId, result)
-      const event: CanonicalEvent = { kind: 'canonical', operationId: operation.operationId, actorId: operation.actorId, canonicalVersion: nextVersion, patches: resolution.patches }
+      const event: CanonicalEvent = { kind: 'canonical', operationId: operation.operationId, actorId: operation.actorId, canonicalVersion: nextVersion, patches: prepared.patches }
       // appendWal is the commit boundary. Post-commit failures cannot turn an
       // accepted operation into a rejection; durable recovery replays the WAL.
       try {
@@ -205,7 +325,7 @@ export class AuthoritativeDocumentSession<TState extends JsonObject = JsonObject
         for (const listener of this.listeners) {
           try { listener(event) } catch { /* observer failure is post-commit */ }
         }
-        await this.runHooks('afterCommit', { ...context, state: this.state })
+        await this.pipeline.afterCommit(prepared, this.state)
       } catch {
         // Distributed runtimes retry these effects through their outbox.
       }
@@ -229,12 +349,6 @@ export class AuthoritativeDocumentSession<TState extends JsonObject = JsonObject
   private snapshotRef() { return `snapshot://${encodeURIComponent(this.options.tenantId)}/${encodeURIComponent(this.options.documentId)}/${this.version}` }
   private rejected(operationId: string, code: 'invalidOperation' | 'invariantViolation' | 'strategyFailure', message: string): OperationResult {
     return { kind: 'rejected', operationId, canonicalVersion: this.version, reason: { code, message } }
-  }
-  private resync(operation: CollaborationOperation, reason: string): OperationResult {
-    return { kind: 'resyncRequired', operationId: operation.operationId, canonicalVersion: this.version, snapshotRef: this.snapshotRef(), reason }
-  }
-  private async runHooks(stage: PipelineStage, context: PipelineContext<TState>) {
-    for (const hook of this.options.hooks ?? []) if (hook.stage === stage) await hook.run(context)
   }
 }
 

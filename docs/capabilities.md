@@ -9,11 +9,12 @@ CollabHub `0.1.0` targets structured application state. “Supported” means th
 | List / section ordering | Supported | Fractional rank; concurrent move tests |
 | Atomic linked updates | Supported | One intent, multiple patches, one canonical version |
 | Strict stale rejection | Supported | `reject-if-stale` strategy |
+| Business-defined stale resolution | Supported | Domain Pack chooses resolve/reject/resync; operation identity stays immutable |
 | Duplicate delivery | Supported | Persistent operation receipt and collision rejection |
 | Reconnect / offline replay | Supported | In-memory pending queue and real browser recovery |
 | Snapshot + WAL recovery | Supported | Single-node and PostgreSQL runtime evidence |
 | Presence transport | Supported | Ephemeral channel; never persisted or versioned |
-| Horizontal scaling | Supported | Stateless Gateway, fenced single-writer Worker, PostgreSQL/Redis |
+| Horizontal scaling | Supported | Stateless Gateway, fenced single-writer Worker, PostgreSQL/Redis; shared operation pipeline |
 | Controlled graph editors | Supported | React Flow incremental node/edge operations |
 | Block editors | Limited | Block-level LWW; not character-level rich-text merge |
 | Collaborative cursors UI | Adapter required | Presence primitives exist; no packaged cursor UI |

@@ -10,6 +10,7 @@
   "references": [
     { "path": "../protocol" },
     { "path": "../domain-json" },
+    { "path": "../server-core" },
     { "path": "../strategy-sdk" }
   ]
 }

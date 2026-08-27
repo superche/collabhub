@@ -8,13 +8,13 @@
 `pnpm check`：通过。
 
 - TypeScript project references：通过。
-- Vite production build：41 modules；JS 213.79 KB / 66.38 KB gzip，CSS 4.54 KB / 1.64 KB gzip。
-- BlockNote Vite production build：914 modules；主 JS 1,131.76 KB / 343.38 KB gzip，CSS 243.00 KB / 38.62 KB gzip；大 chunk 警告记录为已知限制。
-- React Flow Vite production build：199 modules；JS 392.29 KB / 124.88 KB gzip，CSS 20.12 KB / 4.01 KB gzip。
-- Vitest：12 files / 35 tests passed。
-- 1,000-section patch benchmark：1,000 samples，p95 0.019 ms，gate 4 ms，通过。
+- Vite production build：41 modules；JS 215.76 KB / 66.83 KB gzip，CSS 4.54 KB / 1.64 KB gzip。
+- BlockNote Vite production build：914 modules；主 JS 1,132.54 KB / 343.56 KB gzip，CSS 243.00 KB / 38.62 KB gzip；大 chunk 警告记录为已知限制。
+- React Flow Vite production build：199 modules；JS 393.06 KB / 125.12 KB gzip，CSS 20.12 KB / 4.01 KB gzip。
+- Vitest：13 files / 41 tests passed。
+- 1,000-section patch benchmark：1,000 samples，p95 0.014 ms，gate 4 ms，通过。
 
-`pnpm test:e2e`：3 tests passed（8.0 s；TODO List 1.6 s，React Flow 1.9 s，BlockNote 2.5 s）。
+`pnpm test:e2e`：3 tests passed（19.2 s；TODO List 5.0 s，React Flow 6.6 s，BlockNote 6.3 s）。
 
 ## 发布与公开 Demo 门禁
 
@@ -30,17 +30,17 @@
 
 | 角色 | 最终验收 PID | 监听 |
 |---|---:|---|
-| TODO List API + CollabHub WebSocket | 95984 | `127.0.0.1:4100`, `/collab` |
-| React Alice Vite | 95964 | `127.0.0.1:5173` |
-| React Bob Vite | 95958 | `127.0.0.1:5174` |
+| TODO List API + CollabHub WebSocket | 93395 | `127.0.0.1:4100`, `/collab` |
+| React Alice Vite | 93325 | `127.0.0.1:5173` |
+| React Bob Vite | 93375 | `127.0.0.1:5174` |
 
 BlockNote 最终 Playwright 验收使用 `pnpm dev:blocknote`：
 
 | 角色 | PID | 监听 |
 |---|---:|---|
-| BlockNote CollabHub WebSocket | 96154 | `127.0.0.1:4200`, `/collab` |
-| BlockNote Alice Vite | 96108 | `127.0.0.1:5183` |
-| BlockNote Bob Vite | 96081 | `127.0.0.1:5184` |
+| BlockNote CollabHub WebSocket | 93626 | `127.0.0.1:4200`, `/collab` |
+| BlockNote Alice Vite | 93570 | `127.0.0.1:5183` |
+| BlockNote Bob Vite | 93595 | `127.0.0.1:5184` |
 
 Alice 与 Bob 使用两个独立 Chromium BrowserContext，而不是一个模拟 store。Server、两个 Vite client 和浏览器均由 Playwright 在验收结束后正常回收。
 
@@ -48,27 +48,27 @@ React Flow 手工 Playwright CLI 验收使用 `pnpm dev:react-flow`：
 
 | 角色 | PID | 监听 |
 |---|---:|---|
-| React Flow CollabHub WebSocket | 54147 | `127.0.0.1:4300`, `/collab` |
-| React Flow Alice Vite | 54131 | `127.0.0.1:5193` |
-| React Flow Bob Vite | 54130 | `127.0.0.1:5194` |
+| React Flow CollabHub WebSocket | 94170 | `127.0.0.1:4300`, `/collab` |
+| React Flow Alice Vite | 94151 | `127.0.0.1:5193` |
+| React Flow Bob Vite | 94124 | `127.0.0.1:5194` |
 
 ## 故障 trace
 
-最终 trace 文档：`e2e-1787822432763`。
+最终 trace 文档：`e2e-1787837769857`。
 
 ```json
 {"event":"client_connected","actorId":"alice","lastKnownVersion":0,"canonicalVersion":0,"snapshotRecovery":false}
 {"event":"client_connected","actorId":"bob","lastKnownVersion":0,"canonicalVersion":0,"snapshotRecovery":false}
-{"event":"operation_result","operationType":"property.set","baseVersion":0,"result":"accepted","canonicalVersion":1,"latencyMs":7.43}
-{"event":"operation_result","operationType":"section.setCompleted","baseVersion":1,"result":"accepted","canonicalVersion":2,"latencyMs":5}
-{"event":"operation_result","operationType":"property.set","baseVersion":2,"result":"accepted","canonicalVersion":3,"latencyMs":4.44}
+{"event":"operation_result","operationType":"property.set","baseVersion":0,"result":"accepted","canonicalVersion":1,"latencyMs":18.36}
+{"event":"operation_result","operationType":"section.setCompleted","baseVersion":1,"result":"accepted","canonicalVersion":2,"latencyMs":32.82}
+{"event":"operation_result","operationType":"property.set","baseVersion":2,"result":"accepted","canonicalVersion":3,"latencyMs":36.06}
 {"event":"client_connected","actorId":"alice","lastKnownVersion":2,"canonicalVersion":3,"snapshotRecovery":true}
-{"event":"operation_result","operationType":"property.set","baseVersion":3,"result":"accepted","canonicalVersion":4,"latencyMs":4.74}
+{"event":"operation_result","operationType":"property.set","baseVersion":2,"result":"accepted","canonicalVersion":4,"latencyMs":35.84}
 ```
 
 `section.setCompleted` 只提交一次业务 intent。E2E 解析 Bob 的 WebSocket canonical frame，断言同一个 v2 event 同时包含 task `entityUpsert`、`/completion/percent` 与 `/revision` patches；Alice、Bob 均显示 `1/2 completed`、`50%`。
 
-故障段中 Alice v2 断线；Bob 推进到 v3；Alice 以 `lastKnownVersion=2` 重连并收到 v3 snapshot；其 pending intent 改写 baseVersion 为 3 后重放，被接受为 v4。最终 canonical version 4、pending 0、reconnect 1、resync 0。
+故障段中 Alice v2 断线；Bob 推进到 v3；Alice 以 `lastKnownVersion=2` 重连并收到 v3 snapshot；其 pending intent 保持原 operationId 与 baseVersion=2，由 `DraftDomainPack.operationVersionPolicy` 基于最新权威状态解析并接受为 v4。最终 canonical version 4、pending 0、reconnect 1、resync 0。
 
 ## BlockNote 验收
 
@@ -131,6 +131,10 @@ Server trace 中 `node.add` 108 bytes、`node.rename` 64 bytes、`node.move` 66 
 | section 并发移动 | 同上，fractional positions 唯一且顺序确定 |
 | 重复投递 | 同上，duplicate=true 且版本不增加；重启恢复仍去重 |
 | reject-if-stale | 同上，strict transaction rejected / staleVersion |
+| 业务旧版本解冲突 | `server-core.test.ts` + `draft-domain-pack.test.ts`，maxRecoveryGap=0 时 policy 仍可基于权威状态解析 |
+| committed-version 并发判断 | `server-core.test.ts`，历史 op 的 baseVersion=0、提交版本=v2，v1 客户端仍能正确观察它 |
+| operation 身份不可变 | `client-core.test.ts` + 双浏览器 trace，重连前后 operationId/baseVersion 不改写 |
+| 单机/分布式语义一致 | `server-distributed/worker.test.ts`，两种 runtime 共用 AuthoritativeOperationPipeline 与 Domain Pack policy |
 | resyncRequired | 同上，超过 recovery window 返回 snapshotRef |
 | snapshot + WAL recovery | 同上，从 v2 snapshot 回放 v3 WAL |
 | 断线重连与 pending replay | `client-core.test.ts` + 双浏览器 e2e |
