@@ -54,6 +54,8 @@ pnpm dev
 
 https://github.com/user-attachments/assets/58963835-fffe-43ff-875b-617e635ec282
 
+*双客户端冒烟：任务编辑、断线恢复与排序。*
+
 ### 2. BlockNote
 
 BlockNote 通过适配器接入中心权威协同，不启用其内置 Yjs provider。
@@ -71,6 +73,8 @@ pnpm dev:blocknote
 验证通过：富文本更新、块增删、块排序、连续输入合并、断线重放与 snapshot recovery。详见 [BlockNote 接入说明](docs/integration/blocknote.md)。
 
 https://github.com/user-attachments/assets/6a90ca9d-ef9b-4d1b-a105-2e542c80b189
+
+*双客户端冒烟：富文本输入、断线恢复与块排序。*
 
 ## 接入案例
 
