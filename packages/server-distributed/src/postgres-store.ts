@@ -87,7 +87,18 @@ export class PostgresCommitStore<TState extends JsonObject = JsonObject> impleme
     this.pool.on('error', (error) => console.error(JSON.stringify({ level: 'error', message: 'idle PostgreSQL client failed', error: error.message })))
   }
 
-  async migrate(): Promise<void> { await this.pool.query(MIGRATION) }
+  async migrate(): Promise<void> {
+    const client = await this.pool.connect()
+    try {
+      await client.query('BEGIN')
+      await client.query(`SELECT pg_advisory_xact_lock(hashtext('collabhub_schema_migration'))`)
+      await client.query(MIGRATION)
+      await client.query('COMMIT')
+    } catch (error) {
+      await client.query('ROLLBACK')
+      throw error
+    } finally { client.release() }
+  }
 
   async ensureDocument(room: RoomIdentity, schemaVersion: string, initialState: TState): Promise<void> {
     const client = await this.pool.connect()

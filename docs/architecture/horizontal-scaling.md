@@ -46,6 +46,17 @@ docker compose -f deploy/docker-compose.yml down
 
 入口：负载均衡 `http/ws://127.0.0.1:7090`；直连 Gateway 为 `7001`、`7002`。冒烟脚本验证跨 Gateway 同步、重复投递、Presence 不落盘、writer 宕机迁移与 snapshot recovery，并在结束时恢复被停止的 Worker。
 
+## 本机独立进程
+
+只用 Docker 启动 PostgreSQL 与 Redis；Gateway、Worker 和 TODO List 前端均为可观察、可单独终止的本机 Node.js 进程：
+
+```bash
+pnpm dev:todo-cluster    # 持续运行，Ctrl-C 统一清理
+pnpm smoke:todo-cluster  # 自动验收并清理
+```
+
+Alice 经 Gateway 1，Bob 经 Gateway 2。冒烟会终止 PostgreSQL 当前记录的 writer PID，验证另一 Worker fencing 接管、业务联动、离线 pending replay 与新浏览器 snapshot recovery。端口、进程和验收 trace 见[本地多进程验收](../acceptance-local-process-cluster.md)。
+
 ## Kubernetes / 主流云
 
 镜像使用 OCI 标准、非 root 用户、只读 root filesystem，可用 `buildx` 发布 `linux/amd64` 与 `linux/arm64`：

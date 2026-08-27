@@ -208,7 +208,11 @@ pnpm record:react-flow # 另开终端录制 React Flow 冒烟视频
 pnpm check           # build + tests + benchmark
 pnpm test:e2e        # 双浏览器回归验收
 
-# 两个 Gateway + 两个 Worker + PostgreSQL + Redis
+# 本机独立进程：2 Gateway + 2 Worker + 2 TODO List 前端
+pnpm dev:todo-cluster
+pnpm smoke:todo-cluster # 双浏览器、worker 故障迁移、离线重放
+
+# 全容器分布式 runtime
 docker compose -f deploy/docker-compose.yml up --build -d
 pnpm smoke:distributed
 ```
@@ -218,6 +222,7 @@ pnpm smoke:distributed
 - [架构](docs/architecture/overview.md)
 - [协议与 Pipeline](docs/architecture/protocol.md)
 - [水平扩容与云部署](docs/architecture/horizontal-scaling.md)
+- [本地多进程 TODO List 冒烟](docs/acceptance-local-process-cluster.md)
 - [接入条件](docs/integration/readiness.md)
 - [TODO List 接入](docs/integration/todo-list-tutorial.md)
 - [BlockNote 接入](docs/integration/blocknote.md)

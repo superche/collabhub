@@ -9,6 +9,8 @@ export function createDraftApplication(): DraftApplicationRuntime {
   const query = new URLSearchParams(location.search)
   const actor = query.get('client') ?? crypto.randomUUID().slice(0, 8)
   const draftId = query.get('draft') ?? 'launch-plan'
+  const collabUrl = query.get('collabUrl') ?? import.meta.env.VITE_COLLABHUB_WS_URL ?? 'ws://127.0.0.1:4100/collab'
+  const restBase = import.meta.env.VITE_DRAFT_API_URL ?? 'http://127.0.0.1:4100'
   const store = new DraftStore(initialDraft(draftId))
   let transport: DraftCommandTransport
   let unsubscribe: () => void = () => undefined
@@ -23,8 +25,8 @@ export function createDraftApplication(): DraftApplicationRuntime {
     if (transport instanceof CollabHubDraftTransport) diagnosticsUnsubscribe = transport.subscribeDiagnostics(() => { for (const listener of diagnosticsListeners) listener() })
   }
   const make = (collab: boolean) => collab
-    ? new CollabHubDraftTransport('ws://127.0.0.1:4100/collab', actor, `${actor}-${crypto.randomUUID().slice(0, 6)}`, store)
-    : new RestDraftTransport('http://127.0.0.1:4100', draftId)
+    ? new CollabHubDraftTransport(collabUrl, actor, `${actor}-${crypto.randomUUID().slice(0, 6)}`, store)
+    : new RestDraftTransport(restBase, draftId)
   attach(make(query.get('collab') !== '0'))
   const commandBus = new DraftCommandBus(transport!)
 

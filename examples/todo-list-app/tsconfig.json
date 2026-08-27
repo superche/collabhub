@@ -7,7 +7,7 @@
   "include": ["src", "server", "tests", "vite.config.ts"],
   "references": [
     { "path": "../../packages/protocol" }, { "path": "../../packages/client-core" },
-    { "path": "../../packages/domain-json" }, { "path": "../../packages/server-core" },
+    { "path": "../../packages/domain-json" }, { "path": "../../packages/server-core" }, { "path": "../../packages/server-distributed" },
     { "path": "../../packages/strategy-sdk" }
   ]
 }

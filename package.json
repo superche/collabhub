@@ -22,7 +22,9 @@
     "dev:distributed": "pnpm --filter @collabhub/server-distributed dev",
     "test:distributed": "pnpm --filter @collabhub/server-distributed test",
     "smoke:distributed": "node scripts/distributed-smoke.mjs",
-    "benchmark:distributed": "node scripts/distributed-benchmark.mjs"
+    "benchmark:distributed": "node scripts/distributed-benchmark.mjs",
+    "dev:todo-cluster": "node scripts/start-local-todo-cluster.mjs",
+    "smoke:todo-cluster": "node scripts/smoke-local-todo-cluster.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",

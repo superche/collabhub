@@ -143,6 +143,8 @@ Server trace 中 `node.add` 108 bytes、`node.rename` 64 bytes、`node.move` 66 
 
 ## 分布式 runtime 验收
 
+本机独立进程模式的 TODO List 双浏览器、真实 worker 退出与恢复证据见[本地多进程验收](acceptance-local-process-cluster.md)。
+
 容器栈：Node.js 22、PostgreSQL 16、Redis 7.2、Nginx 1.27；两个 Gateway、两个 Room Worker。Gateway 直连端口 `7001/7002`，Nginx 负载均衡端口 `7090`。运行镜像使用 UID/GID `10001:10001`，本机 arm64 镜像约 80.4 MB。
 
 ```bash

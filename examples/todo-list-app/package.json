@@ -8,6 +8,7 @@
     "dev:web:a": "vite --host 127.0.0.1 --port 5173 --strictPort",
     "dev:web:b": "vite --host 127.0.0.1 --port 5174 --strictPort",
     "dev:server": "tsx server/index.ts",
+    "dev:distributed-node": "tsx server/distributed-node.ts",
     "start:server": "tsx server/index.ts",
     "build": "vite build"
   },
@@ -16,6 +17,7 @@
     "@collabhub/domain-json": "workspace:*",
     "@collabhub/protocol": "workspace:*",
     "@collabhub/server-core": "workspace:*",
+    "@collabhub/server-distributed": "workspace:*",
     "@collabhub/strategy-sdk": "workspace:*",
     "cors": "^2.8.5",
     "express": "^5.1.0",

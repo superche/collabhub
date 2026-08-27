@@ -154,6 +154,9 @@ importers:
       '@collabhub/server-core':
         specifier: workspace:*
         version: link:../../packages/server-core
+      '@collabhub/server-distributed':
+        specifier: workspace:*
+        version: link:../../packages/server-distributed
       '@collabhub/strategy-sdk':
         specifier: workspace:*
         version: link:../../packages/strategy-sdk
