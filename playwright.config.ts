@@ -6,12 +6,11 @@ export default defineConfig({
   fullyParallel: false,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: { headless: true, trace: 'retain-on-failure', screenshot: 'only-on-failure' },
-  webServer: {
-    command: 'pnpm dev',
-    url: 'http://127.0.0.1:5173',
-    timeout: 60_000,
-    reuseExistingServer: true,
-    stdout: 'pipe',
-    stderr: 'pipe',
-  },
+  webServer: [{
+    command: 'pnpm dev', url: 'http://127.0.0.1:5173', timeout: 60_000,
+    reuseExistingServer: true, stdout: 'pipe', stderr: 'pipe',
+  }, {
+    command: 'pnpm dev:blocknote', url: 'http://127.0.0.1:5183', timeout: 60_000,
+    reuseExistingServer: true, stdout: 'pipe', stderr: 'pipe',
+  }],
 })

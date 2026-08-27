@@ -11,6 +11,8 @@
 - fractional rank 没有后台 rebalance；极端反复插入同一间隙会降低数值间隔。
 - diagnostic panel 是应用内开发面，不是独立 control plane；没有服务端 p95/broadcast timeline 或 trace viewer。
 - v0.1 未承诺 100 connections / 20 ops/s / 10 MB snapshot 的生产 SLO。
+- BlockNote 示例以顶层块为冲突粒度；同块并发输入是 LWW，不等价于其原生 Yjs 字符级合并。
+- BlockNote 的协同光标、canonical undo/redo 与默认 UI 拆包尚未实现。
 
 ## v0.2 优先级
 

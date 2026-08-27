@@ -1,0 +1,28 @@
+:root { font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #17211c; background: #edf1ed; font-synthesis: none; }
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; min-height: 100vh; background: radial-gradient(circle at 12% 0%, #d5e9db 0, transparent 32%), #edf1ed; }
+button { font: inherit; }
+main { width: min(1240px, calc(100% - 40px)); margin: 0 auto; padding: 34px 0 60px; }
+header { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-bottom: 24px; }
+.eyebrow { color: #1e7d50; font: 600 11px ui-monospace, monospace; letter-spacing: .14em; }
+h1 { margin: 9px 0 8px; font-size: clamp(36px, 5vw, 58px); line-height: .95; letter-spacing: -.055em; }
+header p { color: #637067; margin: 0; max-width: 650px; font-size: 14px; }
+.actor { display: grid; gap: 3px; min-width: 130px; padding: 11px 15px; border: 1px solid #d2dbd3; border-radius: 12px; background: #fff; box-shadow: 0 10px 35px #324d3b12; }
+.actor span { color: #7b867e; font-size: 10px; text-transform: uppercase; letter-spacing: .1em; }.actor strong { font: 600 13px ui-monospace, monospace; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 18px; align-items: start; }
+.editor-card, .diagnostics { border-radius: 18px; box-shadow: 0 20px 60px #405a4812; }
+.editor-card { overflow: hidden; border: 1px solid #d5ddd6; background: #fff; min-height: 610px; }
+.editor-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 15px; padding: 13px 17px; border-bottom: 1px solid #e0e5e0; background: #f9faf8; color: #667168; font-size: 12px; }
+.editor-toolbar div { display: flex; gap: 7px; }
+.editor-toolbar button { border: 0; border-radius: 8px; padding: 8px 11px; background: #237a53; color: white; cursor: pointer; font-size: 12px; font-weight: 600; }
+.editor-toolbar button.secondary { background: #e7ede8; color: #365044; }
+[data-testid="blocknote-editor"] { padding: 28px 36px 60px; }
+.bn-container[data-color-scheme] { --bn-colors-editor-background: #fff; --bn-colors-editor-text: #17211c; }
+.bn-editor { padding-inline: 22px; min-height: 470px; }
+.diagnostics { position: sticky; top: 20px; padding: 21px; background: #17231c; color: #edf5ef; }
+.diagnostics-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; }.diagnostics h2 { margin: 0; font-size: 16px; }
+.status { color: #9dac9f; font: 600 10px ui-monospace, monospace; text-transform: uppercase; }.status.online { color: #70e3a9; }.status.online::before { content: '● '; }
+.metric { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid #2c3a31; font-size: 12px; }.metric span { color: #9dac9f; }.metric strong { text-align: right; font: 600 11px ui-monospace, monospace; }
+.trace { padding-top: 17px; }.trace span { display: block; color: #9dac9f; font-size: 11px; margin-bottom: 7px; }.trace code { color: #c9d6cc; font-size: 11px; white-space: normal; }
+.diagnostics p { margin: 20px 0 0; color: #839588; font-size: 11px; line-height: 1.55; }
+@media (max-width: 860px) { .layout { grid-template-columns: 1fr; }.diagnostics { position: static; } header { align-items: start; flex-direction: column; } [data-testid="blocknote-editor"] { padding-inline: 10px; } }

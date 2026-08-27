@@ -59,3 +59,5 @@ presence message 直接在同文档 socket 集合中广播。它不调用 sessio
 - `server/draft-storage-adapter.ts`
 
 因此删除 `src/collab`、把 composition root 固定为 `RestDraftTransport` 后，React 组件、DraftDocument、DraftStore、DraftCommandBus 与 REST 业务仍成立。
+
+BlockNote 示例遵循同一边界：组件只依赖 BlockNote 与应用 Runtime；`src/collab` 把块变化转换为版本化 operation；服务端 Domain Pack 只认识通用 Block JSON，不 import BlockNote。编辑器库因此不是 canonical schema 的所有者。

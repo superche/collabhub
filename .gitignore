@@ -5,6 +5,8 @@ dist-types/
 coverage/
 playwright-report/
 test-results/
+.playwright-cli/
+/output/
 examples/react-draft-app/.data/
 /outputs/
 artifacts/

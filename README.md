@@ -40,6 +40,22 @@
 
 最小协同示例，覆盖任务增删、状态修改、排序与在线成员。规划中。
 
+### 2. BlockNote
+
+BlockNote 通过适配器接入中心权威协同，不启用其内置 Yjs provider。
+
+```bash
+pnpm dev:blocknote
+```
+
+| 进程 | 地址 |
+|---|---|
+| Server / WebSocket | `http://127.0.0.1:4200` |
+| Alice | `http://127.0.0.1:5183/?client=alice` |
+| Bob | `http://127.0.0.1:5184/?client=bob` |
+
+验证通过：富文本更新、块增删、块排序、连续输入合并、断线重放与 snapshot recovery。详见 [BlockNote 接入说明](docs/integration/blocknote.md)。
+
 ## 接入案例
 
 React 组件不接触 WebSocket 或 operation。应用保留自己的 Store 和 Command，只在 composition root 选择 transport。
@@ -114,6 +130,7 @@ packages/
   testkit/         trace 与 conformance helpers
 examples/
   react-draft-app/ REST baseline 与协同接入样板
+  blocknote-app/   BlockNote 增量块协同适配
 docs/              架构、接入与验收文档
 ```
 
@@ -123,9 +140,10 @@ docs/              架构、接入与验收文档
 
 ```bash
 pnpm install
-pnpm dev       # server + Alice + Bob
-pnpm check     # build + tests + benchmark
-pnpm test:e2e  # 双浏览器验收
+pnpm dev             # Draft server + Alice + Bob
+pnpm dev:blocknote   # BlockNote server + Alice + Bob
+pnpm check           # build + tests + benchmark
+pnpm test:e2e        # 两套双浏览器验收
 ```
 
 | 服务 | 地址 |
@@ -140,9 +158,10 @@ pnpm test:e2e  # 双浏览器验收
 - [协议与 Pipeline](docs/architecture/protocol.md)
 - [接入条件](docs/integration/readiness.md)
 - [React Draft 接入](docs/integration/react-draft-tutorial.md)
+- [BlockNote 接入](docs/integration/blocknote.md)
 - [验收记录](docs/acceptance.md)
 - [已知限制](docs/known-limitations.md)
 
 ## License
 
-[Apache-2.0](LICENSE)
+[Apache-2.0](LICENSE)。BlockNote example 的 `@blocknote/*` 依赖使用 MPL-2.0。

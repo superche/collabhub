@@ -9,10 +9,11 @@
 
 - TypeScript project references：通过。
 - Vite production build：40 modules；JS 211.14 KB / 65.78 KB gzip，CSS 3.65 KB / 1.41 KB gzip。
-- Vitest：4 files / 10 tests passed。
-- 1,000-section patch benchmark：1,000 samples，p95 0.011 ms，gate 4 ms，通过。
+- BlockNote Vite production build：914 modules；主 JS 1,131.76 KB / 343.38 KB gzip，CSS 243.00 KB / 38.62 KB gzip；大 chunk 警告记录为已知限制。
+- Vitest：7 files / 17 tests passed。
+- 1,000-section patch benchmark：1,000 samples，p95 0.014 ms，gate 4 ms，通过。
 
-`pnpm test:e2e`：1 test passed（3.1 s；case 1.5 s）。
+`pnpm test:e2e`：2 tests passed（9.0 s；Draft 2.8 s，BlockNote 3.9 s）。
 
 ## 真实进程与网络
 
@@ -23,6 +24,14 @@
 | Draft API + CollabHub WebSocket | 24743 | `127.0.0.1:4100`, `/collab` |
 | React Alice Vite | 24721 | `127.0.0.1:5173` |
 | React Bob Vite | 24727 | `127.0.0.1:5174` |
+
+BlockNote 最终 Playwright 验收使用 `pnpm dev:blocknote`：
+
+| 角色 | PID | 监听 |
+|---|---:|---|
+| BlockNote CollabHub WebSocket | 73788 | `127.0.0.1:4200`, `/collab` |
+| BlockNote Alice Vite | 73748 | `127.0.0.1:5183` |
+| BlockNote Bob Vite | 73772 | `127.0.0.1:5184` |
 
 Alice 与 Bob 使用两个独立 Chromium BrowserContext，而不是一个模拟 store。Server、两个 Vite client 和浏览器均由 Playwright 在验收结束后正常回收。
 
@@ -41,6 +50,26 @@ Alice 与 Bob 使用两个独立 Chromium BrowserContext，而不是一个模拟
 
 这条 trace 证明：Alice v1 断线；Bob 推进到 v2；Alice 以 `lastKnownVersion=1` 重连并收到 v2 snapshot；其 pending intent 改写 baseVersion 为 2 后重放，被接受为 v3。截图中的诊断面显示 canonical version 3、pending 0、reconnect 1、resync 0。
 
+## BlockNote 验收
+
+最终 trace 文档：`blocknote-e2e-1787818499184`。
+
+```json
+{"event":"client_connected","actorId":"alice","lastKnownVersion":0,"canonicalVersion":0}
+{"event":"operation_result","operationType":"block.update","result":"accepted","canonicalVersion":1,"payloadBytes":265}
+{"event":"operation_result","operationType":"block.insert","result":"accepted","canonicalVersion":3,"payloadBytes":310}
+{"event":"client_connected","actorId":"alice","lastKnownVersion":2,"canonicalVersion":3}
+{"event":"operation_result","operationType":"block.insert","result":"accepted","canonicalVersion":4,"payloadBytes":312}
+{"event":"operation_result","operationType":"block.move","result":"accepted","canonicalVersion":9,"payloadBytes":70}
+```
+
+Alice 在 v2 断线；Bob 插入块推进到 v3；Alice 以 v2 重连取得 snapshot，并把离线 insert 重放为 v4。随后 5 个真实 BlockNote move transaction 推进到 v9，两端顺序一致。E2E 同时解析双方 WebSocket frame，断言 submit payload 只有单块 `block`，不存在 `document` 或 `blocks`，且远端 projection 不产生回声 update。
+
+<p>
+  <img src="assets/blocknote-alice.png" alt="BlockNote Alice acceptance" width="49%">
+  <img src="assets/blocknote-bob.png" alt="BlockNote Bob acceptance" width="49%">
+</p>
+
 ## 验收矩阵
 
 | 场景 | 自动化证据 |
@@ -56,6 +85,10 @@ Alice 与 Bob 使用两个独立 Chromium BrowserContext，而不是一个模拟
 | REST/Collab transport 切换 | 双浏览器 e2e；两端退出后 REST 命令成功 |
 | 防双写 | 活跃协同时 e2e 的 REST PUT 返回 409 collaborativeSessionActive |
 | host import boundary | components/domain 扫描测试禁止 `@collabhub/*` |
+| BlockNote 富文本增量更新 | `blocknote.spec.ts` 检查真实输入同步及 WebSocket 单块 payload |
+| BlockNote 插入与排序 | 双浏览器 e2e 检查 `block.insert`、`block.move` 与最终顺序 |
+| BlockNote 断线恢复 | Alice 离线 pending，Bob 推进版本，Alice snapshot recovery 后重放 |
+| BlockNote 依赖边界 | components/application/domain 禁止 `@collabhub/*`；canonical domain/server pack 禁止 `@blocknote/*` |
 
 ## 可复现命令
 
@@ -64,4 +97,5 @@ pnpm install
 pnpm check
 pnpm test:e2e
 pnpm dev
+pnpm dev:blocknote
 ```

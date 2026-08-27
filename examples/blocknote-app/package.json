@@ -1,0 +1,36 @@
+{
+  "name": "@collabhub/blocknote-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev:web": "vite --host 127.0.0.1 --port 5183",
+    "dev:web:a": "vite --host 127.0.0.1 --port 5183 --strictPort",
+    "dev:web:b": "vite --host 127.0.0.1 --port 5184 --strictPort",
+    "dev:server": "tsx server/index.ts",
+    "start:server": "tsx server/index.ts",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@blocknote/core": "^0.54.0",
+    "@blocknote/mantine": "^0.54.0",
+    "@blocknote/react": "^0.54.0",
+    "@collabhub/client-core": "workspace:*",
+    "@collabhub/domain-json": "workspace:*",
+    "@collabhub/protocol": "workspace:*",
+    "@collabhub/server-core": "workspace:*",
+    "@collabhub/strategy-sdk": "workspace:*",
+    "express": "^5.1.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/react": "^19.1.12",
+    "@types/react-dom": "^19.1.9",
+    "@types/ws": "^8.18.1",
+    "@vitejs/plugin-react": "^5.0.2",
+    "vite": "^7.1.3"
+  }
+}

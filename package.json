@@ -8,10 +8,11 @@
   "scripts": {
     "build": "tsc -b",
     "dev": "concurrently -k -n server,alice,bob -c blue,green,magenta \"pnpm --filter @collabhub/react-draft-app dev:server\" \"pnpm --filter @collabhub/react-draft-app dev:web:a\" \"pnpm --filter @collabhub/react-draft-app dev:web:b\"",
+    "dev:blocknote": "concurrently -k -n server,alice,bob -c blue,green,magenta \"pnpm --filter @collabhub/blocknote-app dev:server\" \"pnpm --filter @collabhub/blocknote-app dev:web:a\" \"pnpm --filter @collabhub/blocknote-app dev:web:b\"",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "check": "pnpm build && pnpm --filter @collabhub/react-draft-app build && pnpm test && pnpm benchmark",
+    "check": "pnpm build && pnpm --filter @collabhub/react-draft-app build && pnpm --filter @collabhub/blocknote-app build && pnpm test && pnpm benchmark",
     "benchmark": "tsc -b packages/domain-json && node scripts/benchmark.mjs"
   },
   "devDependencies": {
