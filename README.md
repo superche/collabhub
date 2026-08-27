@@ -57,6 +57,8 @@ pnpm dev
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/superche/collabhub)
 
+[Open the live Alice/Bob demo](https://collabhub-demo.onrender.com/demo.html)
+
 The free deployment opens Alice and Bob side by side at `/demo.html`. It can sleep when idle and stores only ephemeral demo data. See [demo deployment](docs/demo.md).
 
 | Process | Address |

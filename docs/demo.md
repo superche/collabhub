@@ -8,11 +8,13 @@ The public TODO demo runs two React clients side by side against one server-auth
 
 The root `render.yaml` builds `deploy/demo.Dockerfile`. One container serves the static React build, REST API, and WebSocket endpoint.
 
-After deployment, open:
+Public deployment:
 
 ```text
-https://<your-service>.onrender.com/demo.html
+https://collabhub-demo.onrender.com/demo.html
 ```
+
+Blueprint dashboard: `exs-da83itn10e5c73eaagp0`; Web Service: `srv-da83vqs9v7es739jcn50`. The service tracks `main` and deployed commit `85a7f8d` during the initial acceptance.
 
 Render Free currently provides 750 instance hours per workspace each month. A service sleeps after 15 minutes without inbound HTTP or WebSocket traffic; the next connection can take about one minute to wake it. The filesystem is ephemeral, so demo documents can reset after restart or deploy. See [Render's official free-service limits](https://render.com/docs/free).
 

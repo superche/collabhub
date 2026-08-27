@@ -36,6 +36,11 @@ if (staticDirectory) {
   })
 }
 const server = createServer(app)
+// Render and other cloud reverse proxies reuse upstream HTTP connections for
+// longer than Node's short default keep-alive window. Keep the origin socket
+// alive to avoid intermittent proxy routing failures during bursty page loads.
+server.keepAliveTimeout = 120_000
+server.headersTimeout = 121_000
 const webSockets = new WebSocketServer({ server, path: '/collab', maxPayload: 64 * 1024 })
 
 webSockets.on('connection', (socket) => {

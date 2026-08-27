@@ -57,6 +57,8 @@ pnpm dev
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/superche/collabhub)
 
+[打开在线 Alice/Bob Demo](https://collabhub-demo.onrender.com/demo.html)
+
 免费部署在 `/demo.html` 左右展示 Alice 与 Bob；服务闲置后可能休眠，Demo 数据为临时数据。详见 [Demo 部署](docs/demo.md)。
 
 | 进程 | 地址 |
