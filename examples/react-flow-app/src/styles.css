@@ -25,9 +25,6 @@ header p { color: #637067; margin: 0; max-width: 680px; font-size: 14px; }
 .toolbar-actions { display: flex; flex-wrap: wrap; gap: 7px; justify-content: end; }
 .toolbar button, .network-toggle { border: 0; border-radius: 8px; padding: 8px 11px; background: #237a53; color: white; cursor: pointer; font-size: 11px; font-weight: 650; }
 .toolbar button.secondary { background: #e7ede8; color: #365044; }.toolbar button.danger { background: #f1e5e2; color: #8b443a; }.toolbar button:disabled { opacity: .45; cursor: default; }
-.inspector { display: flex; justify-content: space-between; align-items: end; gap: 14px; padding: 10px 16px; border-bottom: 1px solid #e1e7e2; background: #f4f8f4; }
-.inspector label { display: grid; gap: 4px; color: #66756b; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }.inspector input { width: 240px; border: 1px solid #cfdad1; border-radius: 7px; padding: 7px 9px; background: #fff; color: #1d2b22; text-transform: none; letter-spacing: 0; }
-.inspector code { color: #839188; font-size: 11px; }
 .graph-canvas { height: 650px; background: #f7faf7; }
 .react-flow__node.graph-node { min-width: 132px; padding: 13px 16px; border: 1px solid #b9c9be; border-radius: 11px; background: #fff; box-shadow: 0 10px 24px #31533e18; color: #213329; font-weight: 650; }
 .react-flow__node.graph-node.selected { box-shadow: 0 0 0 3px #2b8a5f33, 0 12px 26px #31533e22; }

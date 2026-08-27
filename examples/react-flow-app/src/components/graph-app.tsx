@@ -11,7 +11,7 @@ import {
   type Node,
   type NodeChange,
 } from '@xyflow/react'
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import type { GraphApplicationRuntime } from '../application/runtime.js'
 import type { GraphCommand, GraphDocument, GraphNodeRecord } from '../domain/graph-document.js'
 
@@ -41,7 +41,6 @@ export function GraphApp({ runtime }: { runtime: GraphApplicationRuntime }) {
   const [edges, setEdges] = useState<Edge[]>(() => projectEdges(document))
   const [selectedNodeId, setSelectedNodeId] = useState<string>()
   const [selectedEdgeId, setSelectedEdgeId] = useState<string>()
-  const [labelDraft, setLabelDraft] = useState('')
   const [networkAvailable, setNetworkAvailable] = useState(true)
 
   useEffect(() => runtime.subscribeDiagnostics(() => refreshDiagnostics((value) => value + 1)), [runtime])
@@ -65,12 +64,6 @@ export function GraphApp({ runtime }: { runtime: GraphApplicationRuntime }) {
     })
   }, [execute])
 
-  const selectedNode = useMemo(() => document.nodes.find((node) => node.id === selectedNodeId), [document.nodes, selectedNodeId])
-  useEffect(() => { if (selectedNode) setLabelDraft(selectedNode.label) }, [selectedNode?.id, selectedNode?.label])
-  const commitLabel = () => {
-    const label = labelDraft.trim()
-    if (selectedNode && label && label !== selectedNode.label) execute({ type: 'node.rename', nodeId: selectedNode.id, label })
-  }
   const addNode = () => {
     const sequence = document.nodes.length + 1
     execute({
@@ -117,10 +110,6 @@ export function GraphApp({ runtime }: { runtime: GraphApplicationRuntime }) {
             <button data-testid="delete-selection" className="danger" disabled={!selectedNodeId && !selectedEdgeId} onClick={deleteSelection}>Delete</button>
           </div>
         </div>
-        {selectedNode && <div className="inspector">
-          <label>Selected node<input data-testid="node-label" value={labelDraft} onChange={(event) => setLabelDraft(event.target.value)} onBlur={commitLabel} onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur() }} /></label>
-          <code>{selectedNode.id}</code>
-        </div>}
         <div className="graph-canvas" data-testid="graph-canvas">
           <ReactFlow<CanvasNode, Edge>
             nodes={nodes}
