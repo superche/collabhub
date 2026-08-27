@@ -1,0 +1,11 @@
+{
+  "name": "@collabhub/testkit",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@collabhub/protocol": "workspace:*",
+    "@collabhub/server-core": "workspace:*",
+    "@collabhub/strategy-sdk": "workspace:*"
+  }
+}

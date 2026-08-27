@@ -6,4 +6,5 @@ playwright-report/
 test-results/
 examples/react-draft-app/.data/
 *.log
+*.tsbuildinfo
 .DS_Store
