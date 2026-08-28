@@ -2,6 +2,8 @@
 
 CollabHub is promoted as a `0.1.3` technical preview, not a production SLO. The release gate validates the following on Node.js 22/24 and Playwright Chromium.
 
+All nine `@collabhub/*@0.1.3` packages are published through npm Trusted Publishing with provenance. The distributed and standalone GHCR images provide `linux/amd64` and `linux/arm64` manifests with attestations. Tag `v0.1.3` resolves to commit `b9093372faa14456148a1f104871486186336fd9`; the public Render demo reports `0.1.3` and passes the live Origin/WebSocket smoke.
+
 ## Existing React adoption
 
 `pnpm smoke:fresh-react` runs the consumer path in a fresh temporary directory:
@@ -42,5 +44,7 @@ The scheduled live smoke checks the deployed `/healthz`, requires the Origin all
 ## Scale and containers
 
 CI builds the demo, standalone, and PostgreSQL/Redis distributed images. The local cluster acceptance starts two Gateways and two Room Workers as independent processes, kills the current writer, and verifies fenced takeover, linked updates, pending replay, and snapshot recovery.
+
+The deploy-configuration gate renders Docker Compose and the 11-resource Kustomize base, then initializes and validates the AWS and Alibaba Cloud Terraform stacks against their real provider schemas. Both cloud-init templates were also rendered locally with complete inputs. No managed-cloud resources were created and no cloud soak result is claimed.
 
 Detailed traces, payload sizes, process IDs, performance samples, and historical recordings remain in the [full Chinese acceptance log](acceptance.md). Read [known limitations](known-limitations.en.md) before adoption.

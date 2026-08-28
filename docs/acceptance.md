@@ -8,25 +8,29 @@
 `pnpm check`：通过。
 
 - TypeScript project references：通过。
-- Vite production build：41 modules；JS 216.54 KB / 67.08 KB gzip，CSS 4.54 KB / 1.64 KB gzip。
+- Vite production build：41 modules；JS 217.13 KB / 67.27 KB gzip，CSS 4.54 KB / 1.64 KB gzip。
 - BlockNote Vite production build：914 modules；主 JS 1,133.33 KB / 343.82 KB gzip，CSS 243.00 KB / 38.62 KB gzip；大 chunk 警告记录为已知限制。
-- React Flow Vite production build：199 modules；JS 393.94 KB / 125.42 KB gzip，CSS 20.59 KB / 4.15 KB gzip。
-- Vitest：16 files / 59 tests passed。
-- 1,000-section patch benchmark：1,000 samples，p95 0.008 ms，gate 4 ms，通过。
+- React Flow Vite production build：199 modules；JS 393.93 KB / 125.43 KB gzip，CSS 20.59 KB / 4.15 KB gzip。
+- Vitest：17 files / 65 tests passed。
+- 1,000-section patch benchmark：1,000 samples，p95 0.006 ms，gate 4 ms，通过。
 
-`pnpm test:e2e`：4 tests passed（7.6 s）；覆盖 TODO List、BlockNote、React Flow 分享 URL 与 React Flow 断线/联动。
+`pnpm test:e2e`：4 tests passed（5.2 s）；覆盖 TODO List、BlockNote、React Flow 分享 URL 与 React Flow 断线/联动。
 
 ## 发布与公开 Demo 门禁
 
 `pnpm release:check` 通过。9 个 `0.1.3` package 均生成编译 ESM、declaration 与精简 manifest；审计确认没有 package `src`、test 或 `workspace:` 依赖泄漏，create-react 仅额外包含生成模板。
 
-9 个 `@collabhub/*@0.1.2` 包已在 npm 官方 registry 公开；`0.1.3` 候选产物由同一门禁重新构建并审计。全部包已配置 GitHub OIDC Trusted Publisher（`superche/collabhub`、`publish-release.yml`、`release-approval`、仅 `npm publish`）及严格 2FA 发布策略；发布 workflow 不使用长期 `NPM_TOKEN`，由 npm 自动生成 provenance。`v1.0.0` 仍需另行批准。
+9 个 `@collabhub/*@0.1.3` 包已通过 GitHub OIDC Trusted Publisher 发布到 npm 官方 registry，并带 provenance；发布 workflow 不使用长期 `NPM_TOKEN`。`v0.1.3` prerelease 与 tag 指向 `b9093372faa14456148a1f104871486186336fd9`。分布式与 standalone GHCR 镜像均包含 `linux/amd64`、`linux/arm64` 和 attestation manifest。`v1.0.0` 仍需另行批准。
 
 `pnpm smoke:fresh-react` 通过：在系统临时目录生成全新项目，断言 manifest 只暴露 `client-core` 与 `server-ws` 两个 CollabHub 依赖并包含独立服务 Dockerfile；以本地候选 tarball 集完成依赖解析、TypeScript/Vite 构建，启动 server/Alice/Bob 三个独立进程，并由两个 Chromium 客户端收敛到 title `Fresh install works`、canonical v1 / pending 0。`App.tsx`/application 为 0 个 CollabHub import。
 
 `pnpm smoke:demo` 通过：生产 React Flow 资源与 bundled Node server 在 `127.0.0.1:4400` 启动；先验证非法 Origin 在 WebSocket 升级前返回 HTTP 403、同 IP 第三个连接以 1013 拒绝，再由 Alice/Bob 经真实 WebSocket 完成 node.add v1 与 node.move v2。活跃 room 不回收；连接关闭后 TTL 删除 room，旧 URL 重新打开恢复为初始 v0。
 
-分布式 runtime、Demo 与 `deploy/docker/standalone.Dockerfile` 均纳入 CI 构建。Standalone 镜像完成本机 Docker 构建，以 UID/GID `10001:10001` 运行，容器 `/healthz` 返回 `{"status":"ok","warmRooms":0}` 且 health 状态为 healthy。
+分布式 runtime、Demo 与 `deploy/docker/standalone.Dockerfile` 均纳入 CI 构建。JSON 与 ESM 外挂分别真实启动 standalone，日志确认加载 `app.json` 与 `app.linked-fields`，`/healthz` 均返回成功。三张重构后镜像已在本机真实构建。
+
+部署配置门禁完成 Docker Compose 解析、Kustomize 11 个资源渲染，以及 AWS provider `6.62.0`、阿里云 provider `1.290.0` 的 `init + validate`。两份 cloud-init 也使用完整占位输入实际渲染。这里证明的是配置与 provider schema 有效；未创建付费云资源，也不宣称完成云上长稳压测。
+
+Render 服务已把 Dockerfile Path 更新为 `./deploy/docker/demo.Dockerfile`，Source `b909337` 部署成功。线上 `/healthz` 返回 `0.1.3`；`pnpm smoke:live-demo` 验证可信 WebSocket 握手成功、非法 Origin 返回 HTTP 403。
 
 ## 真实进程与网络
 
