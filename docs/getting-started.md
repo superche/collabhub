@@ -1,103 +1,105 @@
-# React quick start
+# Add collaboration to an existing React app
 
-CollabHub keeps your React components and domain model. Put collaboration in one adapter and the composition root.
+The default path has two concepts:
 
-## Fastest path: create a working app
+1. **Authoritative service** — owns room order, WAL, snapshots, and recovery.
+2. **React collaboration store** — maps your commands to incremental JSON intents.
+
+Your domain types, components, and REST fallback remain application-owned.
+
+## 1. Deploy the service
+
+For evaluation, run the standalone image with a persistent volume:
 
 ```bash
-npm create @collabhub/react@0.1.0 my-collab-app
+docker run --name collabhub -p 4100:4100 -v collabhub-data:/data \
+  -e COLLABHUB_ALLOWED_ORIGINS=http://localhost:5173 \
+  -e COLLABHUB_ALLOW_INSECURE_DEVELOPMENT_IDENTITY=true \
+  -e COLLABHUB_INITIAL_STATE_JSON='{"title":"Untitled"}' \
+  ghcr.io/superche/collabhub-standalone:0.1.1
+```
+
+The container exposes `/collab` and `/healthz`. `/data` stores snapshots and WAL. Copy [the Dockerfile](../deploy/standalone.Dockerfile) when the host needs a custom Domain Pack.
+
+Development identity is deliberately explicit. A real deployment supplies `authenticate`, tenant/document authorization, TLS, backups, and a retention policy.
+
+## 2. Add one SDK package
+
+```bash
+npm add @collabhub/client-core@0.1.1
+```
+
+If the app defaults to a private registry, add `@collabhub:registry=https://registry.npmjs.org` to its `.npmrc`.
+
+Create `src/collab/document-collaboration.ts`:
+
+```ts
+import { createCollaboration, json } from '@collabhub/client-core'
+import type { AppCommand, AppDocument } from '../domain'
+
+export function createDocumentCollaboration(options: {
+  url: string
+  documentId: string
+  actorId: string
+  initialState: AppDocument
+}) {
+  return createCollaboration<AppDocument, AppCommand>({
+    ...options,
+    command(command) {
+      switch (command.type) {
+        case 'document.rename': return json.set('/title', command.title)
+        case 'item.add': return json.create('items', command.item.id, command.item)
+        case 'item.delete': return json.delete('items', command.itemId)
+        case 'item.move': return json.move('items', command.itemId, command.afterId)
+      }
+    },
+  })
+}
+```
+
+`json.*` hides operation envelopes, strategy ids, base versions, optimistic patches, and canonical patch application. The returned object implements the `subscribe/getSnapshot` shape used by `useSyncExternalStore`.
+
+## 3. Switch only in the composition root
+
+```ts
+export function createAppRuntime(options: RuntimeOptions): AppRuntime {
+  if (!options.collaborationEnabled) return createRestRuntime(options)
+
+  const collaboration = createDocumentCollaboration(options)
+  return {
+    subscribe: collaboration.subscribe,
+    getSnapshot: collaboration.getSnapshot,
+    execute: (command) => collaboration.execute(command),
+    diagnostics: () => collaboration.diagnostics,
+    close: () => collaboration.close(),
+  }
+}
+```
+
+React components continue to depend on `AppRuntime`, not CollabHub:
+
+```tsx
+function Title({ runtime }: { runtime: AppRuntime }) {
+  const document = useSyncExternalStore(runtime.subscribe, runtime.getSnapshot)
+  return <input defaultValue={document.title} onBlur={(event) => runtime.execute({ type: 'document.rename', title: event.currentTarget.value })} />
+}
+```
+
+## When business rules link fields
+
+Built-in `json.*` operations cover LWW properties, entity lifecycle, list ordering, and strict transactions. When one command must update several derived fields, send one custom intent and resolve it in a Domain Pack. Every returned patch commits and broadcasts under one canonical version.
+
+The [TODO List migration](integration/todo-list-tutorial.en.md) demonstrates REST fallback, command/projection adapters, linked updates, stale-intent policy, and prevention of REST/Collab double writes.
+
+## Inspect a complete project
+
+```bash
+npm create @collabhub/react@0.1.1 my-collab-app
 cd my-collab-app
 npm install
 npm run dev
 ```
 
-This starts one standalone authoritative server plus Alice and Bob clients. Open `http://127.0.0.1:5173/?client=alice` and `http://127.0.0.1:5174/?client=bob`, then edit the title in either window.
+This is a learning fixture, not the primary product assumption. The release gate installs its two CollabHub dependencies in a clean directory and proves Alice/Bob synchronization in Chromium.
 
-The generated project demonstrates:
-
-- a business-facing React store based on `useSyncExternalStore`;
-- incremental `property.set` operations instead of whole-document writes;
-- pending operations, reconnect, canonical version, and diagnostics;
-- a secure-by-default server adapter, with insecure identity enabled explicitly for local development.
-
-The release gate runs the same generator in a temporary directory, installs only packed public packages, builds it, and verifies Alice/Bob synchronization in Chromium:
-
-```bash
-pnpm smoke:fresh-react
-```
-
-## Add CollabHub to an existing React app
-
-Install the client packages:
-
-```bash
-npm add @collabhub/client-core @collabhub/domain-json @collabhub/protocol
-```
-
-Create one collaboration adapter outside your components:
-
-```ts
-// src/collab/document-collaboration.ts
-import { CollaborationStore } from '@collabhub/client-core'
-import { applyCanonicalPatches } from '@collabhub/domain-json'
-
-export const documentStore = new CollaborationStore({
-  url: 'ws://localhost:4100/collab',
-  tenantId: 'example',
-  documentId: new URLSearchParams(location.search).get('document') ?? 'welcome',
-  actorId: crypto.randomUUID(),
-  clientId: crypto.randomUUID(),
-  schemaVersion: '1.0',
-  initialState: { title: 'Untitled' },
-  applyPatches: applyCanonicalPatches,
-  adaptCommand: (command: { type: 'rename'; title: string }) => ({
-    operation: {
-      operationType: 'property.set',
-      strategyId: 'json.property-lww',
-      strategyVersion: '1.0',
-      payload: { path: '/title', value: command.title },
-    },
-    optimisticPatches: [{ op: 'set', path: '/title', value: command.title }],
-  }),
-})
-```
-
-Expose only your application runtime to React:
-
-```tsx
-function Title({ runtime }: { runtime: AppRuntime }) {
-  const document = useSyncExternalStore(runtime.subscribe, runtime.getSnapshot)
-
-  return (
-    <input
-      defaultValue={document.title}
-      onBlur={(event) => runtime.execute({ type: 'rename', title: event.currentTarget.value })}
-    />
-  )
-}
-```
-
-Existing REST applications can keep their `CommandTransport` interface. Select the REST or CollabHub transport only in the composition root; the [TODO List tutorial](integration/todo-list-tutorial.md) shows this production-shaped migration.
-
-## Start a standalone server
-
-```bash
-npm add @collabhub/server-ws @collabhub/domain-json
-```
-
-```ts
-import { createJsonDomainPack } from '@collabhub/domain-json'
-import { startStandaloneWebSocketServer } from '@collabhub/server-ws'
-
-const server = await startStandaloneWebSocketServer({
-  port: 4100,
-  domainPack: createJsonDomainPack(),
-  authenticate: async ({ authToken }) => verifyYourToken(authToken),
-})
-```
-
-`authenticate` must return trusted `tenantId`, `actorId`, and allowed document IDs. Local examples may opt into `allowInsecureDevelopmentIdentity`; production cannot do so accidentally.
-
-For linked fields or invariants, provide a Domain Pack strategy that emits multiple patches. One accepted operation publishes all patches under one canonical version.
-
-Before production use, read the [integration readiness checklist](integration/readiness.en.md), [architecture](architecture/overview.en.md), and [known limitations](known-limitations.en.md).
+Before production use, read [integration readiness](integration/readiness.en.md), [architecture](architecture/overview.en.md), and [known limitations](known-limitations.en.md).

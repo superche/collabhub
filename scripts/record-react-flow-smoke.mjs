@@ -41,18 +41,6 @@ try {
   record('node_add_converged', await diagnostics(alice, bob))
   await pause(1_000)
 
-  await activate(bob, alice, 'Bob renames Build')
-  await humanClick(bob, bob.locator('[data-id="build"]'))
-  const label = bob.getByTestId('node-label')
-  await humanClick(bob, label)
-  await bob.keyboard.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A')
-  await bob.keyboard.type('Build together', { delay: 82 })
-  await bob.keyboard.press('Enter')
-  await alice.getByText('Build together', { exact: true }).waitFor()
-  await converge(alice, bob)
-  record('rename_coalesced', await diagnostics(alice, bob))
-  await pause(1_000)
-
   await activate(alice, bob, 'Alice drags Build; pointer-up submits once')
   await humanDrag(alice, alice.locator('[data-id="build"]'), 120, 58)
   await waitForText(alice, '[data-testid="react-flow-moves"]', '1')

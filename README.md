@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.1.0-1f6f4a">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.1.1-1f6f4a">
   <a href="https://github.com/superche/collabhub/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/superche/collabhub/actions/workflows/ci.yml/badge.svg"></a>
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.9-3178c6?logo=typescript&logoColor=white">
   <img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-4c566a">
@@ -30,7 +30,9 @@
 |---|---|---|
 | Domain, Store, React components | Command Transport, Projection Adapter, Domain Pack | Fall back to the existing REST transport |
 
-> **Release status:** `0.1.0` technical preview for structured React state. It is not a production-ready security or multi-region platform; `v1.0.0` still requires owner approval.
+> **Release status:** `0.1.1` technical preview for structured React state. It is not a production-ready security or multi-region platform; `v1.0.0` still requires owner approval.
+
+For an existing React app, the default path has two moving parts: one React-facing SDK package and one deployable authoritative service. Protocol, strategies, WAL, reconnect, and room lifecycle stay behind those entries.
 
 ## Features
 
@@ -46,6 +48,7 @@
 | **Single-writer contract** | The host routes shared mutations through its gateway; the TODO example gates REST while collaboration is active |
 | **Ephemeral presence** | Presence never enters WAL, snapshots, or document versions |
 | **Public-edge controls** | JWT/JWKS identity binding plus configurable origin, connection, room, and message limits |
+| **Two-entry onboarding** | Install `@collabhub/client-core`; deploy `@collabhub/server-ws` or the standalone image |
 
 ## Examples
 
@@ -65,7 +68,7 @@ pnpm dev
 
 Linked-update demo: Alice checks one task and sends one `section.setCompleted` intent. The server updates task state, completed count, total count, and progress in one canonical version; Bob receives the complete result.
 
-Verified: authoritative linked updates, business-defined stale-operation rebase, ordering, offline replay, snapshot recovery, REST/Collab switching, and double-write prevention. See the [TODO List integration guide](docs/integration/todo-list-tutorial.md).
+Verified: authoritative linked updates, business-defined stale-operation rebase, ordering, offline replay, snapshot recovery, REST/Collab switching, and double-write prevention. See the [TODO List integration guide](docs/integration/todo-list-tutorial.en.md).
 
 https://github.com/user-attachments/assets/58963835-fffe-43ff-875b-617e635ec282
 
@@ -85,7 +88,7 @@ pnpm dev:blocknote
 | Alice | `http://127.0.0.1:5183/?client=alice` |
 | Bob | `http://127.0.0.1:5184/?client=bob` |
 
-Verified: block-level rich-text updates, block insert/delete/reorder, input coalescing, offline replay, and snapshot recovery. Concurrent text in one top-level block is LWW, not character-level CRDT merge. See the [BlockNote integration guide](docs/integration/blocknote.md).
+Verified: block-level rich-text updates, block insert/delete/reorder, input coalescing, offline replay, and snapshot recovery. Concurrent text in one top-level block is LWW, not character-level CRDT merge. See the [BlockNote integration guide](docs/integration/blocknote.en.md).
 
 https://github.com/user-attachments/assets/6a90ca9d-ef9b-4d1b-a105-2e542c80b189
 
@@ -112,53 +115,55 @@ Opening the [single-client demo](https://collabhub-demo.onrender.com/) creates a
 | Alice | `http://127.0.0.1:5193/?client=alice` |
 | Bob | `http://127.0.0.1:5194/?client=bob` |
 
-Verified: incremental node/edge edits, one commit per completed drag, offline replay, and atomic removal of edges linked to a deleted node. See the [React Flow integration guide](docs/integration/react-flow.md).
+Verified: incremental node/edge edits, one commit per completed drag, offline replay, and atomic removal of edges linked to a deleted node. See the [React Flow integration guide](docs/integration/react-flow.en.md).
 
-https://github.com/user-attachments/assets/14766fef-c0ba-4bbb-a09e-7a1c9a14536e
+https://github.com/user-attachments/assets/40594baa-6181-4e9f-a227-4d650c8eac35
 
 *Two-client smoke: node editing, drag coalescing, offline recovery, and linked-edge deletion.*
 
 ## Integration
 
-Start with a fresh two-client React app:
+### 1. Deploy the authoritative service
+
+The standalone image persists snapshots and WAL under `/data`:
 
 ```bash
-npm create @collabhub/react@0.1.0 my-collab-app
-cd my-collab-app
-npm install
-npm run dev
+docker run --name collabhub -p 4100:4100 -v collabhub-data:/data \
+  -e COLLABHUB_ALLOWED_ORIGINS=http://localhost:5173 \
+  -e COLLABHUB_ALLOW_INSECURE_DEVELOPMENT_IDENTITY=true \
+  -e COLLABHUB_INITIAL_STATE_JSON='{"title":"Untitled"}' \
+  ghcr.io/superche/collabhub-standalone:0.1.1
 ```
 
-This starts one standalone authoritative server and Alice/Bob React clients. It uses memory storage locally; PostgreSQL/Redis is optional until horizontal scale is needed.
+Use explicit development identity only for evaluation. Production deployments provide `authenticate`, tenant authorization, TLS, and retention policy. PostgreSQL/Redis is optional until horizontal scale is needed.
 
-The generated `App.tsx` and application interfaces contain zero `@collabhub/*` imports. Integration stays in `src/collab`, the composition root, and `server.ts`.
+The image is built from [deploy/standalone.Dockerfile](deploy/standalone.Dockerfile). A custom Domain Pack can use the same Docker shape when business rules must compute linked patches.
 
-For an existing application, install only the boundaries it uses:
+### 2. Connect the existing React app
 
 ```bash
-npm add @collabhub/client-core @collabhub/domain-json @collabhub/protocol
-npm add @collabhub/server-core @collabhub/server-ws @collabhub/strategy-sdk
+npm add @collabhub/client-core@0.1.1
 ```
 
-React components never touch WebSocket or collaboration operations. `CollaborationStore` owns connection, pending, recovery, and canonical state; your application owns commands and patch semantics.
+Using a private company registry? Add `@collabhub:registry=https://registry.npmjs.org` to the app's `.npmrc`.
+
+Create one file at the composition root. Your components keep reading the existing runtime/store and sending business commands.
 
 ```tsx
-import { CollaborationStore } from '@collabhub/client-core'
+import { createCollaboration, json } from '@collabhub/client-core'
 
-// composition-root.ts — the only CollabHub-aware boundary
 function createAppRuntime(options: RuntimeOptions) {
   if (!options.collabEnabled) return createRestRuntime(options)
 
-  const store = new CollaborationStore<AppDocument, AppCommand>({
+  const store = createCollaboration<AppDocument, AppCommand>({
     url: options.wsUrl,
-    tenantId: options.tenantId,
     documentId: options.documentId,
     actorId: options.actorId,
-    clientId: crypto.randomUUID(),
-    schemaVersion: '1.0',
     initialState: options.initialDocument,
-    applyPatches,
-    adaptCommand,
+    command: (command) => {
+      if (command.type === 'document.rename') return json.set('/title', command.title)
+      throw new Error(`Unsupported command: ${command.type}`)
+    },
   })
 
   return {
@@ -167,28 +172,15 @@ function createAppRuntime(options: RuntimeOptions) {
     close: () => store.close(),
   }
 }
-
-// React still reads a Store and sends business Commands.
-function DocumentTitle({ runtime }: { runtime: AppRuntime }) {
-  const document = useSyncExternalStore(
-    runtime.store.subscribe,
-    runtime.store.getSnapshot,
-  )
-  const [title, setTitle] = useState(document.title)
-
-  useEffect(() => setTitle(document.title), [document.title])
-
-  return (
-    <input
-      value={title}
-      onChange={(event) => setTitle(event.target.value)}
-      onBlur={() => runtime.execute({ type: 'document.rename', title })}
-    />
-  )
-}
 ```
 
-`adaptCommand` owns `Command → operation`; `applyPatches` owns `canonical patch → AppDocument`. Switching to the REST runtime leaves React components and the domain model unchanged. Follow the [React quick start](docs/getting-started.md).
+`createCollaboration` owns connection, pending, reconnect, recovery, canonical projection, and diagnostics. `json.set/create/delete/move/transaction` hide protocol and strategy identifiers. Switching back to the REST runtime leaves the domain model and React components unchanged. Follow the [existing React app guide](docs/getting-started.md).
+
+To inspect a complete generated project:
+
+```bash
+npm create @collabhub/react@0.1.1 my-collab-app
+```
 
 Linked business rules stay in the server Domain Pack. Clients send intent, not authoritative computed state:
 
@@ -206,7 +198,7 @@ resolve({ currentState, operation }) {
 
 The server validates, writes, and broadcasts all `patches` in one canonical version. Other devices never observe a partial linked update.
 
-Stale intent handling is also owned by the Domain Pack. The operation keeps its original `baseVersion`; safe commands can re-run against current canonical state while strict transactions reject or request resync. See [version and conflict semantics](docs/architecture/protocol.md#版本与冲突).
+Stale intent handling is also owned by the Domain Pack. The operation keeps its original `baseVersion`; safe commands can re-run against current canonical state while strict transactions reject or request resync. See [version and conflict semantics](docs/architecture/protocol.en.md#version-policy).
 
 Reference implementation: [composition root](examples/todo-list-app/src/app/composition-root.ts), [command adapter](examples/todo-list-app/src/collab/draft-command-adapter.ts), [projection adapter](examples/todo-list-app/src/collab/draft-projection-adapter.ts), and [server Domain Pack](examples/todo-list-app/server/draft-domain-pack.ts).
 
@@ -266,10 +258,10 @@ Recording commands: `pnpm record:todo-list`, `pnpm record:blocknote`, and `pnpm 
 - [Horizontal scaling and cloud deployment](docs/architecture/horizontal-scaling.en.md)
 - [Local multi-process TODO List smoke](docs/acceptance-local-process-cluster.md)
 - [Integration readiness](docs/integration/readiness.en.md)
-- [TODO List integration](docs/integration/todo-list-tutorial.md)
-- [BlockNote integration](docs/integration/blocknote.md)
-- [React Flow integration](docs/integration/react-flow.md)
-- [Acceptance evidence](docs/acceptance.md)
+- [TODO List integration](docs/integration/todo-list-tutorial.en.md)
+- [BlockNote integration](docs/integration/blocknote.en.md)
+- [React Flow integration](docs/integration/react-flow.en.md)
+- [Acceptance evidence](docs/acceptance.en.md)
 - [Known limitations](docs/known-limitations.en.md)
 - [Release process](docs/releasing.md)
 - [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md)

@@ -18,15 +18,15 @@
 
 ## 发布与公开 Demo 门禁
 
-`pnpm release:check` 通过。9 个 `0.1.0` package 均生成编译 ESM、declaration 与精简 manifest；审计确认没有 package `src`、test 或 `workspace:` 依赖泄漏，create-react 仅额外包含生成模板。`pnpm publish:dry-run` 按依赖顺序通过 9 个公共包的 npm dry-run。
+`pnpm release:check` 通过。9 个 `0.1.1` package 均生成编译 ESM、declaration 与精简 manifest；审计确认没有 package `src`、test 或 `workspace:` 依赖泄漏，create-react 仅额外包含生成模板。
 
-9 个 `@collabhub/*@0.1.0` 包已发布到 npm 官方 registry，并逐包确认版本与 public access。公开安装验收在全新临时目录执行 `npm create @collabhub/react@0.1.0 registry-smoke`、`npm install` 与 `npm run build`：安装 102 个依赖、0 漏洞，TypeScript 与 Vite production build 通过。全部包已配置 GitHub OIDC Trusted Publisher（`superche/collabhub`、`publish-release.yml`、`release-approval`、仅 `npm publish`）及严格 2FA 发布策略；后续 workflow 不使用长期 `NPM_TOKEN`，由 npm 自动生成 provenance。`v1.0.0` 仍需另行批准。
+9 个 `@collabhub/*@0.1.0` 包已在 npm 官方 registry 公开；`0.1.1` 候选产物由同一门禁重新构建并审计。全部包已配置 GitHub OIDC Trusted Publisher（`superche/collabhub`、`publish-release.yml`、`release-approval`、仅 `npm publish`）及严格 2FA 发布策略；发布 workflow 不使用长期 `NPM_TOKEN`，由 npm 自动生成 provenance。`v1.0.0` 仍需另行批准。
 
-`pnpm smoke:fresh-react` 通过：在系统临时目录生成全新项目，只安装 9 个本地 tarball，断言 `App.tsx`/application 为 0 个 CollabHub import，完成 TypeScript/Vite 构建，启动 server/Alice/Bob 三个独立进程，并由两个 Chromium 客户端收敛到 title `Fresh install works`、canonical v1 / pending 0。
+`pnpm smoke:fresh-react` 通过：在系统临时目录生成全新项目，断言 manifest 只暴露 `client-core` 与 `server-ws` 两个 CollabHub 依赖并包含独立服务 Dockerfile；以本地候选 tarball 集完成依赖解析、TypeScript/Vite 构建，启动 server/Alice/Bob 三个独立进程，并由两个 Chromium 客户端收敛到 title `Fresh install works`、canonical v1 / pending 0。`App.tsx`/application 为 0 个 CollabHub import。
 
 `pnpm smoke:demo` 通过：生产 React Flow 资源与 bundled Node server 在 `127.0.0.1:4400` 启动；先验证非法 Origin 以 1008 拒绝、同 IP 第三个连接以 1013 拒绝，再由 Alice/Bob 经真实 WebSocket 完成 node.add v1 与 node.move v2。活跃 room 不回收；连接关闭后 TTL 删除 room，旧 URL 重新打开恢复为初始 v0。
 
-`deploy/demo.Dockerfile` 与主 `Dockerfile` 均完成本机 Docker 构建。Demo 镜像以 UID/GID `10001:10001` 运行，容器 `/healthz` 返回 `{"status":"ok","version":"0.1.0"}`，并正确提供 Alice/Bob 双窗口页面。
+主 runtime、Demo 与 `deploy/standalone.Dockerfile` 均纳入 CI 构建。Standalone 镜像完成本机 Docker 构建，以 UID/GID `10001:10001` 运行，容器 `/healthz` 返回 `{"status":"ok","warmRooms":0}` 且 health 状态为 healthy。
 
 ## 真实进程与网络
 
@@ -111,19 +111,18 @@ Alice 在 v2 断线；Bob 插入块推进到 v3；Alice 以 v2 重连取得 snap
 
 ## React Flow 验收
 
-录制文档：`react-flow-smoke-1787824705658`。左右画面来自两个独立 Chromium BrowserContext；视频为 1920×820、H.264、30 fps，鼠标移动 0.7–0.9 秒，按键间隔 82 ms。
+录制文档：`react-flow-smoke-1787891536069`。左右画面来自两个独立 Chromium BrowserContext；视频为 1920×820、H.264、30 fps，鼠标移动 0.7–0.9 秒。
 
 ```json
 {"event":"node_add_converged","aliceVersion":"1","bobVersion":"1"}
-{"event":"rename_coalesced","aliceVersion":"2","bobVersion":"2"}
-{"event":"drag_stop_converged","aliceVersion":"3","bobVersion":"3","aliceMoves":"1"}
-{"event":"offline_pending","aliceVersion":"3","bobVersion":"3","bobPending":"1"}
-{"event":"online_client_advanced","aliceVersion":"4","bobVersion":"3","bobPending":"1"}
-{"event":"reconnect_converged","aliceVersion":"5","bobVersion":"5","bobPending":"0","bobRecovery":"1 / 0"}
-{"event":"linked_delete_converged","aliceVersion":"6","bobVersion":"6","alicePending":"0","bobPending":"0"}
+{"event":"drag_stop_converged","aliceVersion":"2","bobVersion":"2","aliceMoves":"1"}
+{"event":"offline_pending","aliceVersion":"2","bobVersion":"2","bobPending":"1"}
+{"event":"online_client_advanced","aliceVersion":"3","bobVersion":"2","bobPending":"1"}
+{"event":"reconnect_converged","aliceVersion":"4","bobVersion":"4","bobPending":"0","bobRecovery":"1 / 0"}
+{"event":"linked_delete_converged","aliceVersion":"5","bobVersion":"5","alicePending":"0","bobPending":"0"}
 ```
 
-该历史录制使用三节点初始图。当前 Demo 已移除 Brief；最新 E2E 断言分享 URL 可让第二个独立 BrowserContext 加入同一 room，断线重连后两端均为 5 个节点，删除 Build 时同一 `node.delete` 原子删除关联边，两端均显示 `4 nodes · 0 edges`。
+录制使用当前双节点初始图和 `CollabHub x React Flow` 标题，不含 Brief 或 selected-node 横条。分享 URL 可让第二个独立 BrowserContext 加入同一 room；断线重连后两端均为 5 个节点，删除 Build 时同一 `node.delete` 原子删除关联边，两端均显示 `4 nodes · 0 edges`。
 
 Server trace 中 `node.add` 108 bytes、`node.rename` 64 bytes、`node.move` 66 bytes、`node.delete` 39 bytes；编辑热路径没有完整 graph。全新浏览器会话控制台为 0 errors / 0 warnings。
 

@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.1.0-1f6f4a">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.1.1-1f6f4a">
   <a href="https://github.com/superche/collabhub/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/superche/collabhub/actions/workflows/ci.yml/badge.svg"></a>
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.9-3178c6?logo=typescript&logoColor=white">
   <img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-4c566a">
@@ -30,7 +30,9 @@
 |---|---|---|
 | Domain、Store、React Components | Command Transport、Projection Adapter、Domain Pack | 切回原 REST transport |
 
-> **发布状态：** `0.1.0` 是面向结构化 React 状态的技术预览，不宣称生产级安全或多地域能力；`v1.0.0` 仍需仓库所有者批准。
+> **发布状态：** `0.1.1` 是面向结构化 React 状态的技术预览，不宣称生产级安全或多地域能力；`v1.0.0` 仍需仓库所有者批准。
+
+已有 React App 的默认路径只需要理解两件事：部署一个中心权威服务，在 composition root 接入一个 React SDK。协议、策略、WAL、重连与 room 生命周期都藏在这两个入口之后。
 
 ## Features
 
@@ -46,6 +48,7 @@
 | **Single-writer contract** | 宿主把共享写统一路由到 mutation gateway；TODO 案例在协同活跃时关闭 REST 直写 |
 | **Ephemeral presence** | presence 不进入 WAL、snapshot 或文档版本 |
 | **Public-edge controls** | JWT/JWKS 身份绑定，并可配置 Origin、连接、room 与消息速率上限 |
+| **Two-entry onboarding** | React 只安装 `@collabhub/client-core`；服务部署 `@collabhub/server-ws` 或 standalone 镜像 |
 
 ## 案例
 
@@ -114,51 +117,53 @@ pnpm dev:react-flow
 
 验证通过：节点/边增量编辑、拖拽松手单次提交、断线重放，以及删除节点时原子删除关联边。详见 [React Flow 接入说明](docs/integration/react-flow.md)。
 
-https://github.com/user-attachments/assets/14766fef-c0ba-4bbb-a09e-7a1c9a14536e
+https://github.com/user-attachments/assets/40594baa-6181-4e9f-a227-4d650c8eac35
 
 *双客户端冒烟：节点编辑、拖拽合并、断线恢复与关联边联动删除。*
 
 ## 接入案例
 
-从一个双客户端 React 项目开始：
+### 1. 部署中心权威服务
+
+standalone 镜像把 snapshot 与 WAL 持久化到 `/data`：
 
 ```bash
-npm create @collabhub/react@0.1.0 my-collab-app
-cd my-collab-app
-npm install
-npm run dev
+docker run --name collabhub -p 4100:4100 -v collabhub-data:/data \
+  -e COLLABHUB_ALLOWED_ORIGINS=http://localhost:5173 \
+  -e COLLABHUB_ALLOW_INSECURE_DEVELOPMENT_IDENTITY=true \
+  -e COLLABHUB_INITIAL_STATE_JSON='{"title":"Untitled"}' \
+  ghcr.io/superche/collabhub-standalone:0.1.1
 ```
 
-它会启动一个单机权威服务和 Alice/Bob 两个 React 客户端；本地首次体验使用内存存储，不要求先部署 PostgreSQL/Redis。
+显式开发身份只用于评估；生产环境需提供 `authenticate`、租户授权、TLS 与数据保留策略。需要水平扩容时再切 PostgreSQL/Redis runtime。
 
-生成的 `App.tsx` 与应用接口没有任何 `@collabhub/*` import；接入代码只在 `src/collab`、composition root 与 `server.ts`。
+镜像来自 [deploy/standalone.Dockerfile](deploy/standalone.Dockerfile)。需要业务联动时，在同一服务形态中加入 Domain Pack。
 
-已有项目只安装实际使用的边界：
+### 2. 接入已有 React App
 
 ```bash
-npm add @collabhub/client-core @collabhub/domain-json @collabhub/protocol
-npm add @collabhub/server-core @collabhub/server-ws @collabhub/strategy-sdk
+npm add @collabhub/client-core@0.1.1
 ```
 
-React 组件不接触 WebSocket 或 operation。`CollaborationStore` 托管连接、pending、恢复和 canonical state；应用继续拥有 Command 与 patch 语义。
+如果公司默认使用私有 npm 镜像，请在应用 `.npmrc` 中加入 `@collabhub:registry=https://registry.npmjs.org`。
+
+只在 composition root 新建一个文件。组件继续读取原有 runtime/store、发送业务 Command。
 
 ```tsx
-import { CollaborationStore } from '@collabhub/client-core'
+import { createCollaboration, json } from '@collabhub/client-core'
 
-// composition-root.ts — 唯一感知 CollabHub 的边界
 function createAppRuntime(options: RuntimeOptions) {
   if (!options.collabEnabled) return createRestRuntime(options)
 
-  const store = new CollaborationStore<AppDocument, AppCommand>({
+  const store = createCollaboration<AppDocument, AppCommand>({
     url: options.wsUrl,
-    tenantId: options.tenantId,
     documentId: options.documentId,
     actorId: options.actorId,
-    clientId: crypto.randomUUID(),
-    schemaVersion: '1.0',
     initialState: options.initialDocument,
-    applyPatches,
-    adaptCommand,
+    command: (command) => {
+      if (command.type === 'document.rename') return json.set('/title', command.title)
+      throw new Error(`Unsupported command: ${command.type}`)
+    },
   })
 
   return {
@@ -167,28 +172,15 @@ function createAppRuntime(options: RuntimeOptions) {
     close: () => store.close(),
   }
 }
-
-// 组件仍只读业务 Store、发送业务 Command
-function DocumentTitle({ runtime }: { runtime: AppRuntime }) {
-  const document = useSyncExternalStore(
-    runtime.store.subscribe,
-    runtime.store.getSnapshot,
-  )
-  const [title, setTitle] = useState(document.title)
-
-  useEffect(() => setTitle(document.title), [document.title])
-
-  return (
-    <input
-      value={title}
-      onChange={(event) => setTitle(event.target.value)}
-      onBlur={() => runtime.execute({ type: 'document.rename', title })}
-    />
-  )
-}
 ```
 
-`adaptCommand` 负责 `Command → operation`，`applyPatches` 负责 `canonical patch → AppDocument`。切回 REST runtime 时，React 组件与领域模型无需修改。详见 [React 快速接入](docs/getting-started.zh-CN.md)。
+`createCollaboration` 托管连接、pending、重连、恢复、canonical projection 与诊断；`json.set/create/delete/move/transaction` 隐藏协议和 strategy id。切回 REST runtime 时，React 组件与领域模型无需修改。详见 [已有 React App 接入](docs/getting-started.zh-CN.md)。
+
+如需查看完整生成项目：
+
+```bash
+npm create @collabhub/react@0.1.1 my-collab-app
+```
 
 业务联动放在服务端 Domain Pack。客户端发送 intent，不提交权威计算结果：
 

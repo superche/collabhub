@@ -1,6 +1,6 @@
 # Release process
 
-CollabHub remains a `0.1.0` technical preview. `v1.0.0` requires separate repository-owner approval.
+CollabHub remains a `0.1.1` technical preview. `v1.0.0` requires separate repository-owner approval.
 
 ## Required gates
 
@@ -9,10 +9,11 @@ pnpm release:check
 pnpm smoke:fresh-react
 pnpm test:e2e
 pnpm smoke:demo
+pnpm smoke:live-demo
 pnpm smoke:todo-cluster
 ```
 
-CI also builds the runtime and demo Dockerfiles. Package audit verifies compiled ESM, declarations, metadata, rewritten workspace dependencies, and exclusion of package source/tests. The fresh-project smoke generates an app outside the repository, installs only packed public packages, builds it, and verifies two Chromium clients.
+CI also builds distributed, standalone, and demo Dockerfiles. Package audit verifies compiled ESM, declarations, metadata, rewritten workspace dependencies, and exclusion of package source/tests. The fresh-project smoke generates an app outside the repository, installs only the two top-level integration packages, builds it, and verifies two Chromium clients. The scheduled live smoke verifies the deployed Origin allowlist.
 
 ## Prepare-only workflow
 
@@ -24,7 +25,7 @@ Configure the GitHub `release-approval` environment with the repository owner as
 
 The release job uses a GitHub-hosted runner, Node.js 24, npm 11.16.0, `id-token: write`, and disabled package-manager caching. Run **Publish technical preview** with confirmation `PUBLISH_TECHNICAL_PREVIEW`.
 
-The workflow reruns every release gate, publishes packages in dependency order through npm Trusted Publishing with automatic provenance, pushes an amd64/arm64 GHCR image with SBOM, creates an immutable annotated tag, and attaches tarballs to a GitHub prerelease. It can resume a partial npm publication: an already-existing exact version is verified and skipped.
+The workflow reruns every release gate, publishes packages in dependency order through npm Trusted Publishing with automatic provenance, pushes amd64/arm64 distributed and standalone GHCR images with SBOM, creates an immutable annotated tag, and attaches tarballs to a GitHub prerelease. It can resume a partial npm publication: an already-existing exact version is verified and skipped.
 
 For a local non-publishing audit:
 
