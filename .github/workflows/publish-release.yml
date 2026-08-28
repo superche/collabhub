@@ -35,6 +35,7 @@ jobs:
       - name: Pin npm with Trusted Publishing support
         run: npm install --global npm@11.16.0
       - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
       - run: node scripts/check-release-version.mjs "${{ inputs.expected_version }}"
       - run: pnpm release:check
       - run: pnpm smoke:fresh-react
