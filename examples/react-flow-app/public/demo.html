@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="/collabhub-mark.svg" />
     <title>CollabHub · React Flow Live Demo</title>
     <style>
       :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #edf2ee; color: #17231c; }
@@ -37,8 +38,8 @@
       const params = new URLSearchParams(location.search)
       const room = params.get('room') || `public-${crypto.randomUUID().slice(0, 8)}`
       if (!params.has('room')) { params.set('room', room); history.replaceState(null, '', `${location.pathname}?${params}`) }
-      document.querySelector('#alice').src = `/?client=alice&document=${encodeURIComponent(room)}&embedded=1`
-      document.querySelector('#bob').src = `/?client=bob&document=${encodeURIComponent(room)}&embedded=1`
+      document.querySelector('#alice').src = `/room?client=alice&document=${encodeURIComponent(room)}&embedded=1`
+      document.querySelector('#bob').src = `/room?client=bob&document=${encodeURIComponent(room)}&embedded=1`
     </script>
   </body>
 </html>

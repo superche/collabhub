@@ -89,7 +89,7 @@ export function GraphApp({ runtime }: { runtime: GraphApplicationRuntime }) {
     runtime.setNetworkAvailable(next)
   }
 
-  return <main>
+  return <main className="graph-page">
     <header>
       <div><span className="eyebrow">COLLABHUB EXAMPLE</span><h1>CollabHub x React Flow</h1><p>React Flow renders the graph. GraphDocument remains canonical and renderer-independent.</p></div>
       <div className="header-actions">

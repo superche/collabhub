@@ -1,0 +1,41 @@
+name: Integration feedback
+description: Tell us where adding CollabHub to an existing React app felt difficult
+title: "feedback: "
+labels: [feedback]
+body:
+  - type: markdown
+    attributes:
+      value: Candid setup feedback is welcome. Please remove credentials and personal data.
+  - type: input
+    id: app
+    attributes:
+      label: React app and state approach
+      placeholder: React Flow with Zustand, custom reducer, Redux, and so on
+    validations:
+      required: true
+  - type: input
+    id: duration
+    attributes:
+      label: Time to two connected clients
+      placeholder: 35 minutes
+  - type: textarea
+    id: changes
+    attributes:
+      label: What you changed
+      description: Briefly describe the client boundary and any server Domain Pack rules.
+    validations:
+      required: true
+  - type: textarea
+    id: friction
+    attributes:
+      label: First confusing or difficult step
+    validations:
+      required: true
+  - type: textarea
+    id: recovery
+    attributes:
+      label: Reconnect or offline scenario tested
+  - type: textarea
+    id: continue
+    attributes:
+      label: Would you keep evaluating CollabHub? Why or why not?

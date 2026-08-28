@@ -1,13 +1,23 @@
 import { expect, test } from '@playwright/test'
 
-test('React Flow root creates a stable URL that joins another client to the same room', async ({ browser }) => {
+test('public root explains the product and leads to the real demo', async ({ page }) => {
+  await page.goto('http://127.0.0.1:5193/')
+
+  await expect(page.getByRole('heading', { name: 'Multiplayer, without rewriting your React app.' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Try two-client demo' })).toHaveAttribute('href', '/demo.html')
+  await expect(page.getByRole('link', { name: 'Star on GitHub' })).toHaveAttribute('href', 'https://github.com/superche/collabhub')
+  await expect(page.getByText('npm create @collabhub/react@0.1.3 my-app')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'One SDK boundary. One deployable service.' })).toBeVisible()
+})
+
+test('React Flow room creates a stable URL that joins another client to the same room', async ({ browser }) => {
   const hostContext = await browser.newContext()
   const guestContext = await browser.newContext()
   const host = await hostContext.newPage()
   const guest = await guestContext.newPage()
 
-  await host.goto('http://127.0.0.1:5193/')
-  await expect(host).toHaveURL(/\?document=graph-[0-9a-f-]{36}$/)
+  await host.goto('http://127.0.0.1:5193/room')
+  await expect(host).toHaveURL(/\/room\?document=graph-[0-9a-f-]{36}$/)
   const shareUrl = host.url()
   await guest.goto(shareUrl)
   await Promise.all([
@@ -34,8 +44,8 @@ test('React Flow converges incremental graph operations and offline replay', asy
   const bob = await bobContext.newPage()
 
   await Promise.all([
-    alice.goto(`http://127.0.0.1:5193/?client=alice&document=${documentId}`),
-    bob.goto(`http://127.0.0.1:5194/?client=bob&document=${documentId}`),
+    alice.goto(`http://127.0.0.1:5193/room?client=alice&document=${documentId}`),
+    bob.goto(`http://127.0.0.1:5194/room?client=bob&document=${documentId}`),
   ])
   await Promise.all([
     expect(alice.getByText('online', { exact: true })).toBeVisible(),

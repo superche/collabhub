@@ -27,7 +27,7 @@ Drag frames stay local. Pointer-up submits one `node.move`; rename, add, connect
 
 ## Recovery and sharing
 
-The root Demo creates a `?document=graph-<UUID>` room id. Sharing the complete URL joins another client to the same authoritative graph. Pending operations replay after snapshot recovery with their original operation id and base version.
+The `/room` Demo creates a `?document=graph-<UUID>` room id. Sharing the complete URL joins another client to the same graph. Pending operations replay after snapshot recovery with their original operation id and base version.
 
 ## Run
 
@@ -36,8 +36,8 @@ pnpm dev:react-flow
 ```
 
 - Server: `http://127.0.0.1:4300`
-- Alice: `http://127.0.0.1:5193/?client=alice`
-- Bob: `http://127.0.0.1:5194/?client=bob`
-- Public Demo: `https://collabhub-demo.onrender.com/`
+- Alice: `http://127.0.0.1:5193/room?client=alice`
+- Bob: `http://127.0.0.1:5194/room?client=bob`
+- Public workspace: `https://collabhub-demo.onrender.com/room`
 
 See [acceptance evidence](../acceptance.md) for drag coalescing, shared-room, offline replay, and linked-edge deletion assertions.

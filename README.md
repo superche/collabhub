@@ -108,13 +108,13 @@ pnpm dev:react-flow
 [Open the live Alice/Bob React Flow demo](https://collabhub-demo.onrender.com/demo.html)
 
 The free deployment opens two React Flow pages on the same graph. Rooms stay alive while someone is connected; empty rooms expire after 30 minutes, with at most 500 kept in memory. Demo state is in memory. See [demo deployment](docs/demo.md).
-Opening the [single-client demo](https://collabhub-demo.onrender.com/) creates a room ID in `?document=...`; share that URL to invite another client.
+Opening the [single-client workspace](https://collabhub-demo.onrender.com/room) creates a room ID in `?document=...`; share that URL to invite another client. The root URL is the product landing page.
 
 | Process | Address |
 |---|---|
 | Server / WebSocket | `http://127.0.0.1:4300` |
-| Alice | `http://127.0.0.1:5193/?client=alice` |
-| Bob | `http://127.0.0.1:5194/?client=bob` |
+| Alice | `http://127.0.0.1:5193/room?client=alice` |
+| Bob | `http://127.0.0.1:5194/room?client=bob` |
 
 Verified: incremental node/edge edits, one commit per completed drag, offline replay, and atomic removal of edges linked to a deleted node. See the [React Flow integration guide](docs/integration/react-flow.en.md).
 
@@ -348,6 +348,7 @@ Recording commands: `pnpm record:todo-list`, `pnpm record:blocknote`, and `pnpm 
 - [React quick start](docs/getting-started.md)
 - [Capability matrix](docs/capabilities.md)
 - [Free public demo](docs/demo.md)
+- [Product Hunt launch kit](docs/product-hunt/README.md)
 - [Architecture](docs/architecture/overview.en.md)
 - [Protocol and pipeline](docs/architecture/protocol.en.md)
 - [Horizontal scaling and cloud deployment](docs/architecture/horizontal-scaling.en.md)

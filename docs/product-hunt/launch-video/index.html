@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en" data-resolution="landscape">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="node_modules/gsap/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Archivo"; src: url("fonts/archivo-latin.woff2") format("woff2"); font-style: normal; font-weight: 100 900; font-display: block; }
+      @font-face { font-family: "IBM Plex Mono"; src: url("fonts/ibm-plex-mono-400-latin.woff2") format("woff2"); font-style: normal; font-weight: 400; font-display: block; }
+      @font-face { font-family: "IBM Plex Mono"; src: url("fonts/ibm-plex-mono-600-latin.woff2") format("woff2"); font-style: normal; font-weight: 600; font-display: block; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: #edf1ed; color: #17231c; }
+      body { font-family: "Archivo", Arial, sans-serif; }
+      code, .mono { font-family: "IBM Plex Mono", monospace; font-variant-ligatures: none; }
+      #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #edf1ed; }
+      .clip, .scene { position: absolute; inset: 0; width: 100%; height: 100%; }
+      .scene { overflow: hidden; background-color: #edf1ed; }
+      .grain { position: absolute; inset: 0; opacity: .18; background-image: radial-gradient(rgba(23,35,28,.2) .7px, rgba(23,35,28,0) .8px); background-size: 9px 9px; }
+      .grid { position: absolute; inset: 0; opacity: .34; background-image: linear-gradient(rgba(35,122,83,.2) 2px, rgba(35,122,83,0) 2px), linear-gradient(90deg, rgba(35,122,83,.2) 2px, rgba(35,122,83,0) 2px); background-size: 72px 72px; }
+      .glow { position: absolute; width: 880px; height: 880px; border-radius: 50%; background: radial-gradient(circle, rgba(35,122,83,.23), rgba(35,122,83,0) 68%); }
+      .rule { position: absolute; height: 3px; background: #237a53; transform-origin: left center; }
+      .meta { color: #237a53; font: 600 20px "IBM Plex Mono", monospace; letter-spacing: .12em; text-transform: uppercase; }
+      .meta-dot { display: inline-block; width: 14px; height: 14px; margin-right: 14px; border-radius: 50%; background: #70e3a9; box-shadow: 0 0 0 9px rgba(35,122,83,.13); }
+      .ghost { position: absolute; color: rgba(35,122,83,.12); font-size: 220px; font-weight: 900; letter-spacing: -.06em; }
+      #scene-1 .scene-content { position: relative; z-index: 2; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; padding: 110px 130px; gap: 32px; }
+      #scene-1 .glow { right: -190px; top: -210px; }
+      #scene-1 .ghost { right: -80px; bottom: -40px; transform: rotate(-5deg); }
+      #scene-1 .rule-a { left: 0; top: 132px; width: 660px; }
+      #scene-1 .rule-b { right: 0; bottom: 146px; width: 520px; }
+      #s1-title { max-width: 1410px; font-size: 112px; line-height: .9; letter-spacing: -.055em; font-weight: 900; }
+      #s1-subtitle { max-width: 980px; color: #637067; font-size: 33px; line-height: 1.45; font-weight: 400; }
+      .architecture { width: 1320px; display: grid; grid-template-columns: 1fr 120px 1fr 120px 1fr; align-items: center; gap: 14px; margin-top: 14px; }
+      .arch-card { min-height: 136px; display: flex; flex-direction: column; justify-content: center; padding: 28px 32px; border: 3px solid #b9c9be; border-radius: 24px; background: #f8faf8; box-shadow: 0 20px 55px rgba(23,35,28,.12); }
+      .arch-card span { color: #637067; font: 600 18px "IBM Plex Mono", monospace; letter-spacing: .08em; }
+      .arch-card strong { margin-top: 14px; font-size: 32px; }
+      .arch-card.accent { border-color: #237a53; background: #17231c; color: #edf1ed; }
+      .arch-card.accent span { color: #70e3a9; }
+      .arch-arrow { height: 3px; background: #237a53; position: relative; }
+      .arch-arrow::after { content: ''; position: absolute; right: -2px; top: -8px; width: 15px; height: 15px; border-top: 3px solid #237a53; border-right: 3px solid #237a53; transform: rotate(45deg); }
+      .s1-status { position: absolute; right: 132px; top: 110px; display: flex; align-items: center; gap: 14px; color: #17231c; font: 600 19px "IBM Plex Mono", monospace; letter-spacing: .1em; }
+      .s1-status i { width: 16px; height: 16px; border-radius: 50%; background: #70e3a9; }
+      #scene-2 .grid { opacity: .22; }
+      #scene-2 .ghost { left: 44px; top: 28px; font-size: 164px; }
+      #scene-2 .scene-content { position: relative; z-index: 3; width: 100%; height: 100%; padding: 72px 84px; }
+      .proof-heading { position: absolute; top: 62px; left: 92px; display: flex; align-items: center; gap: 26px; }
+      .proof-heading strong { font-size: 42px; letter-spacing: -.04em; }
+      .proof-heading span { padding: 10px 15px; border: 2px solid #237a53; border-radius: 999px; color: #237a53; background: #edf1ed; font: 600 18px "IBM Plex Mono", monospace; }
+      .proof-frame { position: absolute; left: 142px; top: 164px; width: 1636px; height: 720px; border: 4px solid #17231c; border-radius: 28px; box-shadow: 0 32px 84px rgba(23,35,28,.17); pointer-events: none; }
+      #proof-video { position: absolute; z-index: 2; left: 152px; top: 174px; width: 1616px; height: 700px; object-fit: cover; border-radius: 20px; background: #f8faf8; }
+      .client-label { position: absolute; z-index: 4; top: 190px; padding: 10px 16px; border-radius: 9px; background: #17231c; color: #edf1ed; font: 600 18px "IBM Plex Mono", monospace; letter-spacing: .1em; }
+      .client-label.alice { left: 168px; }
+      .client-label.bob { left: 980px; }
+      .proof-chips { position: absolute; left: 142px; right: 142px; bottom: 74px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+      .proof-chip { min-height: 96px; display: flex; align-items: center; gap: 20px; padding: 18px 24px; border: 3px solid #b9c9be; border-radius: 18px; background: #f8faf8; box-shadow: 0 16px 42px rgba(23,35,28,.1); }
+      .proof-chip b { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: #237a53; color: #edf1ed; font: 600 18px "IBM Plex Mono", monospace; }
+      .proof-chip span { font-size: 23px; font-weight: 700; }
+      .scan-rule { position: absolute; left: 142px; bottom: 50px; width: 1636px; height: 5px; background: #237a53; transform-origin: left center; }
+      #scene-3 .scene-content { position: relative; z-index: 2; width: 100%; height: 100%; display: grid; grid-template-columns: .82fr 1.18fr; align-items: center; gap: 110px; padding: 105px 130px; }
+      #scene-3 .glow { left: -280px; bottom: -320px; }
+      #scene-3 .ghost { right: -30px; top: -20px; font: 900 310px "IBM Plex Mono", monospace; }
+      .s3-copy { display: flex; flex-direction: column; gap: 28px; }
+      .s3-copy h2 { max-width: 760px; font-size: 91px; line-height: .92; letter-spacing: -.055em; }
+      .s3-copy p { max-width: 700px; color: #637067; font-size: 31px; line-height: 1.45; }
+      .keep-chips { display: flex; flex-wrap: wrap; gap: 12px; }
+      .keep-chip { padding: 12px 17px; border: 2px solid #237a53; border-radius: 999px; background: #f8faf8; color: #237a53; font: 600 18px "IBM Plex Mono", monospace; }
+      .s3-code { display: grid; gap: 22px; }
+      .launch-code-card { overflow: hidden; border: 3px solid #17231c; border-radius: 24px; background: #17231c; color: #edf1ed; box-shadow: 0 28px 70px rgba(23,35,28,.16); }
+      .launch-code-card.light { width: 88%; justify-self: end; border-color: #b9c9be; background: #f8faf8; color: #17231c; }
+      .code-head { min-height: 60px; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; border-bottom: 2px solid #345044; color: #9eb0a4; font: 600 17px "IBM Plex Mono", monospace; }
+      .light .code-head { border-color: #b9c9be; color: #637067; }
+      .code-head strong { color: #70e3a9; font-size: 16px; letter-spacing: .1em; }
+      .light .code-head strong { color: #237a53; }
+      .code-lines { padding: 32px; font: 500 25px/1.65 "IBM Plex Mono", monospace; }
+      .code-lines span { display: block; }
+      .code-lines em { color: #f0c766; font-style: normal; }
+      .light .code-lines em { color: #237a53; font-weight: 600; }
+      .s3-connector { position: absolute; z-index: 3; right: 130px; top: 533px; width: 670px; height: 4px; background: #237a53; transform-origin: left center; }
+      #scene-4 .scene-content { position: relative; z-index: 2; width: 100%; height: 100%; display: grid; grid-template-columns: 390px 1fr; align-items: center; gap: 90px; padding: 120px 155px; }
+      #scene-4 .glow { right: -160px; top: -230px; }
+      #scene-4 .ghost { right: -80px; bottom: -100px; font-size: 480px; }
+      #scene-4 .rule-a { left: 0; top: 130px; width: 780px; }
+      #scene-4 .rule-b { right: 0; bottom: 130px; width: 590px; }
+      .cta-mark { position: relative; width: 340px; height: 340px; border-radius: 104px; background: #237a53; box-shadow: 0 36px 90px rgba(23,35,28,.2); }
+      .cta-node { position: absolute; width: 68px; height: 68px; border-radius: 50%; z-index: 2; }
+      .cta-left { left: 74px; top: 136px; background: #edf1ed; }
+      .cta-top { right: 74px; top: 68px; background: #f0c766; }
+      .cta-bottom { right: 74px; bottom: 68px; background: #70e3a9; }
+      .cta-line { position: absolute; left: 137px; width: 126px; height: 17px; border-radius: 17px; background: #edf1ed; transform-origin: left center; }
+      .cta-line.top { top: 149px; transform: rotate(-32deg); }
+      .cta-line.bottom { top: 176px; transform: rotate(32deg); }
+      .cta-copy { display: flex; flex-direction: column; align-items: flex-start; gap: 26px; }
+      .cta-copy h2 { font-size: 126px; line-height: .9; letter-spacing: -.06em; }
+      .cta-copy p { max-width: 930px; color: #637067; font-size: 36px; line-height: 1.4; }
+      .cta-url { padding: 17px 23px; border: 3px solid #17231c; border-radius: 13px; background: #f8faf8; font: 600 24px "IBM Plex Mono", monospace; }
+      .cta-actions { display: flex; align-items: center; gap: 16px; }
+      .cta-signal { padding: 15px 22px; border-radius: 11px; background: #f0c766; color: #17231c; font: 600 20px "IBM Plex Mono", monospace; letter-spacing: .08em; }
+      .cta-license { color: #237a53; font: 600 19px "IBM Plex Mono", monospace; }
+      .transition { z-index: 20; overflow: hidden; pointer-events: none; }
+      .transition-panel { position: absolute; inset: -5%; width: 110%; height: 110%; background: #237a53; }
+      #transition-2 .transition-panel { background: #f8faf8; border: 24px solid #237a53; }
+      #transition-3 .transition-panel { background: #f0c766; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="30" data-width="1920" data-height="1080">
+      <section id="scene-1" class="clip scene" data-start="0" data-duration="5.4" data-track-index="0">
+        <div class="grain" data-layout-ignore></div><div class="glow" data-layout-ignore></div><div class="ghost" data-layout-ignore>COLLAB</div>
+        <div class="rule rule-a" data-layout-ignore></div><div class="rule rule-b" data-layout-ignore></div>
+        <div class="s1-status"><span>CANONICAL v14</span><i></i></div>
+        <div class="scene-content">
+          <div id="s1-meta" class="meta"><i class="meta-dot"></i>OPEN SOURCE · REACT COLLABORATION</div>
+          <h1 id="s1-title">Multiplayer, without rewriting your React app.</h1>
+          <p id="s1-subtitle">Keep your components, data model, store, and REST fallback.</p>
+          <div class="architecture">
+            <div class="arch-card" id="arch-app"><span>YOU KEEP</span><strong>Your React app</strong></div><i class="arch-arrow" id="arch-arrow-1"></i>
+            <div class="arch-card" id="arch-sdk"><span>YOU ADD</span><strong>Client SDK</strong></div><i class="arch-arrow" id="arch-arrow-2"></i>
+            <div class="arch-card accent" id="arch-service"><span>YOU DEPLOY</span><strong>CollabHub service</strong></div>
+          </div>
+        </div>
+      </section>
+      <section id="scene-2" class="clip scene" data-start="5.4" data-duration="13.8" data-track-index="0">
+        <div class="grid" data-layout-ignore></div><div class="ghost" data-layout-ignore>02 / LIVE PROOF</div>
+        <div class="scene-content">
+          <div class="proof-heading"><strong>One graph. Two real browsers.</strong><span>CANONICAL v5</span></div>
+          <div class="proof-frame"></div>
+          <span class="client-label alice">ALICE</span><span class="client-label bob">BOB</span>
+          <div class="proof-chips">
+            <div class="proof-chip"><b>01</b><span>Incremental operations</span></div>
+            <div class="proof-chip"><b>02</b><span>Offline recovery</span></div>
+            <div class="proof-chip"><b>03</b><span>Linked changes together</span></div>
+          </div>
+          <div class="scan-rule" data-layout-ignore></div>
+        </div>
+      </section>
+      <video id="proof-video" class="clip" src="collabhub-react-flow-smoke-render.mp4" muted playsinline data-start="5.4" data-duration="13.8" data-media-start="0.8" data-track-index="1"></video>
+      <section id="scene-3" class="clip scene" data-start="19.2" data-duration="7.1" data-track-index="0">
+        <div class="grain" data-layout-ignore></div><div class="glow" data-layout-ignore></div><div class="ghost" data-layout-ignore>{ }</div>
+        <div class="scene-content">
+          <div class="s3-copy">
+            <div class="meta">TWO THINGS TO ADD</div>
+            <h2>One SDK boundary. One deployable service.</h2>
+            <p>Custom validation, linked updates, and conflict decisions stay in your server rules.</p>
+            <div class="keep-chips"><span class="keep-chip">Components stay</span><span class="keep-chip">Data model stays</span><span class="keep-chip">REST fallback stays</span></div>
+          </div>
+          <div class="s3-code">
+            <div class="launch-code-card" id="client-code">
+              <div class="code-head"><span>src/collab/create-runtime.ts</span><strong>CLIENT</strong></div>
+              <div class="code-lines"><span><em>const</em> runtime = createCollabRuntime({</span><span>&nbsp;&nbsp;wsUrl, documentId, store, commands</span><span>})</span></div>
+            </div>
+            <div class="launch-code-card light" id="server-code">
+              <div class="code-head"><span>your infrastructure</span><strong>SERVER</strong></div>
+              <div class="code-lines"><span><em>docker run</em> -p 8080:8080</span><span>ghcr.io/superche/collabhub:0.1.3</span></div>
+            </div>
+          </div>
+          <div class="s3-connector" data-layout-ignore></div>
+        </div>
+      </section>
+      <section id="scene-4" class="clip scene" data-start="26.3" data-duration="3.7" data-track-index="0">
+        <div class="grain" data-layout-ignore></div><div class="glow" data-layout-ignore></div><div class="ghost" data-layout-ignore>C</div>
+        <div class="rule rule-a" data-layout-ignore></div><div class="rule rule-b" data-layout-ignore></div>
+        <div class="scene-content" id="cta-content">
+          <div class="cta-mark" id="cta-mark">
+            <i class="cta-node cta-left"></i><i class="cta-node cta-top"></i><i class="cta-node cta-bottom"></i><i class="cta-line top"></i><i class="cta-line bottom"></i>
+          </div>
+          <div class="cta-copy">
+            <div class="meta">FREE · OPEN SOURCE · APACHE-2.0</div>
+            <h2>CollabHub</h2>
+            <p>Add multiplayer to the React app you already have.</p>
+            <div class="cta-actions"><span class="cta-url">github.com/superche/collabhub</span><span class="cta-signal">TRY THE LIVE DEMO</span><span class="cta-license">v0.1.3</span></div>
+          </div>
+        </div>
+      </section>
+      <div id="transition-1" class="clip transition" data-start="4.98" data-duration="0.84" data-track-index="4"><div class="transition-panel" data-layout-allow-overflow></div></div>
+      <div id="transition-2" class="clip transition" data-start="18.78" data-duration="0.84" data-track-index="4"><div class="transition-panel" data-layout-allow-overflow></div></div>
+      <div id="transition-3" class="clip transition" data-start="25.88" data-duration="0.84" data-track-index="4"><div class="transition-panel" data-layout-allow-overflow></div></div>
+    </div>
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      tl.fromTo("#scene-1 .grain", { opacity: 0 }, { opacity: .18, duration: .7, ease: "sine.out" }, .12);
+      tl.fromTo("#scene-1 .glow", { opacity: 0, scale: .82 }, { opacity: 1, scale: 1, duration: 1.1, ease: "expo.out" }, .18);
+      tl.fromTo("#scene-1 .ghost", { opacity: 0, x: 110 }, { opacity: 1, x: 0, duration: 1.25, ease: "power3.out" }, .22);
+      tl.fromTo("#scene-1 .rule-a", { scaleX: 0 }, { scaleX: 1, duration: .48, ease: "power4.out" }, .24);
+      tl.fromTo("#scene-1 .rule-b", { scaleX: 0 }, { scaleX: 1, duration: .72, ease: "circ.out" }, .34);
+      tl.fromTo("#s1-meta", { opacity: 0, x: -42 }, { opacity: 1, x: 0, duration: .42, ease: "expo.out" }, .32);
+      tl.fromTo("#s1-title", { opacity: 0, x: -90, filter: "blur(16px)" }, { opacity: 1, x: 0, filter: "blur(0px)", duration: .76, ease: "power4.out" }, .46);
+      tl.fromTo("#s1-subtitle", { opacity: 0, y: 42 }, { opacity: 1, y: 0, duration: .58, ease: "back.out(1.15)" }, .78);
+      tl.fromTo("#arch-app", { opacity: 0, x: -70 }, { opacity: 1, x: 0, duration: .54, ease: "power3.out" }, 1.08);
+      tl.fromTo("#arch-sdk", { opacity: 0, y: 58, scale: .92 }, { opacity: 1, y: 0, scale: 1, duration: .64, ease: "expo.out" }, 1.22);
+      tl.fromTo("#arch-service", { opacity: 0, x: 76 }, { opacity: 1, x: 0, duration: .48, ease: "circ.out" }, 1.38);
+      tl.fromTo("#arch-arrow-1", { scaleX: 0 }, { scaleX: 1, duration: .34, ease: "power2.out" }, 1.52);
+      tl.fromTo("#arch-arrow-2", { scaleX: 0 }, { scaleX: 1, duration: .42, ease: "power4.out" }, 1.63);
+      tl.fromTo(".s1-status", { opacity: 0, scale: .88 }, { opacity: 1, scale: 1, duration: .38, ease: "back.out(1.7)" }, .62);
+      tl.to("#scene-1 .glow", { scale: 1.05, yoyo: true, repeat: 2, duration: 1.15, ease: "sine.inOut" }, 1.6);
+      tl.to("#scene-1 .ghost", { x: -38, duration: 3.0, ease: "none" }, 1.5);
+      tl.to(".s1-status i", { scale: 1.34, yoyo: true, repeat: 3, duration: .46, ease: "sine.inOut" }, 1.7);
+      tl.fromTo("#scene-2 .grid", { opacity: 0 }, { opacity: .22, duration: .68, ease: "sine.out" }, 5.46);
+      tl.fromTo("#scene-2 .ghost", { opacity: 0, y: -54 }, { opacity: 1, y: 0, duration: .84, ease: "power3.out" }, 5.5);
+      tl.fromTo(".proof-heading", { opacity: 0, x: -60 }, { opacity: 1, x: 0, duration: .58, ease: "expo.out" }, 5.58);
+      tl.fromTo(".proof-frame", { opacity: 0, scale: .94 }, { opacity: 1, scale: 1, duration: .78, ease: "power4.out" }, 5.62);
+      tl.fromTo("#proof-video", { opacity: 0, scale: .965 }, { opacity: 1, scale: 1, duration: .72, ease: "circ.out" }, 5.68);
+      tl.fromTo(".client-label.alice", { opacity: 0, x: -42 }, { opacity: 1, x: 0, duration: .34, ease: "back.out(1.4)" }, 5.95);
+      tl.fromTo(".client-label.bob", { opacity: 0, x: 42 }, { opacity: 1, x: 0, duration: .41, ease: "power3.out" }, 6.04);
+      tl.fromTo(".proof-chip:nth-child(1)", { opacity: 0, y: 58 }, { opacity: 1, y: 0, duration: .46, ease: "expo.out" }, 6.34);
+      tl.fromTo(".proof-chip:nth-child(2)", { opacity: 0, scale: .88 }, { opacity: 1, scale: 1, duration: .56, ease: "back.out(1.25)" }, 6.47);
+      tl.fromTo(".proof-chip:nth-child(3)", { opacity: 0, x: 56 }, { opacity: 1, x: 0, duration: .38, ease: "power4.out" }, 6.62);
+      tl.fromTo(".scan-rule", { scaleX: 0 }, { scaleX: 1, duration: .72, ease: "circ.out" }, 6.7);
+      tl.fromTo("#scene-3 .grain", { opacity: 0 }, { opacity: .18, duration: .62, ease: "sine.out" }, 19.28);
+      tl.fromTo("#scene-3 .glow", { opacity: 0, scale: .82 }, { opacity: 1, scale: 1, duration: .92, ease: "expo.out" }, 19.3);
+      tl.fromTo("#scene-3 .ghost", { opacity: 0, rotation: -8 }, { opacity: 1, rotation: 0, duration: .88, ease: "power3.out" }, 19.34);
+      tl.fromTo("#scene-3 .meta", { opacity: 0, x: -46 }, { opacity: 1, x: 0, duration: .36, ease: "power4.out" }, 19.42);
+      tl.fromTo(".s3-copy h2", { opacity: 0, y: 72 }, { opacity: 1, y: 0, duration: .7, ease: "expo.out" }, 19.52);
+      tl.fromTo(".s3-copy p", { opacity: 0, x: -54 }, { opacity: 1, x: 0, duration: .52, ease: "circ.out" }, 19.86);
+      tl.fromTo(".keep-chip:nth-child(1)", { opacity: 0, scale: .8 }, { opacity: 1, scale: 1, duration: .31, ease: "back.out(1.8)" }, 20.08);
+      tl.fromTo(".keep-chip:nth-child(2)", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: .38, ease: "power3.out" }, 20.17);
+      tl.fromTo(".keep-chip:nth-child(3)", { opacity: 0, x: 34 }, { opacity: 1, x: 0, duration: .28, ease: "expo.out" }, 20.29);
+      tl.fromTo("#client-code", { opacity: 0, x: 90 }, { opacity: 1, x: 0, duration: .62, ease: "power4.out" }, 19.68);
+      tl.fromTo("#client-code .code-lines span", { opacity: 0, y: 22 }, { opacity: 1, y: 0, duration: .45, stagger: .1, ease: "circ.out" }, 20.06);
+      tl.fromTo("#server-code", { opacity: 0, x: 110 }, { opacity: 1, x: 0, duration: .55, ease: "expo.out" }, 20.5);
+      tl.fromTo("#server-code .code-lines span", { opacity: 0, x: 26 }, { opacity: 1, x: 0, duration: .38, stagger: .12, ease: "power3.out" }, 20.78);
+      tl.fromTo(".s3-connector", { scaleX: 0 }, { scaleX: 1, duration: .58, ease: "power4.out" }, 21.0);
+      tl.to("#scene-3 .ghost", { y: 38, duration: 4.1, ease: "sine.inOut" }, 21.4);
+      tl.fromTo("#scene-4 .grain", { opacity: 0 }, { opacity: .18, duration: .48, ease: "sine.out" }, 26.38);
+      tl.fromTo("#scene-4 .glow", { opacity: 0, scale: .8 }, { opacity: 1, scale: 1, duration: .7, ease: "expo.out" }, 26.4);
+      tl.fromTo("#scene-4 .ghost", { opacity: 0, x: 100 }, { opacity: 1, x: 0, duration: .74, ease: "power3.out" }, 26.42);
+      tl.fromTo("#scene-4 .rule-a", { scaleX: 0 }, { scaleX: 1, duration: .4, ease: "power4.out" }, 26.46);
+      tl.fromTo("#scene-4 .rule-b", { scaleX: 0 }, { scaleX: 1, duration: .56, ease: "circ.out" }, 26.52);
+      tl.fromTo("#cta-mark", { opacity: 0, scale: .72, rotation: -7 }, { opacity: 1, scale: 1, rotation: 0, duration: .62, ease: "back.out(1.25)" }, 26.5);
+      tl.fromTo(".cta-copy .meta", { opacity: 0, x: -44 }, { opacity: 1, x: 0, duration: .32, ease: "expo.out" }, 26.62);
+      tl.fromTo(".cta-copy h2", { opacity: 0, y: 62 }, { opacity: 1, y: 0, duration: .56, ease: "power4.out" }, 26.72);
+      tl.fromTo(".cta-copy p", { opacity: 0, x: 52 }, { opacity: 1, x: 0, duration: .46, ease: "circ.out" }, 26.92);
+      tl.fromTo(".cta-url", { opacity: 0, y: 38 }, { opacity: 1, y: 0, duration: .4, ease: "power3.out" }, 27.16);
+      tl.fromTo(".cta-signal", { opacity: 0, scale: .8 }, { opacity: 1, scale: 1, duration: .34, ease: "back.out(1.8)" }, 27.28);
+      tl.fromTo(".cta-license", { opacity: 0, x: 32 }, { opacity: 1, x: 0, duration: .28, ease: "expo.out" }, 27.4);
+      tl.to("#scene-4 .glow", { scale: 1.06, yoyo: true, repeat: 1, duration: 1.0, ease: "sine.inOut" }, 27.2);
+      tl.to("#cta-content", { opacity: 0, duration: .32, ease: "power2.in" }, 29.62);
+      tl.fromTo("#transition-1 .transition-panel", { xPercent: 102 }, { xPercent: -102, duration: .84, ease: "power4.inOut" }, 4.98);
+      tl.fromTo("#transition-2 .transition-panel", { scale: .08, borderRadius: "50%" }, { scale: 1.5, borderRadius: "0%", duration: .84, ease: "expo.inOut" }, 18.78);
+      tl.fromTo("#transition-3 .transition-panel", { yPercent: 102 }, { yPercent: -102, duration: .84, ease: "power3.inOut" }, 25.88);
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

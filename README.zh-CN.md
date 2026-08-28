@@ -108,13 +108,13 @@ pnpm dev:react-flow
 [打开在线 Alice/Bob React Flow Demo](https://collabhub-demo.onrender.com/demo.html)
 
 免费部署让两个 React Flow 页面编辑同一张图；有人在线时房间会保留，所有人断开 30 分钟后清理，最多保留 500 个空闲房间。Demo 状态仅保存在内存。详见 [Demo 部署](docs/demo.md)。
-打开[单客户端 Demo](https://collabhub-demo.onrender.com/)会在 `?document=...` 中生成 room ID；分享该 URL 即可邀请其他客户端。
+打开[单客户端协作空间](https://collabhub-demo.onrender.com/room)会在 `?document=...` 中生成 room ID；分享该 URL 即可邀请其他客户端。根地址现在是产品落地页。
 
 | 进程 | 地址 |
 |---|---|
 | Server / WebSocket | `http://127.0.0.1:4300` |
-| Alice | `http://127.0.0.1:5193/?client=alice` |
-| Bob | `http://127.0.0.1:5194/?client=bob` |
+| Alice | `http://127.0.0.1:5193/room?client=alice` |
+| Bob | `http://127.0.0.1:5194/room?client=bob` |
 
 验证通过：节点/边增量编辑、拖拽松手单次提交、断线重放，以及删除节点时原子删除关联边。详见 [React Flow 接入说明](docs/integration/react-flow.md)。
 
@@ -348,6 +348,7 @@ pnpm smoke:distributed
 - [React 快速接入](docs/getting-started.zh-CN.md)
 - [能力矩阵](docs/capabilities.md)
 - [免费公开 Demo](docs/demo.md)
+- [Product Hunt 发布包](docs/product-hunt/README.md)
 - [架构](docs/architecture/overview.md)
 - [协议与 Pipeline](docs/architecture/protocol.md)
 - [水平扩容与云部署](docs/architecture/horizontal-scaling.md)

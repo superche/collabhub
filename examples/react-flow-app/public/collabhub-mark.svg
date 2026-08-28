@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-labelledby="title">
+  <title id="title">CollabHub</title>
+  <rect x="2" y="2" width="44" height="44" rx="14" fill="#237a53"/>
+  <circle cx="16" cy="24" r="5" fill="#edf1ed"/>
+  <circle cx="32" cy="15" r="5" fill="#f0c766"/>
+  <circle cx="32" cy="33" r="5" fill="#70e3a9"/>
+  <path d="M20.4 21.5 27.6 17M20.5 26.5l7.2 4.1" stroke="#edf1ed" stroke-width="3.2" stroke-linecap="round"/>
+</svg>

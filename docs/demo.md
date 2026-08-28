@@ -14,7 +14,7 @@ Public deployment:
 https://collabhub-demo.onrender.com/demo.html
 ```
 
-The root URL creates a random `?document=graph-<UUID>` on first load. Copy that complete URL to share the same room with another browser.
+The root URL is the product landing page. `/room` creates a random `?document=graph-<UUID>` on first load; copy that complete URL to share the same room with another browser.
 
 Blueprint dashboard: `exs-da83itn10e5c73eaagp0`; Web Service: `srv-da83vqs9v7es739jcn50`. The service tracks `main`.
 

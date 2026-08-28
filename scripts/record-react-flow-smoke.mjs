@@ -27,8 +27,8 @@ const bobVideo = bob.video()
 
 try {
   await Promise.all([
-    alice.goto(`http://127.0.0.1:5193/?client=alice&document=${documentId}`),
-    bob.goto(`http://127.0.0.1:5194/?client=bob&document=${documentId}`),
+    alice.goto(`http://127.0.0.1:5193/room?client=alice&document=${documentId}`),
+    bob.goto(`http://127.0.0.1:5194/room?client=bob&document=${documentId}`),
   ])
   await Promise.all([waitForText(alice, '.status', 'online'), waitForText(bob, '.status', 'online')])
   await Promise.all([installCursor(alice, '#d94b3f'), installCursor(bob, '#287a56')])
