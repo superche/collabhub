@@ -1,4 +1,5 @@
 import { WebSocket } from 'ws'
+import { chromium, expect } from '@playwright/test'
 
 const origin = process.env.COLLABHUB_LIVE_ORIGIN ?? 'https://collabhub-demo.onrender.com'
 const webSocketUrl = origin.replace(/^http/, 'ws') + '/collab'
@@ -23,7 +24,59 @@ allowed.send(JSON.stringify({
 await ready
 await closeSocket(allowed)
 
-console.log(JSON.stringify({ event: 'live_demo_smoke_passed', origin, documentId, warmRooms: healthBody.warmRooms, originRestricted: healthBody.originRestricted, untrustedOriginStatus: rejectedStatus }))
+const browser = await chromium.launch({ headless: true })
+try {
+  const page = await browser.newPage({ viewport: { width: 1500, height: 900 } })
+  await page.goto(origin)
+  await expect(page.getByRole('heading', { name: 'Multiplayer, without rewriting your React app.' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Try two-client demo' })).toHaveAttribute('href', '/demo.html')
+
+  await page.goto(`${origin}/demo.html?room=${documentId}`)
+  const alice = page.frameLocator('iframe[title="Alice"]')
+  const bob = page.frameLocator('iframe[title="Bob"]')
+  await Promise.all([
+    expect(alice.getByText('online', { exact: true })).toBeVisible(),
+    expect(bob.getByText('online', { exact: true })).toBeVisible(),
+  ])
+
+  await alice.getByTestId('add-node').click()
+  await expect(bob.locator('.react-flow__node')).toHaveCount(3)
+  await expect(bob.getByTestId('react-flow-version')).toHaveText('1')
+
+  await alice.locator('[data-id="build"]').dragTo(alice.locator('[data-id="ship"]'))
+  await expect(alice.getByTestId('react-flow-moves')).toHaveText('1')
+  await expect(bob.getByTestId('react-flow-version')).toHaveText('2')
+
+  await bob.getByTestId('network-toggle').click()
+  await expect(bob.getByText('offline', { exact: true })).toBeVisible()
+  await bob.getByTestId('add-node').click()
+  await expect(bob.getByTestId('react-flow-pending')).toHaveText('1')
+  await alice.getByTestId('add-node').click()
+  await expect(alice.getByTestId('react-flow-version')).toHaveText('3')
+  await bob.getByTestId('network-toggle').click()
+  await expect(bob.getByText('online', { exact: true })).toBeVisible()
+  await expect(bob.getByTestId('react-flow-pending')).toHaveText('0')
+  await expect(alice.locator('.react-flow__node')).toHaveCount(5)
+  await expect(bob.locator('.react-flow__node')).toHaveCount(5)
+  await expect(alice.getByTestId('react-flow-version')).toHaveText('4')
+
+  console.log(JSON.stringify({
+    event: 'live_demo_smoke_passed',
+    origin,
+    documentId,
+    warmRooms: healthBody.warmRooms,
+    originRestricted: healthBody.originRestricted,
+    untrustedOriginStatus: rejectedStatus,
+    landingVerified: true,
+    clients: ['alice', 'bob'],
+    canonicalVersion: 4,
+    nodeCount: 5,
+    dragCommits: 1,
+    offlineReplay: true,
+  }))
+} finally {
+  await browser.close()
+}
 
 function opened(socket) {
   return new Promise((resolve, reject) => { socket.once('open', resolve); socket.once('error', reject) })
