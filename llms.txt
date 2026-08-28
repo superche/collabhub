@@ -1,0 +1,28 @@
+# CollabHub
+
+CollabHub adds server-checked multiplayer to an existing React application without replacing its document types, commands, components, or REST fallback.
+
+Start:
+1. `npx @collabhub/create-react@0.2.0 init .`
+2. `npm install`
+3. `npm run collabhub:doctor`
+4. Adapt `collabhub.model.ts` to the existing document and command types.
+5. Connect `createModelCollaboration` only at the composition root.
+6. `npm run collabhub:server`
+7. `npm run collabhub:verify`
+
+Custom logic:
+- linked changes: `reduce` in `collabhub.model.ts`
+- validation: `validate`
+- late command behavior: `stale` (`rebase`, `reject`, or `resync`)
+- existing records: server `StorageAdapter`
+- production identity: server authentication callback or gateway
+
+Boundaries:
+- React components should not import CollabHub.
+- REST and CollabHub must not write the same document at the same time.
+- Normal edits send commands and changed fields, not full documents.
+- Presence is temporary and is not persisted.
+- Use Yjs for character-level rich text or local-first CRDT semantics.
+
+Primary docs: README.md, docs/getting-started.md, docs/ai-coding-guide.md, docs/integration/readiness.en.md, docs/choosing-collabhub-or-yjs.md, deploy/README.md

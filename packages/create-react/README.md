@@ -1,12 +1,22 @@
 # @collabhub/create-react
 
-Scaffolds a minimal host-owned React document, a standalone authoritative server, and two clients.
+Add CollabHub to an existing React app without editing its components:
 
 ```bash
-npm create @collabhub/react@0.1.3 my-collab-app
+npx @collabhub/create-react@0.2.0 init .
+npm install
+npm run collabhub:doctor
+```
+
+Customize `collabhub.model.ts`, start the generated service, then run `npm run collabhub:verify` for a two-client linked-update check.
+
+To create a standalone learning app instead:
+
+```bash
+npm create @collabhub/react@0.2.0 my-collab-app
 cd my-collab-app
 npm install
 npm run dev
 ```
 
-The generated fixture uses only `@collabhub/client-core` and `@collabhub/server-ws`, and includes `Dockerfile.collabhub`.
+Both paths expose only `@collabhub/client-core` and `@collabhub/server-ws`, and include a service Dockerfile.

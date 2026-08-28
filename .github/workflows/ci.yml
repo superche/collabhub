@@ -29,6 +29,7 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm release:check
       - run: pnpm smoke:fresh-react
+      - run: pnpm smoke:existing-react
       - run: pnpm test:e2e
       - run: pnpm smoke:demo
 

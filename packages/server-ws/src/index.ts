@@ -3,6 +3,7 @@ import { createServer, type IncomingMessage, type Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { PROTOCOL_VERSION, type CapabilityHello, type ClientWireMessage, type JsonObject, type PresenceMessage } from '@collabhub/protocol'
 import { jsonStrategies } from '@collabhub/domain-json'
+import { createModelDomainPack, type CollaborationModel, type ModelCommand } from '@collabhub/model'
 import {
   CollaborationServerCore,
   InMemoryStorageAdapter,
@@ -18,6 +19,8 @@ export { jsonStrategies } from '@collabhub/domain-json'
 export { defineDomainPack } from '@collabhub/strategy-sdk'
 export type { DomainPack } from '@collabhub/strategy-sdk'
 export type { JsonObject } from '@collabhub/protocol'
+export { defineCollaborationModel } from '@collabhub/model'
+export type { CollaborationModel, ModelCommand } from '@collabhub/model'
 
 export interface StandaloneConnectionIdentity {
   tenantId: string
@@ -70,6 +73,33 @@ export interface JsonCollaborationServerOptions<TState extends JsonObject> exten
   authToken?: string
   authenticate?: StandaloneWebSocketServerOptions<TState>['authenticate']
   allowInsecureDevelopmentIdentity?: boolean
+}
+
+export interface ModelCollaborationServerOptions<TState extends object, TCommand extends ModelCommand>
+  extends Omit<StandaloneWebSocketServerOptions<TState & JsonObject>, 'domainPack' | 'storage'> {
+  model: CollaborationModel<TState, TCommand>
+  storage?: StorageAdapter<JsonObject>
+  /** Simple shared token for small deployments. Use authenticate for application identity and permissions. */
+  authToken?: string
+}
+
+/** Starts a server from the same small model file used by the React client. */
+export function startModelCollaborationServer<TState extends object, TCommand extends ModelCommand>(
+  options: ModelCollaborationServerOptions<TState, TCommand>,
+): Promise<StandaloneWebSocketServerHandle<TState & JsonObject>> {
+  const { model, authToken, authenticate, storage, ...serverOptions } = options
+  const tokenAuthentication = authToken
+    ? (hello: CapabilityHello) => {
+      if (!hello.authToken || !sameSecret(hello.authToken, authToken)) throw new Error('unauthorized')
+      return pickIdentity(hello)
+    }
+    : undefined
+  return startStandaloneWebSocketServer({
+    ...serverOptions,
+    domainPack: createModelDomainPack(model),
+    storage: storage as StorageAdapter<TState & JsonObject> | undefined,
+    authenticate: authenticate ?? tokenAuthentication,
+  })
 }
 
 /** Starts the built-in JSON collaboration service without Domain Pack plumbing. */

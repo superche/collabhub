@@ -6,7 +6,7 @@ test('public root explains the product and leads to the real demo', async ({ pag
   await expect(page.getByRole('heading', { name: 'Multiplayer, without rewriting your React app.' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Try two-client demo' })).toHaveAttribute('href', '/demo.html')
   await expect(page.getByRole('link', { name: 'Star on GitHub' })).toHaveAttribute('href', 'https://github.com/superche/collabhub')
-  await expect(page.getByText('npm create @collabhub/react@0.1.3 my-app')).toBeVisible()
+  await expect(page.getByText('npm create @collabhub/react@0.2.0 my-app')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'One SDK boundary. One deployable service.' })).toBeVisible()
 })
 

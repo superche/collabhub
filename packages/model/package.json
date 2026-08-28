@@ -1,10 +1,10 @@
 {
-  "name": "@collabhub/testkit",
+  "name": "@collabhub/model",
   "version": "0.2.0",
-  "description": "Golden trace and conformance helpers for CollabHub Domain Packs",
+  "description": "Shared business-command model for low-code CollabHub integrations",
   "type": "module",
   "license": "Apache-2.0",
-  "repository": { "type": "git", "url": "git+https://github.com/superche/collabhub.git", "directory": "packages/testkit" },
+  "repository": { "type": "git", "url": "git+https://github.com/superche/collabhub.git", "directory": "packages/model" },
   "homepage": "https://github.com/superche/collabhub#readme",
   "bugs": "https://github.com/superche/collabhub/issues",
   "files": ["dist"],
@@ -16,7 +16,6 @@
   "scripts": { "build": "node ../../scripts/clean-package-output.mjs && tsc -b --force", "prepack": "pnpm build" },
   "dependencies": {
     "@collabhub/protocol": "workspace:*",
-    "@collabhub/server-core": "workspace:*",
     "@collabhub/strategy-sdk": "workspace:*"
   }
 }

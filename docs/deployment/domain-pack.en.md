@@ -13,7 +13,7 @@ docker run --rm --network host \
   -e COLLABHUB_ROLE=gateway \
   -e DATABASE_URL=... -e REDIS_URL=... -e INTERNAL_TOKEN=... \
   -e JWT_JWKS_URL=... -e JWT_ISSUER=... -e JWT_AUDIENCE=... \
-  ghcr.io/superche/collabhub:0.1.3
+  ghcr.io/superche/collabhub:0.2.0
 ```
 
 The file controls:
@@ -34,7 +34,7 @@ docker run --rm --network host \
   -v "$PWD/deploy/domain-pack/domain-pack.example.mjs:/config/domain-pack.mjs:ro" \
   -e COLLABHUB_DOMAIN_PACK_MODULE=/config/domain-pack.mjs \
   ... \
-  ghcr.io/superche/collabhub:0.1.3
+  ghcr.io/superche/collabhub:0.2.0
 ```
 
 The module exports a Domain Pack object or a factory. The runtime injects `jsonStrategies` and `defineDomainPack`, so the mounted module needs no package imports. See the [linked-field example](../../deploy/domain-pack/domain-pack.example.mjs).

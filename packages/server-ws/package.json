@@ -1,6 +1,6 @@
 {
   "name": "@collabhub/server-ws",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "Standalone WebSocket adapter for the CollabHub server-authoritative core",
   "type": "module",
   "license": "Apache-2.0",
@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@collabhub/domain-json": "workspace:*",
+    "@collabhub/model": "workspace:*",
     "@collabhub/protocol": "workspace:*",
     "@collabhub/server-core": "workspace:*",
     "@collabhub/strategy-sdk": "workspace:*",

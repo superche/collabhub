@@ -5,6 +5,7 @@
     { "path": "packages/protocol" },
     { "path": "packages/strategy-sdk" },
     { "path": "packages/domain-json" },
+    { "path": "packages/model" },
     { "path": "packages/server-core" },
     { "path": "packages/server-ws" },
     { "path": "packages/server-distributed" },

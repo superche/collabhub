@@ -1,18 +1,31 @@
 # Acceptance evidence
 
-CollabHub is promoted as a `0.1.3` technical preview, not a production SLO. The release gate validates the following on Node.js 22/24 and Playwright Chromium.
+CollabHub `0.2.0` is a technical preview, not a production SLO. The 2026-08-28 local release gate produced this evidence:
 
-All nine `@collabhub/*@0.1.3` packages are published through npm Trusted Publishing with provenance. The distributed and standalone GHCR images provide `linux/amd64` and `linux/arm64` manifests with attestations. Tag `v0.1.3` resolves to commit `b9093372faa14456148a1f104871486186336fd9`; the public Render demo reports `0.1.3` and passes the live Origin/WebSocket smoke.
+- `pnpm release:check`: 20 Vitest files / 70 tests; all packages and three examples built; 1,000-section patch p95 0.010 ms against a 4 ms budget.
+- Ten `@collabhub/*@0.2.0` tarballs passed ESM/type/export/source-leak/workspace-dependency audits and npm publish dry-run.
+- `smoke:existing-react`: init left `App.tsx` unchanged; doctor, TypeScript build, and a two-client server-computed linked value (`42`) passed.
+- `smoke:fresh-react`: clean tarball install exposed two runtime packages and zero UI imports; linked word count `3` arrived at v1, then an offline operation survived page close/reopen through IndexedDB and both clients reached v2 with pending `0`.
+- Playwright: five TODO List, BlockNote, and React Flow browser tests passed; public-demo lifecycle/Origin/capacity smoke passed.
+- Local cluster: two Gateways, two Workers, separate Alice/Bob browser processes, writer failover, offline replay, snapshot recovery, WAL/receipt/outbox evidence, final canonical v5.
+- Local Docker builds passed for `standalone:0.2.0` and PostgreSQL/Redis `0.2.0` images.
+
+The release workflow repeats these gates, publishes npm packages through Trusted Publishing with provenance, builds amd64/arm64 GHCR images with attestations, and creates the immutable `v0.2.0` prerelease. Public Render evidence is recorded only after that deployment finishes.
+
+## Historical v0.1.3 release
+
+All nine `@collabhub/*@0.1.3` packages were published through npm Trusted Publishing with provenance. Tag `v0.1.3` resolves to commit `b9093372faa14456148a1f104871486186336fd9`.
 
 ## Existing React adoption
 
-`pnpm smoke:fresh-react` runs the consumer path in a fresh temporary directory:
+`pnpm smoke:fresh-react` runs the new-project consumer path in a fresh temporary directory. `pnpm smoke:existing-react` separately starts with an ordinary React project and proves that init does not change its component.
 
 1. scaffold an ordinary React app;
 2. assert that only `@collabhub/client-core` and `@collabhub/server-ws` are exposed;
 3. install packed npm artifacts from scratch;
 4. build the app and start the server plus two independent clients;
-5. edit in Alice and assert Bob converges to canonical version 1 with no pending operation;
+5. edit in Alice and assert Bob converges with the same linked word count;
+6. take Alice offline, submit, close the page, reopen the same browser profile, and assert IndexedDB replay reaches canonical version 2 with pending zero;
 6. assert business files import no CollabHub package and the generated standalone Dockerfile exists.
 
 The default production shape is one React SDK entry plus one persistent authoritative service. Advanced protocol, strategy, storage, and distributed-runtime packages remain available behind those entries.

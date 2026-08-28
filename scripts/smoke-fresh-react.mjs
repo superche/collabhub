@@ -29,8 +29,8 @@ try {
   if (JSON.stringify(collabHubPackages) !== JSON.stringify(expectedPackages)) {
     throw new Error(`starter must expose exactly two CollabHub packages: ${collabHubPackages.join(', ')}`)
   }
-  if (!readFileSync(resolve(app, 'Dockerfile.collabhub'), 'utf8').includes('@collabhub/server-ws@0.1.3')) {
-    throw new Error('starter Dockerfile does not pin the standalone CollabHub service')
+  if (!readFileSync(resolve(app, 'Dockerfile.collabhub'), 'utf8').includes('collabhub.model.ts')) {
+    throw new Error('starter Dockerfile does not deploy the app model')
   }
   const packageArchives = readdirSync(archives).filter((file) => file.endsWith('.tgz')).map((file) => resolve(archives, file))
   for (const archive of packageArchives) {
@@ -40,7 +40,10 @@ try {
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
   // All local package artifacts are supplied to npm so their unpublished patch-version
   // dependencies resolve, while the generated consumer manifest still exposes only two.
-  run('npm', ['install', '--no-save', '--registry=https://registry.npmjs.org', '--ignore-scripts=false', ...packageArchives], app)
+  run('npm', ['install', '--no-save', '--registry=https://registry.npmjs.org', '--ignore-scripts=false', ...packageArchives], app, {
+    ...process.env,
+    npm_config_cache: resolve(scratch, '.npm-cache'),
+  })
   run('npm', ['run', 'build'], app)
   development = spawn('npm', ['run', 'dev'], { cwd: app, detached: true, stdio: ['ignore', 'pipe', 'pipe'] })
   const logs = []
@@ -50,7 +53,7 @@ try {
   browser = await chromium.launch({ headless: true })
   const aliceContext = await browser.newContext()
   const bobContext = await browser.newContext()
-  const alice = await aliceContext.newPage()
+  let alice = await aliceContext.newPage()
   const bob = await bobContext.newPage()
   await Promise.all([
     alice.goto('http://127.0.0.1:5173/?client=alice'),
@@ -65,9 +68,25 @@ try {
   await alice.getByTestId('shared-title').fill('Fresh install works')
   await alice.getByTestId('shared-title').press('Tab')
   await waitForValue(bob, 'shared-title', 'Fresh install works')
+  await waitForText(bob, 'word-count', '3 words · updated by the same command')
   await waitForText(alice, 'version', '1')
   await waitForText(bob, 'version', '1')
-  console.log(JSON.stringify({ event: 'fresh_react_install_passed', install: 'npm tarballs', collabHubPackages: 2, dockerfile: true, businessImports: 0, aliceVersion: 1, bobVersion: 1, title: 'Fresh install works' }))
+
+  await aliceContext.setOffline(true)
+  await alice.getByTestId('shared-title').fill('Pending survives refresh')
+  await alice.getByTestId('shared-title').press('Tab')
+  await waitForText(alice, 'pending', '1')
+  await new Promise((resolve) => setTimeout(resolve, 200))
+  await alice.close()
+  await aliceContext.setOffline(false)
+  alice = await aliceContext.newPage()
+  await alice.goto('http://127.0.0.1:5173/?client=alice')
+  await waitForText(alice, 'connection', 'online')
+  await waitForValue(bob, 'shared-title', 'Pending survives refresh')
+  await waitForText(alice, 'pending', '0')
+  await waitForText(alice, 'version', '2')
+  await waitForText(bob, 'version', '2')
+  console.log(JSON.stringify({ event: 'fresh_react_install_passed', install: 'npm tarballs', collabHubPackages: 2, dockerfile: true, businessImports: 0, aliceVersion: 2, bobVersion: 2, linkedWordCount: 3, durablePendingAcrossRefresh: true, title: 'Pending survives refresh' }))
   await Promise.all([aliceContext.close(), bobContext.close()])
 } catch (error) {
   console.error(development ? 'fresh starter process failed' : 'fresh starter setup failed')
@@ -81,8 +100,8 @@ try {
   rmSync(scratch, { recursive: true, force: true })
 }
 
-function run(command, args, cwd) {
-  const result = spawnSync(command, args, { cwd, encoding: 'utf8' })
+function run(command, args, cwd, env = process.env) {
+  const result = spawnSync(command, args, { cwd, env, encoding: 'utf8' })
   if (result.status !== 0) throw new Error(`${command} ${args.join(' ')} failed:\n${result.stdout}\n${result.stderr}`)
   return result.stdout
 }

@@ -34,7 +34,7 @@ try {
   await expect(landing.getByRole('heading', { name: 'Multiplayer, without rewriting your React app.' })).toBeVisible()
   await expect(landing.getByRole('link', { name: 'Try two-client demo' })).toHaveAttribute('href', '/demo.html')
   await expect(landing.getByRole('link', { name: 'Star on GitHub' })).toHaveAttribute('href', 'https://github.com/superche/collabhub')
-  await expect(landing.getByText('npm create @collabhub/react@0.1.3 my-app')).toBeVisible()
+  await expect(landing.getByText('npm create @collabhub/react@0.2.0 my-app')).toBeVisible()
   const socialImage = await fetch(`http://127.0.0.1:${port}/product-hunt/gallery-01.png`)
   expect(socialImage.ok).toBe(true)
   await landing.close()

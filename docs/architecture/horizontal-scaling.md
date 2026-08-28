@@ -64,7 +64,7 @@ Alice 经 Gateway 1，Bob 经 Gateway 2。冒烟会终止 PostgreSQL 当前记�
 ```bash
 docker buildx build --platform linux/amd64,linux/arm64 \
   -f deploy/docker/distributed.Dockerfile \
-  -t ghcr.io/superche/collabhub:0.1.3 --push .
+  -t ghcr.io/superche/collabhub:0.2.0 --push .
 kubectl apply -k deploy/kubernetes/base
 ```
 

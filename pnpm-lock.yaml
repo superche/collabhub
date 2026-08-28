@@ -209,6 +209,9 @@ importers:
       '@collabhub/domain-json':
         specifier: workspace:*
         version: link:../domain-json
+      '@collabhub/model':
+        specifier: workspace:*
+        version: link:../model
       '@collabhub/protocol':
         specifier: workspace:*
         version: link:../protocol
@@ -216,6 +219,15 @@ importers:
   packages/create-react: {}
 
   packages/domain-json:
+    dependencies:
+      '@collabhub/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+      '@collabhub/strategy-sdk':
+        specifier: workspace:*
+        version: link:../strategy-sdk
+
+  packages/model:
     dependencies:
       '@collabhub/protocol':
         specifier: workspace:*
@@ -286,6 +298,9 @@ importers:
       '@collabhub/domain-json':
         specifier: workspace:*
         version: link:../domain-json
+      '@collabhub/model':
+        specifier: workspace:*
+        version: link:../model
       '@collabhub/protocol':
         specifier: workspace:*
         version: link:../protocol

@@ -1,6 +1,6 @@
 # Product Hunt launch kit
 
-This directory contains the ready-to-upload listing copy, launch assets, and the launch-day checklist for CollabHub `v0.1.3`. CollabHub is free, open source, and Apache-2.0 licensed. There is no pricing page or paid plan.
+This directory contains the listing copy, launch assets, and launch-day checklist for CollabHub `v0.2.0`. CollabHub is free, open source, and Apache-2.0 licensed. There is no pricing page or paid plan.
 
 ## Listing
 
@@ -22,7 +22,7 @@ Hi Product Hunt — I built CollabHub after seeing the same trade-off in React p
 
 CollabHub takes a smaller-integration approach. Your components and business data stay yours. You add a client boundary for commands and deploy an open-source service that orders changes, runs your rules, and sends small updates back to connected clients. The repo includes TODO List, BlockNote, and React Flow examples, plus a real two-client demo with offline recovery.
 
-This is a `v0.1.3` technical preview, not a claim that every editor or production topology is solved. I would especially value feedback on the integration guide: where does the first setup still feel harder than it should?
+This is a `v0.2.0` technical preview, not a claim that every editor or production topology is solved. I would especially value feedback on the existing-project setup: where does the first integration still feel harder than it should?
 
 ## Upload assets
 
@@ -51,7 +51,7 @@ Product Hunt accepts a YouTube link for the video rather than a direct MP4 uploa
 ## Honest launch boundaries
 
 - The hosted Render service is a public demo, not a production SLA.
-- `v0.1.3` is a technical preview. `v1.0.0` requires owner approval after launch feedback and acceptance.
+- `v0.2.0` is a technical preview. `v1.0.0` requires owner approval after launch feedback and acceptance.
 - Multi-region active-active, end-user authentication UI, and a managed hosted control plane are not included.
 - External testimonials must come from real users. Use [`beta-feedback.md`](beta-feedback.md); do not invent quotes or usage numbers.
 

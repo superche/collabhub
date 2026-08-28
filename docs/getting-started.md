@@ -1,116 +1,95 @@
 # Add collaboration to an existing React app
 
-The default path has two concepts:
+CollabHub adds a shared room to the store/API boundary. Your components keep reading the same document and sending the same business commands.
 
-1. **Authoritative service** — owns room order, WAL, snapshots, and recovery.
-2. **React collaboration store** — maps your commands to incremental JSON intents.
+## 1. Generate the integration
 
-Your domain types, components, and REST fallback remain application-owned.
-
-## 1. Deploy the service
-
-For evaluation, run the standalone image with a persistent volume:
+From the React project root:
 
 ```bash
-docker run --name collabhub -p 4100:4100 -v collabhub-data:/data \
-  -e COLLABHUB_ALLOWED_ORIGINS=http://localhost:5173 \
-  -e COLLABHUB_ALLOW_INSECURE_DEVELOPMENT_IDENTITY=true \
-  -e COLLABHUB_INITIAL_STATE_JSON='{"title":"Untitled"}' \
-  ghcr.io/superche/collabhub-standalone:0.1.3
+npx @collabhub/create-react@0.2.0 init .
+npm install
+npm run collabhub:doctor
 ```
 
-The container exposes `/collab` and `/healthz`. `/data` stores snapshots and WAL. The image is built from the [standalone Dockerfile](../deploy/docker/standalone.Dockerfile).
+Generated files:
 
-Development identity is deliberately explicit. A real deployment supplies `authenticate`, tenant/document authorization, TLS, backups, and a retention policy.
+| File | Purpose |
+|---|---|
+| `collabhub.model.ts` | Document type, commands, linked updates, validation, late-command behavior |
+| `src/collab/collabhub.ts` | Browser connection and React-compatible store |
+| `server/collabhub.ts` | WebSocket service using the same rules |
+| `Dockerfile.collabhub` | Service image for this app |
 
-### Existing server-owned documents
+The command does not edit `App.tsx` or other components.
 
-Browser `initialState` prevents an empty first render; it does not import data into the authority. For an existing REST-backed document:
+## 2. Adapt the rules file
 
-1. Embed `startJsonCollaborationServer` in the host service.
-2. Implement `StorageAdapter.loadSnapshot` from the existing repository and persist later WAL/snapshots through that adapter.
-3. Route shared mutations through the collaboration command gateway; keep REST only as the disabled/fallback transport, never a concurrent writer.
-4. Add a Domain Pack when one command must validate invariants or update linked fields atomically.
-
-The [TODO List migration](integration/todo-list-tutorial.en.md) is the complete reference. The standalone image remains the shortest path when documents are new or CollabHub-owned.
-
-## 2. Add one SDK package
-
-```bash
-npm add @collabhub/client-core@0.1.3
-```
-
-If the app defaults to a private registry, add `@collabhub:registry=https://registry.npmjs.org` to its `.npmrc`.
-
-Create `src/collab/document-collaboration.ts`:
+Replace the generated sample types with the app's document and command types. Each `reduce` branch describes one existing business command.
 
 ```ts
-import { createCollaboration, json } from '@collabhub/client-core'
-import type { AppCommand, AppDocument } from '../domain'
-
-export function createDocumentCollaboration(options: {
-  url: string
-  documentId: string
-  actorId: string
-  initialState: AppDocument
-}) {
-  return createCollaboration<AppDocument, AppCommand>({
-    ...options,
-    command(command) {
-      switch (command.type) {
-        case 'document.rename': return json.set('/title', command.title)
-        case 'item.add': return json.create('items', command.item.id, command.item)
-        case 'item.delete': return json.delete('items', command.itemId)
-        case 'item.move': return json.move('items', command.itemId, command.afterId)
-      }
-    },
-  })
-}
+export const collabModel = defineCollaborationModel<Project, ProjectCommand>({
+  id: 'project',
+  initialState: id => ({ id, tasks: [], completed: 0 }),
+  reduce(draft, command) {
+    if (command.type === 'task.toggled') {
+      const task = draft.tasks.find(item => item.id === command.taskId)
+      if (!task) throw new Error('task not found')
+      task.done = !task.done
+      draft.completed = draft.tasks.filter(item => item.done).length
+    }
+  },
+  validate: project => project.completed <= project.tasks.length || 'invalid count',
+  stale: command => command.type === 'payment.captured' ? 'reject' : 'rebase',
+})
 ```
 
-`json.*` hides operation envelopes, strategy ids, base versions, optimistic patches, and canonical patch application. The returned object implements the `subscribe/getSnapshot` shape used by `useSyncExternalStore`.
+`reduce` runs first in the browser for immediate feedback. The service runs it again against the latest document, checks `validate`, stores the result, and sends only changed fields to every client.
 
-## 3. Switch only in the composition root
+Late commands use `rebase` by default. Choose `reject` for one-shot or financial operations, and `resync` when the UI must reload before retrying.
+
+## 3. Connect at app startup
+
+Wrap the generated CollabHub store in the same interface as the current REST store. Choose once at the composition root:
 
 ```ts
-export function createAppRuntime(options: RuntimeOptions): AppRuntime {
-  if (!options.collaborationEnabled) return createRestRuntime(options)
-
-  const collaboration = createDocumentCollaboration(options)
-  return {
-    subscribe: collaboration.subscribe,
-    getSnapshot: collaboration.getSnapshot,
-    execute: (command) => collaboration.execute(command),
-    diagnostics: () => collaboration.diagnostics,
-    close: () => collaboration.close(),
-  }
-}
+const runtime = flags.collaboration
+  ? createCollabRuntime(documentId, currentUser.id)
+  : createRestRuntime(documentId)
 ```
 
-React components continue to depend on `AppRuntime`, not CollabHub:
+Components stay unchanged:
 
 ```tsx
-function Title({ runtime }: { runtime: AppRuntime }) {
-  const document = useSyncExternalStore(runtime.subscribe, runtime.getSnapshot)
-  return <input defaultValue={document.title} onBlur={(event) => runtime.execute({ type: 'document.rename', title: event.currentTarget.value })} />
-}
+const project = useSyncExternalStore(runtime.subscribe, runtime.getSnapshot)
+await runtime.execute({ type: 'task.toggled', taskId })
 ```
 
-## When business rules link fields
-
-Built-in `json.*` operations cover LWW properties, entity lifecycle, list ordering, and strict transactions. When one command must update several derived fields, send one custom intent and resolve it in a Domain Pack. Every returned patch commits and broadcasts under one canonical version.
-
-The [TODO List migration](integration/todo-list-tutorial.en.md) demonstrates REST fallback, command/projection adapters, linked updates, stale-intent policy, and prevention of REST/Collab double writes.
-
-## Inspect a complete project
+## 4. Run and verify
 
 ```bash
-npm create @collabhub/react@0.1.3 my-collab-app
-cd my-collab-app
-npm install
-npm run dev
+npm run collabhub:server
+npm run collabhub:verify
 ```
 
-This is a learning fixture, not the primary product assumption. The release gate installs its two CollabHub dependencies in a clean directory and proves Alice/Bob synchronization in Chromium.
+`verify` opens two independent WebSocket clients in a new room. It submits a command from Alice and confirms Bob receives the server-computed linked field. Add an application browser test for a real command, reconnect, and pending-count recovery.
 
-Before production use, read [integration readiness](integration/readiness.en.md), [architecture](architecture/overview.en.md), and [known limitations](known-limitations.en.md).
+## Existing data
+
+`initialState` is only the shape for a new/loading document. For records already in a database:
+
+1. Implement the server `StorageAdapter` to read and save them.
+2. Use the app's authenticated tenant, document, and actor identity in the WebSocket handshake.
+3. While a room has an active writer, make REST `PUT/PATCH` reject writes to the same document.
+4. Keep REST reads or a read-only projection if the app needs them.
+
+The standalone Docker image stores snapshots/WAL on its volume and suits evaluation or a single node. Multi-node production uses PostgreSQL + Redis. See [deployment](../deploy/README.md).
+
+## Production checklist
+
+- WSS/TLS and short-lived authentication tokens
+- allowed Origin list and gateway rate limits
+- durable storage, backups, retention, and room capacity
+- metrics for connections, pending work, rejects, reloads, and queue lag
+- a deploy-time two-client smoke
+- [full readiness checklist](integration/readiness.en.md)

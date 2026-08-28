@@ -1,116 +1,93 @@
 # 给已有 React App 接入协同
 
-默认路径只需要理解两个概念：
+CollabHub 只接在 Store/API 边界。组件继续读取原来的文档、发送原来的业务命令。
 
-1. **中心权威服务**：负责 room 定序、WAL、snapshot 与恢复。
-2. **React 协同 Store**：把业务 Command 映射为增量 JSON intent。
+## 1. 生成接入文件
 
-领域类型、React 组件和 REST fallback 仍由宿主拥有。
-
-## 1. 部署服务
-
-评估环境用 standalone 镜像和持久卷即可：
+在 React 项目根目录执行：
 
 ```bash
-docker run --name collabhub -p 4100:4100 -v collabhub-data:/data \
-  -e COLLABHUB_ALLOWED_ORIGINS=http://localhost:5173 \
-  -e COLLABHUB_ALLOW_INSECURE_DEVELOPMENT_IDENTITY=true \
-  -e COLLABHUB_INITIAL_STATE_JSON='{"title":"Untitled"}' \
-  ghcr.io/superche/collabhub-standalone:0.1.3
+npx @collabhub/create-react@0.2.0 init .
+npm install
+npm run collabhub:doctor
 ```
 
-容器暴露 `/collab` 与 `/healthz`，snapshot 和 WAL 保存在 `/data`。镜像由[单机 Dockerfile](../deploy/docker/standalone.Dockerfile)构建。
+| 文件 | 用途 |
+|---|---|
+| `collabhub.model.ts` | 文档类型、命令、字段联动、校验、旧命令处理方式 |
+| `src/collab/collabhub.ts` | 浏览器连接和 React Store |
+| `server/collabhub.ts` | 使用同一份规则的 WebSocket 服务 |
+| `Dockerfile.collabhub` | 当前应用的协同服务镜像 |
 
-显式开发身份只用于评估。生产部署必须实现 `authenticate`、租户/document 授权、TLS、备份和数据保留策略。
+命令不会修改 `App.tsx` 或其他组件。
 
-### 已有服务端文档
+## 2. 修改规则文件
 
-浏览器里的 `initialState` 只用于避免首屏为空，不会把数据导入中心权威。已有 REST 文档按下面的路径接入：
-
-1. 在宿主服务中嵌入 `startJsonCollaborationServer`。
-2. 用 `StorageAdapter.loadSnapshot` 从现有 repository 提供首份 canonical 文档，后续 WAL/snapshot 也经该 adapter 持久化。
-3. 共享写统一经过协同 Command Gateway；REST 只能作为关闭协同时的 fallback，不能并发直写。
-4. 一个命令需要校验 invariant 或原子联动多个字段时，再增加 Domain Pack。
-
-[TODO List 迁移教程](integration/todo-list-tutorial.md)给出了完整实现。新文档或由 CollabHub 持有的数据仍优先使用 standalone 镜像。
-
-## 2. 只安装一个 SDK 包
-
-```bash
-npm add @collabhub/client-core@0.1.3
-```
-
-如果应用默认使用私有 npm 镜像，请在其 `.npmrc` 中加入 `@collabhub:registry=https://registry.npmjs.org`。
-
-新建 `src/collab/document-collaboration.ts`：
+把示例类型替换成应用已有的文档和命令类型。每个 `reduce` 分支对应一条现有业务命令。
 
 ```ts
-import { createCollaboration, json } from '@collabhub/client-core'
-import type { AppCommand, AppDocument } from '../domain'
-
-export function createDocumentCollaboration(options: {
-  url: string
-  documentId: string
-  actorId: string
-  initialState: AppDocument
-}) {
-  return createCollaboration<AppDocument, AppCommand>({
-    ...options,
-    command(command) {
-      switch (command.type) {
-        case 'document.rename': return json.set('/title', command.title)
-        case 'item.add': return json.create('items', command.item.id, command.item)
-        case 'item.delete': return json.delete('items', command.itemId)
-        case 'item.move': return json.move('items', command.itemId, command.afterId)
-      }
-    },
-  })
-}
+export const collabModel = defineCollaborationModel<Project, ProjectCommand>({
+  id: 'project',
+  initialState: id => ({ id, tasks: [], completed: 0 }),
+  reduce(draft, command) {
+    if (command.type === 'task.toggled') {
+      const task = draft.tasks.find(item => item.id === command.taskId)
+      if (!task) throw new Error('任务不存在')
+      task.done = !task.done
+      draft.completed = draft.tasks.filter(item => item.done).length
+    }
+  },
+  validate: project => project.completed <= project.tasks.length || '完成数不合法',
+  stale: command => command.type === 'payment.captured' ? 'reject' : 'rebase',
+})
 ```
 
-`json.*` 隐藏 operation envelope、strategy id、baseVersion、optimistic patch 与 canonical patch 应用。返回对象直接满足 `useSyncExternalStore` 的 `subscribe/getSnapshot` 形状。
+浏览器先执行 `reduce`，页面立即响应；服务端会在最新文档上重新执行、运行 `validate`、保存结果，并只把变化字段发给所有客户端。
 
-## 3. 只改 composition root
+旧命令默认使用 `rebase`。支付等一次性操作使用 `reject`；必须先刷新页面再重试的操作使用 `resync`。
+
+## 3. 在应用启动处切换
+
+让生成的 CollabHub Store 实现当前 REST Store 的接口，只在 composition root 选择一次：
 
 ```ts
-export function createAppRuntime(options: RuntimeOptions): AppRuntime {
-  if (!options.collaborationEnabled) return createRestRuntime(options)
-
-  const collaboration = createDocumentCollaboration(options)
-  return {
-    subscribe: collaboration.subscribe,
-    getSnapshot: collaboration.getSnapshot,
-    execute: (command) => collaboration.execute(command),
-    diagnostics: () => collaboration.diagnostics,
-    close: () => collaboration.close(),
-  }
-}
+const runtime = flags.collaboration
+  ? createCollabRuntime(documentId, currentUser.id)
+  : createRestRuntime(documentId)
 ```
 
-React 组件继续只依赖 `AppRuntime`：
+组件无需修改：
 
 ```tsx
-function Title({ runtime }: { runtime: AppRuntime }) {
-  const document = useSyncExternalStore(runtime.subscribe, runtime.getSnapshot)
-  return <input defaultValue={document.title} onBlur={(event) => runtime.execute({ type: 'document.rename', title: event.currentTarget.value })} />
-}
+const project = useSyncExternalStore(runtime.subscribe, runtime.getSnapshot)
+await runtime.execute({ type: 'task.toggled', taskId })
 ```
 
-## 业务字段需要联动时
-
-内置 `json.*` 覆盖 LWW 属性、实体生命周期、列表排序和严格事务。一个命令需要更新多个派生字段时，客户端只发送一个 custom intent，由 Domain Pack 解析；返回的全部 patch 在一个 canonical version 中提交并广播。
-
-[TODO List 迁移教程](integration/todo-list-tutorial.md)完整展示 REST fallback、command/projection adapter、联动更新、旧 intent 策略与 REST/Collab 防双写。
-
-## 查看完整生成项目
+## 4. 启动和验证
 
 ```bash
-npm create @collabhub/react@0.1.3 my-collab-app
-cd my-collab-app
-npm install
-npm run dev
+npm run collabhub:server
+npm run collabhub:verify
 ```
 
-这是学习 fixture，不是产品默认假设。发布门禁会在全新目录安装它的两个 CollabHub 依赖，并用 Chromium 验证 Alice/Bob 同步。
+`verify` 会创建一个新房间，连接两个独立 WebSocket 客户端，由 Alice 提交命令，再确认 Bob 收到服务端计算的联动字段。项目还应为真实命令、断线重连和 pending 清零增加双浏览器测试。
 
-生产接入前请阅读[接入条件](integration/readiness.md)、[架构说明](architecture/overview.md)和[已知限制](known-limitations.md)。
+## 已有数据
+
+`initialState` 只表示新文档或加载阶段的形状。已有数据库记录需要：
+
+1. 用服务端 `StorageAdapter` 读取和保存。
+2. WebSocket 使用业务登录后的 tenant、document、actor 身份。
+3. 房间有协同 writer 时，REST `PUT/PATCH` 必须拒绝写同一份文档。
+4. 如有需要，保留 REST 读取或只读投影。
+
+单机 Docker 在挂载卷保存 snapshot/WAL，适合试用或单节点。多节点生产使用 PostgreSQL + Redis。见[部署说明](../deploy/README.md)。
+
+## 上线检查
+
+- WSS/TLS 和短期鉴权 token
+- Origin 白名单和网关限流
+- 持久化、备份、保留策略和 room 容量
+- 连接、pending、拒绝、重载、队列延迟监控
+- 部署后的双客户端冒烟
+- [完整检查表](integration/readiness.md)

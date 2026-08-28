@@ -28,7 +28,7 @@ export function LandingPage() {
             <a className="button primary" href="/demo.html">Try two-client demo</a>
             <a className="button secondary" href={githubUrl} target="_blank" rel="noreferrer"><StarIcon /> Star on GitHub</a>
           </div>
-          <code className="install-command"><span>$</span> npm create @collabhub/react@0.1.3 my-app</code>
+          <code className="install-command"><span>$</span> npm create @collabhub/react@0.2.0 my-app</code>
         </div>
 
         <div className="hero-system" aria-label="Your React app connects to CollabHub through a small SDK boundary">
@@ -88,7 +88,7 @@ export function LandingPage() {
           </div>
           <div className="code-card service-code">
             <header><span>your infrastructure</span><b>SERVER</b></header>
-            <pre><code>docker run -p 8080:8080 \<br />  ghcr.io/superche/collabhub:0.1.3</code></pre>
+            <pre><code>docker run -p 8080:8080 \<br />  ghcr.io/superche/collabhub:0.2.0</code></pre>
           </div>
         </div>
       </section>

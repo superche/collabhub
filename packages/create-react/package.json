@@ -1,7 +1,7 @@
 {
   "name": "@collabhub/create-react",
-  "version": "0.1.3",
-  "description": "Create a minimal two-client CollabHub React application",
+  "version": "0.2.0",
+  "description": "Add CollabHub to an existing React app or create a minimal example",
   "type": "module",
   "license": "Apache-2.0",
   "repository": { "type": "git", "url": "git+https://github.com/superche/collabhub.git", "directory": "packages/create-react" },
@@ -10,7 +10,7 @@
   "files": ["dist", "template"],
   "types": "./dist/index.d.ts",
   "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js", "default": "./dist/index.js" } },
-  "bin": { "create-collabhub-react": "./dist/cli.js" },
+  "bin": { "create-collabhub-react": "./dist/cli.js", "collabhub": "./dist/cli.js" },
   "engines": { "node": ">=22" },
   "publishConfig": { "access": "public", "provenance": true },
   "scripts": { "build": "node ../../scripts/clean-package-output.mjs && tsc -b --force", "prepack": "pnpm build" }

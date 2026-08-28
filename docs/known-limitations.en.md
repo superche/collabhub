@@ -1,22 +1,17 @@
-# v0.1 known limitations
+# v0.2 known limitations
 
-- `v1.0.0` requires explicit repository-owner approval after full acceptance; `0.1.3` remains a technical preview.
-- Render Free sleeps, cold-starts, and resets in-memory demo data on restart or deploy.
-- The distributed runtime is single-region; it has no active-active multi-region control plane.
-- PostgreSQL snapshots use JSONB; WAL/receipt/outbox compaction, object storage, and automated PITR tooling are not included.
-- Atomic linked patches are limited to one document. External databases and cross-document transactions need host coordination.
-- Strategies are trusted in-process code, without WASM/process isolation or signed rollout governance.
-- There is no Yjs/OT text subdocument, shared undo/redo, schema migration runner, or operation-history compaction.
-- JWT/JWKS authentication and document grants are available for the distributed Gateway, but tenant RLS, issuer operations, audit, and application-specific authorization remain deployment responsibilities. Examples use explicit development identity.
-- Pending client intent is memory-only and does not survive a page refresh.
-- Fractional ranks have no background rebalance.
-- Diagnostics are application-local, not a complete observability control plane.
-- Published 2C4G figures are scheduling baselines, not production SLOs; no managed-cloud soak report is included.
-- BlockNote resolves concurrent edits at top-level block granularity with LWW, not character-level CRDT merging.
+- `0.2.0` remains a technical preview. `v1.0.0` requires explicit repository-owner approval.
+- The shared model is JSON-only. Dates, maps, class instances, binary data, and cyclic objects need application encoding.
+- Generic array changes from reducer-style models may replace that array in one patch. Use built-in entity/list commands for large hot lists.
+- IndexedDB pending operations survive refresh on one browser profile; they do not provide cross-device offline merge and can be lost when site data is cleared.
+- Character-level rich-text CRDT merge, shared undo/redo, schema migration orchestration, and multi-region active-active writes are not included.
+- BlockNote concurrent edits inside one top-level block remain LWW.
+- The public Render demo uses memory storage and deletes idle demo rooms; it is not a durability reference.
+- Standalone file storage is single-node. Multi-node production needs PostgreSQL + Redis, authentication, TLS, backups, monitoring, and tested recovery.
 
 ## Next priorities
 
-1. Durable pending intent, WAL/outbox retention, object snapshots, backup/restore, and crash-injection soak tests.
-2. Tenant authorization/RLS, audit, payload schemas, and OpenTelemetry.
-3. Rank rebalance, schema migration, richer data types, and independent DevTools timeline.
-4. Multi-region failover and tenant placement.
+1. First-class schema migrations and persistent operation compaction.
+2. Cross-tab pending-queue coordination and crash-injection soak tests.
+3. Hybrid Yjs field adapter for character-level rich text.
+4. Operational dashboards and production deployment verification jobs.

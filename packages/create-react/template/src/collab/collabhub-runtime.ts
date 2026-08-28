@@ -1,15 +1,17 @@
-import { createCollaboration, json } from '@collabhub/client-core'
+import { createModelCollaboration } from '@collabhub/client-core'
 import type { AppRuntime, DocumentCommand, DocumentState } from '../application.js'
+import { collabModel } from '../../collabhub.model.js'
 
 export function createCollabRuntime(options: { actorId: string; documentId: string }): AppRuntime {
-  const store = createCollaboration<DocumentState, DocumentCommand>({
+  const store = createModelCollaboration<DocumentState, DocumentCommand>({
     url: 'ws://127.0.0.1:4100/collab',
     tenantId: 'demo',
     documentId: options.documentId,
     actorId: options.actorId,
     clientId: `${options.actorId}-${crypto.randomUUID()}`,
-    initialState: { id: options.documentId, title: 'Shared document' },
-    command: (command) => json.set('/title', command.title),
+    authToken: import.meta.env.VITE_COLLABHUB_AUTH_TOKEN,
+    initialState: collabModel.initialState(options.documentId),
+    model: collabModel,
   })
 
   return {

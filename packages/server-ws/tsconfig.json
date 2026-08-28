@@ -5,6 +5,7 @@
   "exclude": ["src/**/*.test.ts"],
   "references": [
     { "path": "../domain-json" },
+    { "path": "../model" },
     { "path": "../protocol" },
     { "path": "../server-core" },
     { "path": "../strategy-sdk" }

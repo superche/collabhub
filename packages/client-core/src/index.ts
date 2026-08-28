@@ -12,6 +12,10 @@ import {
   type SnapshotMessage,
 } from '@collabhub/protocol'
 import { applyCanonicalPatches } from '@collabhub/domain-json'
+import { adaptModelCommand, type CollaborationModel, type ModelCommand } from '@collabhub/model'
+
+export { defineCollaborationModel } from '@collabhub/model'
+export type { CollaborationModel, ModelCommand } from '@collabhub/model'
 
 export type { CanonicalPatch, JsonObject, JsonValue, OperationResult } from '@collabhub/protocol'
 
@@ -33,6 +37,17 @@ export interface ClientDiagnostics {
   resyncCount: number
   reconnectCount: number
   lastAckLatencyMs?: number
+  pendingPersistence: 'disabled' | 'loading' | 'ready' | 'error'
+}
+
+export interface PersistedPendingOperation {
+  operation: CollaborationOperation
+  optimisticPatches: CanonicalPatch[]
+}
+
+export interface PendingOperationStorage {
+  load(key: string): Promise<readonly PersistedPendingOperation[]>
+  save(key: string, operations: readonly PersistedPendingOperation[]): Promise<void>
 }
 
 interface PendingOperation {
@@ -60,6 +75,9 @@ export interface CollaborationClientOptions<TState extends object> {
   maxPendingOperations?: number
   maxPendingBytes?: number
   reconnectDelayMs?: number
+  /** Durable queue for refresh/crash recovery. Use createIndexedDbPendingStorage() in browsers. */
+  pendingStorage?: PendingOperationStorage
+  pendingStorageKey?: string
 }
 
 export type CollaborationOperationInput = Omit<
@@ -85,19 +103,31 @@ export class CollaborationClient<TState extends object> {
   private readonly presenceListeners = new Set<PresenceListener>()
   private diagnosticsValue: ClientDiagnostics = {
     connection: 'offline', pendingCount: 0, pendingBytes: 0, canonicalVersion: 0, resyncCount: 0, reconnectCount: 0,
+    pendingPersistence: 'disabled',
   }
+  private readonly readyPromise: Promise<void>
+  private persistenceChain = Promise.resolve()
 
-  constructor(private readonly options: CollaborationClientOptions<TState>) {}
+  constructor(private readonly options: CollaborationClientOptions<TState>) {
+    this.readyPromise = this.restorePending()
+  }
 
   get state(): Readonly<TState> | undefined { return this.projected }
   get canonicalVersion(): number { return this.diagnosticsValue.canonicalVersion }
   get diagnostics(): Readonly<ClientDiagnostics> { return this.diagnosticsValue }
+  whenReady(): Promise<void> { return this.readyPromise }
 
   connect(): void {
     this.manuallyClosed = false
     if (!this.networkAvailable) return
     if (this.socket && (this.socket.readyState === 0 || this.socket.readyState === 1)) return
     this.setDiagnostics({ connection: 'connecting' })
+    void this.readyPromise.then(() => this.openSocket())
+  }
+
+  private openSocket(): void {
+    if (this.manuallyClosed || !this.networkAvailable) return
+    if (this.socket && (this.socket.readyState === 0 || this.socket.readyState === 1)) return
     const factory = this.options.socketFactory ?? ((url) => new WebSocket(url))
     const socket = factory(this.options.url)
     this.socket = socket
@@ -167,6 +197,7 @@ export class CollaborationClient<TState extends object> {
     }
     return new Promise((resolve) => {
       this.pending.push({ operation, optimisticPatches, bytes, submittedAt: performance.now(), sent: false, resolve })
+      this.persistPending()
       this.reproject()
       this.flush()
     })
@@ -231,6 +262,7 @@ export class CollaborationClient<TState extends object> {
       item.resolve(item.resyncResult ?? item.acceptedResult!)
       this.setDiagnostics({ lastAckLatencyMs: Math.round((performance.now() - item.submittedAt) * 100) / 100 })
     }
+    if (settled.length > 0) this.persistPending()
     this.reproject()
     if (!awaitingReady) this.flush()
   }
@@ -280,6 +312,7 @@ export class CollaborationClient<TState extends object> {
       item.resolve(result)
       this.setDiagnostics({ lastAckLatencyMs: Math.round((performance.now() - item.submittedAt) * 100) / 100 })
     }
+    if (item) this.persistPending()
     if (result.kind === 'rejected') {
       this.setDiagnostics({ lastReject: { operationId: result.operationId, code: result.reason.code, message: result.reason.message } })
     }
@@ -317,6 +350,45 @@ export class CollaborationClient<TState extends object> {
       this.setDiagnostics({ reconnectCount: this.diagnosticsValue.reconnectCount + 1 })
       this.connect()
     }, this.options.reconnectDelayMs ?? 300)
+  }
+
+  private async restorePending(): Promise<void> {
+    const storage = this.options.pendingStorage
+    if (!storage) return
+    this.setDiagnostics({ pendingPersistence: 'loading' })
+    try {
+      const restored = await storage.load(this.pendingKey())
+      for (const entry of restored) {
+        if (this.pending.some((item) => item.operation.operationId === entry.operation.operationId)) continue
+        if (entry.operation.tenantId !== this.options.tenantId || entry.operation.documentId !== this.options.documentId) continue
+        this.pending.unshift({
+          operation: entry.operation,
+          optimisticPatches: [...entry.optimisticPatches],
+          bytes: JSON.stringify(entry.operation).length,
+          submittedAt: performance.now(),
+          sent: false,
+          resolve: () => undefined,
+        })
+      }
+      this.setDiagnostics({ pendingPersistence: 'ready' })
+      this.reproject()
+    } catch {
+      this.setDiagnostics({ pendingPersistence: 'error' })
+    }
+  }
+
+  private persistPending(): void {
+    const storage = this.options.pendingStorage
+    if (!storage) return
+    const snapshot = this.pending.map(({ operation, optimisticPatches }) => ({ operation, optimisticPatches }))
+    this.persistenceChain = this.persistenceChain
+      .then(() => storage.save(this.pendingKey(), snapshot))
+      .then(() => this.setDiagnostics({ pendingPersistence: 'ready' }))
+      .catch(() => this.setDiagnostics({ pendingPersistence: 'error' }))
+  }
+
+  private pendingKey(): string {
+    return this.options.pendingStorageKey ?? `${this.options.tenantId}:${this.options.documentId}:${this.options.actorId}`
   }
 
   private setDiagnostics(patch: Partial<ClientDiagnostics>) {
@@ -391,6 +463,8 @@ export interface CreateCollaborationOptions<TState extends object, TCommand> {
   maxPendingOperations?: number
   maxPendingBytes?: number
   reconnectDelayMs?: number
+  pendingStorage?: PendingOperationStorage
+  pendingStorageKey?: string
   autoConnect?: boolean
 }
 
@@ -416,7 +490,71 @@ export function createCollaboration<TState extends object, TCommand>(
     maxPendingOperations: options.maxPendingOperations,
     maxPendingBytes: options.maxPendingBytes,
     reconnectDelayMs: options.reconnectDelayMs,
+    pendingStorage: options.pendingStorage,
+    pendingStorageKey: options.pendingStorageKey,
     autoConnect: options.autoConnect,
+  })
+}
+
+export interface CreateModelCollaborationOptions<TState extends object, TCommand extends ModelCommand>
+  extends Omit<CreateCollaborationOptions<TState, TCommand>, 'schemaVersion' | 'command'> {
+  model: CollaborationModel<TState, TCommand>
+  /** Defaults to IndexedDB in browsers; set false for an in-memory-only queue. */
+  durablePending?: boolean
+}
+
+/** Smallest integration path: one shared model file, one room, one React-compatible store. */
+export function createModelCollaboration<TState extends object, TCommand extends ModelCommand>(
+  options: CreateModelCollaborationOptions<TState, TCommand>,
+): CollaborationStore<TState, TCommand> {
+  return createCollaboration({
+    ...options,
+    schemaVersion: options.model.schemaVersion,
+    command: (command, currentState) => adaptModelCommand(options.model, command, currentState),
+    pendingStorage: options.pendingStorage ?? (options.durablePending === false ? undefined : createIndexedDbPendingStorage()),
+  })
+}
+
+export function createIndexedDbPendingStorage(databaseName = 'collabhub'): PendingOperationStorage | undefined {
+  if (typeof indexedDB === 'undefined') return undefined
+  const database = openPendingDatabase(databaseName)
+  return {
+    async load(key) {
+      const db = await database
+      return await idbRequest<readonly PersistedPendingOperation[] | undefined>(db.transaction('pending', 'readonly').objectStore('pending').get(key)) ?? []
+    },
+    async save(key, operations) {
+      const db = await database
+      const transaction = db.transaction('pending', 'readwrite')
+      const store = transaction.objectStore('pending')
+      if (operations.length === 0) store.delete(key)
+      else store.put([...operations], key)
+      await idbTransaction(transaction)
+    },
+  }
+}
+
+function openPendingDatabase(name: string): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(name, 1)
+    request.onupgradeneeded = () => request.result.createObjectStore('pending')
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => reject(request.error ?? new Error('failed to open IndexedDB'))
+  })
+}
+
+function idbRequest<T>(request: IDBRequest<T>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => reject(request.error ?? new Error('IndexedDB request failed'))
+  })
+}
+
+function idbTransaction(transaction: IDBTransaction): Promise<void> {
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => resolve()
+    transaction.onerror = () => reject(transaction.error ?? new Error('IndexedDB transaction failed'))
+    transaction.onabort = () => reject(transaction.error ?? new Error('IndexedDB transaction aborted'))
   })
 }
 

@@ -1,6 +1,6 @@
 # Capability matrix
 
-CollabHub `0.1.3` targets structured application state. “Supported” means the behavior has automated conformance or real multi-client evidence.
+CollabHub `0.2.0` targets structured application state. “Supported” means the behavior has automated conformance or real multi-client evidence.
 
 | Scenario | Status | Semantics / evidence |
 |---|---|---|
@@ -12,6 +12,7 @@ CollabHub `0.1.3` targets structured application state. “Supported” means th
 | Business-defined stale resolution | Supported | Domain Pack chooses resolve/reject/resync; operation identity stays immutable |
 | Duplicate delivery | Supported | Persistent operation receipt and collision rejection |
 | Reconnect / offline replay | Supported | In-memory pending queue and real browser recovery |
+| Refresh-safe pending replay | Supported | `createModelCollaboration` persists pending operations in IndexedDB; restart test preserves operation id |
 | Snapshot + WAL recovery | Supported | Single-node and PostgreSQL runtime evidence |
 | Presence transport | Supported | Ephemeral channel; never persisted or versioned |
 | Horizontal scaling | Supported | Stateless Gateway, fenced single-writer Worker, PostgreSQL/Redis; shared operation pipeline |
@@ -19,7 +20,7 @@ CollabHub `0.1.3` targets structured application state. “Supported” means th
 | Block editors | Limited | Block-level LWW; not character-level rich-text merge |
 | Collaborative cursors UI | Adapter required | Presence primitives exist; no packaged cursor UI |
 | Shared undo / redo | Not supported | Requires canonical inverse-operation policy |
-| Durable offline queue across refresh | Not supported | Pending intents are page-memory only |
+| Cross-device offline merge | Not supported | IndexedDB queue is browser-local and settles through the service |
 | Multi-document atomic transaction | Not supported | Atomicity is scoped to one document |
 
 See [acceptance evidence](acceptance.md) and [known limitations](known-limitations.md) for exact boundaries.

@@ -4,6 +4,14 @@ All notable changes are recorded here. CollabHub follows Semantic Versioning aft
 
 ## Unreleased
 
+## 0.2.0 — lower-friction existing React integration
+
+- Added existing-project `init`, `doctor`, and real two-client `verify` commands.
+- Added shared reducer-style models for server-recomputed linked updates and per-command stale handling.
+- Added durable browser pending operations through IndexedDB.
+- Added AI Coding instructions and explicit CollabHub/Yjs boundaries.
+- Kept the v0.1 wire protocol and existing JSON integration API compatible.
+
 ## 0.1.3 — deployable Domain Packs and cloud baselines
 
 - Load the distributed JSON Domain Pack from a validated JSON file or a reviewed ESM module mounted read-only at runtime.

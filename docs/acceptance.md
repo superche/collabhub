@@ -1,9 +1,21 @@
-# v0.1 验收记录
+# v0.2 / v0.1 验收记录
 
 日期：2026-08-28（Asia/Shanghai）
 环境：macOS arm64、Node.js v24.18.0、pnpm 10.11.0、Playwright Chromium 151.0.7922.34。
 
-## 最终 gate
+## v0.2.0 本地发布 gate
+
+- `pnpm release:check`：20 个 Vitest 文件、70 个测试通过；10 个 `@collabhub/*@0.2.0` tarball 通过 ESM、类型、export、源码泄漏和 `workspace:` 审计；1,000 section patch p95 0.010 ms，预算 4 ms。
+- `pnpm smoke:existing-react`：从普通 React 项目执行 init，`App.tsx` 未变化；doctor、TypeScript build、双客户端服务端联动值 `42` 全部通过。
+- `pnpm smoke:fresh-react`：干净目录安装候选 tarball；只暴露 2 个运行时 package，业务 UI 0 个 CollabHub import；联动字数在 v1 同步。随后 Alice 断网提交并关闭页面，同一浏览器配置重新打开后从 IndexedDB 重放，双方到 canonical v2、pending 0。
+- `pnpm test:e2e`：TODO List、BlockNote、React Flow 共 5 个真实浏览器用例通过。
+- `pnpm smoke:demo`：React Flow 双客户端、Origin 拒绝、连接上限、活跃 room 保留和过期 room 删除通过。
+- `pnpm smoke:todo-cluster`：2 Gateway + 2 Worker 独立进程，两个浏览器跨 Gateway；writer 故障切换、离线重放、快照恢复、PostgreSQL WAL/receipt/outbox 证据通过，最终 canonical v5。
+- standalone 与 distributed 两张 `0.2.0` Docker 镜像在本机真实构建通过。
+
+发布 workflow 会重复这些 gate，随后用 npm Trusted Publishing 发布 provenance 包、构建 amd64/arm64 GHCR 镜像并创建不可变 `v0.2.0` prerelease。Render 线上证据只在新部署完成后记录。
+
+## v0.1 最终 gate
 
 `pnpm check`：通过。
 

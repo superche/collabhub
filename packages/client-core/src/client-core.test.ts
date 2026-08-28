@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import type { ClientWireMessage, JsonObject, ServerWireMessage } from '@collabhub/protocol'
-import { CollaborationClient, CollaborationStore, createCollaboration, json, type SocketLike } from './index.js'
+import { CollaborationClient, CollaborationStore, createCollaboration, json, type PendingOperationStorage, type PersistedPendingOperation, type SocketLike } from './index.js'
+
+class MemoryPendingStorage implements PendingOperationStorage {
+  readonly values = new Map<string, readonly PersistedPendingOperation[]>()
+  async load(key: string) { return this.values.get(key) ?? [] }
+  async save(key: string, operations: readonly PersistedPendingOperation[]) {
+    if (operations.length === 0) this.values.delete(key)
+    else this.values.set(key, structuredClone(operations))
+  }
+}
 
 class FakeSocket implements SocketLike {
   readyState = 0
@@ -177,5 +186,33 @@ describe('collaboration client recovery', () => {
     expect(client.state?.title).toBe('Canonical')
     expect(client.diagnostics.pendingCount).toBe(0)
     client.disconnect()
+  })
+
+  it('restores a durable pending operation after a page-like client restart', async () => {
+    const storage = new MemoryPendingStorage()
+    const offline = new CollaborationClient<JsonObject>({
+      url: 'fake://', tenantId: 't', documentId: 'd', actorId: 'a', clientId: 'old-client', schemaVersion: '1.0',
+      socketFactory: () => { throw new Error('offline client must not connect') },
+      pendingStorage: storage,
+      applyPatches: (state) => state,
+    })
+    await offline.whenReady()
+    void offline.submit({ operationId: 'durable-op', operationType: 'property.set', strategyId: 'json.property-lww', strategyVersion: '1.0', payload: { path: '/title', value: 'Recovered' } })
+    await new Promise((resolve) => setTimeout(resolve, 1))
+    expect(storage.values.size).toBe(1)
+
+    const server = new FakeServer()
+    const restarted = new CollaborationClient<JsonObject>({
+      url: 'fake://', tenantId: 't', documentId: 'd', actorId: 'a', clientId: 'new-client', schemaVersion: '1.0',
+      socketFactory: server.create, pendingStorage: storage,
+      applyPatches: (state, patches) => patches.reduce((next, patch) => patch.op === 'set' ? { ...next, [patch.path.slice(1)]: patch.value } : next, state),
+    })
+    restarted.connect()
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    expect(server.submissions).toBe(1)
+    expect(restarted.diagnostics.pendingCount).toBe(0)
+    expect(restarted.diagnostics.pendingPersistence).toBe('ready')
+    expect(storage.values.size).toBe(0)
+    restarted.disconnect()
   })
 })

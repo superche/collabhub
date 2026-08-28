@@ -1,4 +1,4 @@
-export interface DocumentState { id: string; title: string }
+export interface DocumentState { id: string; title: string; wordCount: number }
 export interface DocumentCommand { type: 'document.rename'; title: string }
 export interface Diagnostics { connection: string; canonicalVersion: number; pendingCount: number }
 

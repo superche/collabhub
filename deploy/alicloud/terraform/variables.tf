@@ -76,7 +76,7 @@ variable "instance_count" {
 variable "container_image" {
   description = "Published or application-owned distributed CollabHub image."
   type        = string
-  default     = "ghcr.io/superche/collabhub:0.1.3"
+  default     = "ghcr.io/superche/collabhub:0.2.0"
 }
 
 variable "domain_pack_config_json" {

@@ -27,7 +27,7 @@ Text changes submit one `block.update` for one top-level block. Insert, delete, 
 
 ## Recovery
 
-An offline client keeps pending block intents in page memory. On reconnect it receives a canonical snapshot, preserves the original operation id and base version, and replays the intent. Refreshing the page does not preserve pending intents in v0.1.
+An offline client keeps pending block intents and replays them after reconnect. The v0.2 model entry point can persist this queue in IndexedDB across page refresh; the current BlockNote example still uses the lower-level in-memory adapter.
 
 ## Conflict boundary
 

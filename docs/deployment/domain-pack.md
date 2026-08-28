@@ -13,7 +13,7 @@ docker run --rm --network host \
   -e COLLABHUB_ROLE=gateway \
   -e DATABASE_URL=... -e REDIS_URL=... -e INTERNAL_TOKEN=... \
   -e JWT_JWKS_URL=... -e JWT_ISSUER=... -e JWT_AUDIENCE=... \
-  ghcr.io/superche/collabhub:0.1.3
+  ghcr.io/superche/collabhub:0.2.0
 ```
 
 JSON 文件可以配置：
@@ -34,7 +34,7 @@ docker run --rm --network host \
   -v "$PWD/deploy/domain-pack/domain-pack.example.mjs:/config/domain-pack.mjs:ro" \
   -e COLLABHUB_DOMAIN_PACK_MODULE=/config/domain-pack.mjs \
   ... \
-  ghcr.io/superche/collabhub:0.1.3
+  ghcr.io/superche/collabhub:0.2.0
 ```
 
 模块导出 Domain Pack 对象或工厂函数。运行时会注入 `jsonStrategies` 和 `defineDomainPack`，外挂文件不需要安装 npm 依赖。完整代码见[联动示例](../../deploy/domain-pack/domain-pack.example.mjs)。

@@ -18,6 +18,7 @@ export function App({ runtime, actorId }: { runtime: AppRuntime; actorId: string
         onBlur={() => void runtime.execute({ type: 'document.rename', title })}
       />
     </label>
+    <p data-testid="word-count">{document.wordCount} words · updated by the same command</p>
     <dl>
       <div><dt>Client</dt><dd>{actorId}</dd></div>
       <div><dt>Connection</dt><dd data-testid="connection">{diagnostics.connection}</dd></div>
