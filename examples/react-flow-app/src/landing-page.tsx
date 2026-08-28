@@ -1,148 +1,120 @@
+import { useEffect, useState } from 'react'
+
 const githubUrl = 'https://github.com/superche/collabhub'
-const docsUrl = `${githubUrl}/blob/main/docs/getting-started.md`
+type Language = 'en' | 'zh'
+
+const copy = {
+  en: {
+    pageTitle: 'CollabHub · Multiplayer for existing React apps', navLabel: 'Primary navigation', homeLabel: 'CollabHub home', how: 'How it works', examples: 'Examples', docs: 'Docs', github: 'GitHub', languageLabel: 'Language',
+    kicker: 'OPEN SOURCE · TECHNICAL PREVIEW', heroTitle: 'Multiplayer, without rewriting your React app.', heroBody: 'Keep your components, data model, store, and REST fallback. Add one client boundary and deploy one collaboration service.', tryDemo: 'Try two-client demo', star: 'Star on GitHub',
+    systemLabel: 'Your React app connects to CollabHub through a small SDK boundary', path: 'COLLABORATION PATH', online: 'ONLINE', clientAlice: 'CLIENT / ALICE', clientBob: 'CLIENT / BOB', yourApp: 'Your React app', operations: 'operations', patches: 'patches', infrastructure: 'YOUR INFRASTRUCTURE', service: 'CollabHub service', serviceDetails: 'order · validate · recover',
+    proofExamples: 'real examples', proofTests: 'automated tests', proofDependencies: 'npm dependencies to start', proofLicense: 'free and open source',
+    keepIndex: '01 / KEEP YOUR APP', keepTitle: 'Collaboration stays at the edge of your codebase.', keepBody: 'Your normal React code still reads business state and sends business commands. WebSocket details, reconnects, and recovery remain inside one integration area.', youKeep: 'YOU KEEP', components: 'Components', componentsBody: 'No collaboration imports in your UI.', domain: 'Domain model', domainBody: 'No migration into a library-owned document type.', rest: 'REST fallback', restBody: 'Turn collaboration off and use the existing path.', adds: 'COLLABHUB ADDS', sync: 'Sync + recovery', syncBody: 'Incremental changes, pending replay, snapshots, and diagnostics.',
+    integrationIndex: '02 / TWO THINGS TO ADD', integrationTitle: 'One SDK boundary. One deployable service.', integrationBody: 'Put custom validation, linked-field updates, and conflict decisions in your server model—not across every component.', guide: 'Read the integration guide', client: 'CLIENT', server: 'SERVER',
+    adaptersIndex: '03 / REAL ADAPTERS', adaptersTitle: 'Typical React collaboration, proven end to end.', todoBody: 'Business commands, linked counters, ordering, REST fallback, and double-write prevention.', blocknoteBody: 'Incremental block updates, coalescing, offline replay, and snapshot recovery.', flowBody: 'Incremental graph edits, one commit per drag, and atomic linked-edge deletion.', live: 'LIVE', openWorkspace: 'Open workspace', viewExample: 'View example',
+    sourceIndex: '04 / OPEN SOURCE', sourceTitle: 'Run it where your data already lives.', sourceBody: 'Start with Docker. Scale with PostgreSQL and Redis. AWS, Alibaba Cloud, and Kubernetes baselines are included.', viewSource: 'View source', openDemo: 'Open live demo', footer: 'Open-source multiplayer infrastructure for existing React applications.',
+  },
+  zh: {
+    pageTitle: 'CollabHub · 为现有 React 应用添加多人协作', navLabel: '主导航', homeLabel: 'CollabHub 首页', how: '工作原理', examples: '案例', docs: '文档', github: 'GitHub', languageLabel: '语言',
+    kicker: '开源 · 技术预览', heroTitle: '无需重写 React 应用，也能多人协作。', heroBody: '保留你的组件、数据模型、状态管理和 REST 单人模式。增加一个客户端边界，再部署一个协同服务即可。', tryDemo: '体验双客户端 Demo', star: '在 GitHub 上加星',
+    systemLabel: '你的 React 应用通过一个轻量 SDK 边界连接 CollabHub', path: '协同链路', online: '在线', clientAlice: '客户端 / ALICE', clientBob: '客户端 / BOB', yourApp: '你的 React 应用', operations: '操作', patches: '变更', infrastructure: '你的基础设施', service: 'CollabHub 服务', serviceDetails: '排序 · 校验 · 恢复',
+    proofExamples: '个真实案例', proofTests: '项自动化测试', proofDependencies: '个 npm 依赖即可开始', proofLicense: '免费开源',
+    keepIndex: '01 / 保留你的应用', keepTitle: '协同逻辑只放在代码边缘。', keepBody: '普通 React 代码继续读取业务状态、发送业务命令。WebSocket、重连和恢复逻辑集中在一个接入目录里。', youKeep: '你继续使用', components: '现有组件', componentsBody: 'UI 组件无需引入 CollabHub。', domain: '业务模型', domainBody: '无需迁移到框架规定的数据类型。', rest: 'REST 单人模式', restBody: '关闭协同后继续走原来的接口。', adds: 'COLLABHUB 提供', sync: '同步与恢复', syncBody: '增量变更、离线重放、快照和诊断。',
+    integrationIndex: '02 / 只需增加两部分', integrationTitle: '一个 SDK 接入层，一个可部署服务。', integrationBody: '自定义校验、字段联动和冲突处理都写在服务端模型中，不要分散到每个组件里。', guide: '阅读接入指南', client: '客户端', server: '服务端',
+    adaptersIndex: '03 / 真实接入案例', adaptersTitle: '典型 React 协同场景，均已端到端验证。', todoBody: '业务命令、字段联动、排序、REST 切换与双写保护。', blocknoteBody: '增量块更新、合并提交、离线重放与快照恢复。', flowBody: '增量图编辑、每次拖拽只提交一次，以及联动删除边。', live: '在线', openWorkspace: '打开工作区', viewExample: '查看案例',
+    sourceIndex: '04 / 开源部署', sourceTitle: '让数据留在你的基础设施里。', sourceBody: 'Docker 起步，PostgreSQL 与 Redis 横向扩容。内置 AWS、阿里云和 Kubernetes 部署基线。', viewSource: '查看源码', openDemo: '打开在线 Demo', footer: '为现有 React 应用提供的开源多人协作基础设施。',
+  },
+} as const
 
 export function LandingPage() {
-  const roomUrl = `/room?document=graph-${crypto.randomUUID()}`
+  const [language, setLanguage] = useState<Language>(() => new URLSearchParams(location.search).get('lang') === 'zh' ? 'zh' : 'en')
+  const [roomUrl] = useState(() => `/room?document=graph-${crypto.randomUUID()}`)
+  const t = copy[language]
+  const docsUrl = `${githubUrl}/blob/main/docs/getting-started${language === 'zh' ? '.zh-CN' : ''}.md`
+
+  useEffect(() => {
+    document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en'
+    document.title = t.pageTitle
+  }, [language, t.pageTitle])
+
+  function changeLanguage(next: Language) {
+    setLanguage(next)
+    const url = new URL(location.href)
+    if (next === 'zh') url.searchParams.set('lang', 'zh')
+    else url.searchParams.delete('lang')
+    history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
+  }
 
   return <div className="landing-page">
-    <nav className="landing-nav" aria-label="Primary navigation">
-      <a className="brand" href="/" aria-label="CollabHub home">
-        <BrandMark />
-        <span>CollabHub</span>
-      </a>
+    <nav className="landing-nav" aria-label={t.navLabel}>
+      <a className="brand" href="/" aria-label={t.homeLabel}><BrandMark /><span>CollabHub</span></a>
       <div className="landing-nav-links">
-        <a href="#how-it-works">How it works</a>
-        <a href="#examples">Examples</a>
-        <a href={docsUrl}>Docs</a>
-        <a className="nav-github" href={githubUrl} target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+        <a href="#how-it-works">{t.how}</a><a href="#examples">{t.examples}</a><a href={docsUrl}>{t.docs}</a>
+        <div className="language-switch" role="group" aria-label={t.languageLabel}>
+          <button type="button" aria-pressed={language === 'en'} onClick={() => changeLanguage('en')}>EN</button><span aria-hidden="true">/</span><button type="button" aria-pressed={language === 'zh'} onClick={() => changeLanguage('zh')}>中文</button>
+        </div>
+        <a className="nav-github" href={githubUrl} target="_blank" rel="noreferrer">{t.github} <span aria-hidden="true">↗</span></a>
       </div>
     </nav>
 
     <main className="landing-main">
       <section className="hero" aria-labelledby="hero-title">
         <div className="hero-copy">
-          <span className="landing-kicker"><i /> OPEN SOURCE · TECHNICAL PREVIEW</span>
-          <h1 id="hero-title">Multiplayer, without rewriting your React app.</h1>
-          <p>Keep your components, data model, store, and REST fallback. Add one client boundary and deploy one collaboration service.</p>
-          <div className="hero-actions">
-            <a className="button primary" href="/demo.html">Try two-client demo</a>
-            <a className="button secondary" href={githubUrl} target="_blank" rel="noreferrer"><StarIcon /> Star on GitHub</a>
-          </div>
+          <span className="landing-kicker"><i /> {t.kicker}</span><h1 id="hero-title">{t.heroTitle}</h1><p>{t.heroBody}</p>
+          <div className="hero-actions"><a className="button primary" href="/demo.html">{t.tryDemo}</a><a className="button secondary" href={githubUrl} target="_blank" rel="noreferrer"><StarIcon /> {t.star}</a></div>
           <code className="install-command"><span>$</span> npm create @collabhub/react@0.2.0 my-app</code>
         </div>
-
-        <div className="hero-system" aria-label="Your React app connects to CollabHub through a small SDK boundary">
-          <div className="system-meta"><span>COLLABORATION PATH</span><strong>ONLINE <i /></strong></div>
-          <div className="system-client client-alice">
-            <span>CLIENT / ALICE</span>
-            <strong>Your React app</strong>
-            <div className="mini-flow"><b>Brief</b><i /><b>Build</b><i /><b>Ship</b></div>
-          </div>
-          <div className="system-client client-bob">
-            <span>CLIENT / BOB</span>
-            <strong>Your React app</strong>
-            <div className="mini-flow"><b>Brief</b><i /><b>Build</b><i /><b>Ship</b></div>
-          </div>
-          <div className="system-rail"><span>operations</span><i /><span>patches</span></div>
-          <div className="system-service">
-            <span>YOUR INFRASTRUCTURE</span>
-            <strong>CollabHub service</strong>
-            <small>order · validate · recover</small>
-          </div>
+        <div className="hero-system" aria-label={t.systemLabel}>
+          <div className="system-meta"><span>{t.path}</span><strong>{t.online} <i /></strong></div>
+          <SystemClient className="client-alice" label={t.clientAlice} app={t.yourApp} />
+          <SystemClient className="client-bob" label={t.clientBob} app={t.yourApp} />
+          <div className="system-rail"><span>{t.operations}</span><i /><span>{t.patches}</span></div>
+          <div className="system-service"><span>{t.infrastructure}</span><strong>{t.service}</strong><small>{t.serviceDetails}</small></div>
           <div className="version-ticks"><span>v12</span><i /><span>v13</span><i /><span>v14</span></div>
         </div>
       </section>
 
-      <section className="proof-strip" aria-label="Project proof">
-        <div><strong>3</strong><span>real examples</span></div>
-        <div><strong>65</strong><span>automated tests</span></div>
-        <div><strong>2</strong><span>npm dependencies to start</span></div>
-        <div><strong>Apache-2.0</strong><span>free and open source</span></div>
-      </section>
+      <section className="proof-strip" aria-label="Project proof"><div><strong>3</strong><span>{t.proofExamples}</span></div><div><strong>70</strong><span>{t.proofTests}</span></div><div><strong>2</strong><span>{t.proofDependencies}</span></div><div><strong>Apache-2.0</strong><span>{t.proofLicense}</span></div></section>
 
       <section className="keep-section" id="how-it-works">
-        <div className="section-heading">
-          <span className="section-index">01 / KEEP YOUR APP</span>
-          <h2>Collaboration stays at the edge of your codebase.</h2>
-          <p>Your normal React code still reads business state and sends business commands. WebSocket details, reconnects, and recovery remain inside one integration area.</p>
-        </div>
-        <div className="keep-grid">
-          <article><span>YOU KEEP</span><h3>Components</h3><p>No collaboration imports in your UI.</p></article>
-          <article><span>YOU KEEP</span><h3>Domain model</h3><p>No migration into a library-owned document type.</p></article>
-          <article><span>YOU KEEP</span><h3>REST fallback</h3><p>Turn collaboration off and use the existing path.</p></article>
-          <article className="accent-card"><span>COLLABHUB ADDS</span><h3>Sync + recovery</h3><p>Incremental changes, pending replay, snapshots, and diagnostics.</p></article>
-        </div>
+        <div className="section-heading"><span className="section-index">{t.keepIndex}</span><h2>{t.keepTitle}</h2><p>{t.keepBody}</p></div>
+        <div className="keep-grid"><InfoCard label={t.youKeep} title={t.components} body={t.componentsBody} /><InfoCard label={t.youKeep} title={t.domain} body={t.domainBody} /><InfoCard label={t.youKeep} title={t.rest} body={t.restBody} /><InfoCard label={t.adds} title={t.sync} body={t.syncBody} accent /></div>
       </section>
 
       <section className="integration-section" id="integration">
-        <div className="integration-copy">
-          <span className="section-index">02 / TWO THINGS TO ADD</span>
-          <h2>One SDK boundary. One deployable service.</h2>
-          <p>Put custom validation, linked-field updates, and conflict decisions in your server Domain Pack—not across every component.</p>
-          <a href={docsUrl}>Read the integration guide <span aria-hidden="true">→</span></a>
-        </div>
+        <div className="integration-copy"><span className="section-index">{t.integrationIndex}</span><h2>{t.integrationTitle}</h2><p>{t.integrationBody}</p><a href={docsUrl}>{t.guide} <span aria-hidden="true">→</span></a></div>
         <div className="code-stack" aria-label="CollabHub integration example">
-          <div className="code-card">
-            <header><span>src/collab/create-runtime.ts</span><b>CLIENT</b></header>
-            <pre><code><em>const</em> runtime = createCollabRuntime({'{'}{`\n  `}wsUrl, documentId,{`\n  `}store, commands{`\n`}{'}'})</code></pre>
-          </div>
-          <div className="code-card service-code">
-            <header><span>your infrastructure</span><b>SERVER</b></header>
-            <pre><code>docker run -p 8080:8080 \<br />  ghcr.io/superche/collabhub:0.2.0</code></pre>
-          </div>
+          <div className="code-card"><header><span>src/collab/create-runtime.ts</span><b>{t.client}</b></header><pre><code><em>const</em> runtime = createCollabRuntime({'{'}{`\n  `}wsUrl, documentId,{`\n  `}store, commands{`\n`}{'}'})</code></pre></div>
+          <div className="code-card service-code"><header><span>your infrastructure</span><b>{t.server}</b></header><pre><code>docker run -p 8080:8080 \<br />  ghcr.io/superche/collabhub:0.2.0</code></pre></div>
         </div>
       </section>
 
       <section className="examples-section" id="examples">
-        <div className="section-heading examples-heading">
-          <span className="section-index">03 / REAL ADAPTERS</span>
-          <h2>Typical React collaboration, proven end to end.</h2>
-        </div>
-        <div className="example-grid">
-          <ExampleCard number="01" title="TODO List" description="Business commands, linked counters, ordering, REST fallback, and double-write prevention." href={`${githubUrl}/tree/main/examples/todo-list-app`} />
-          <ExampleCard number="02" title="BlockNote" description="Incremental block updates, coalescing, offline replay, and snapshot recovery." href={`${githubUrl}/tree/main/examples/blocknote-app`} />
-          <ExampleCard number="03" title="React Flow" description="Incremental graph edits, one commit per drag, and atomic linked-edge deletion." href={roomUrl} live />
-        </div>
+        <div className="section-heading examples-heading"><span className="section-index">{t.adaptersIndex}</span><h2>{t.adaptersTitle}</h2></div>
+        <div className="example-grid"><ExampleCard number="01" title="TODO List" description={t.todoBody} href={`${githubUrl}/tree/main/examples/todo-list-app`} openLabel={t.viewExample} liveLabel={t.live} /><ExampleCard number="02" title="BlockNote" description={t.blocknoteBody} href={`${githubUrl}/tree/main/examples/blocknote-app`} openLabel={t.viewExample} liveLabel={t.live} /><ExampleCard number="03" title="React Flow" description={t.flowBody} href={roomUrl} live openLabel={t.openWorkspace} liveLabel={t.live} /></div>
       </section>
 
-      <section className="open-source-section">
-        <div>
-          <span className="section-index light">04 / OPEN SOURCE</span>
-          <h2>Run it where your data already lives.</h2>
-          <p>Start with Docker. Scale with PostgreSQL and Redis. AWS, Alibaba Cloud, and Kubernetes baselines are included.</p>
-        </div>
-        <div className="open-source-actions">
-          <a className="button light-button" href={githubUrl} target="_blank" rel="noreferrer"><StarIcon /> View source</a>
-          <a className="text-link" href="/demo.html">Open live demo →</a>
-        </div>
-      </section>
+      <section className="open-source-section"><div><span className="section-index light">{t.sourceIndex}</span><h2>{t.sourceTitle}</h2><p>{t.sourceBody}</p></div><div className="open-source-actions"><a className="button light-button" href={githubUrl} target="_blank" rel="noreferrer"><StarIcon /> {t.viewSource}</a><a className="text-link" href="/demo.html">{t.openDemo} →</a></div></section>
     </main>
 
-    <footer className="landing-footer">
-      <a className="brand" href="/"><BrandMark /><span>CollabHub</span></a>
-      <p>Open-source multiplayer infrastructure for existing React applications.</p>
-      <div><a href={githubUrl}>GitHub</a><a href={docsUrl}>Docs</a><span>Apache-2.0</span></div>
-    </footer>
+    <footer className="landing-footer"><a className="brand" href="/"><BrandMark /><span>CollabHub</span></a><p>{t.footer}</p><div><a href={githubUrl}>GitHub</a><a href={docsUrl}>{t.docs}</a><span>Apache-2.0</span></div></footer>
   </div>
 }
 
-function ExampleCard({ number, title, description, href, live = false }: { number: string; title: string; description: string; href: string; live?: boolean }) {
-  return <a className="example-card" href={href} target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noreferrer' : undefined}>
-    <div><span>{number}</span>{live && <b>LIVE</b>}</div>
-    <h3>{title}</h3>
-    <p>{description}</p>
-    <strong>{live ? 'Open workspace' : 'View example'} <span aria-hidden="true">↗</span></strong>
-  </a>
+function SystemClient({ className, label, app }: { className: string; label: string; app: string }) {
+  return <div className={`system-client ${className}`}><span>{label}</span><strong>{app}</strong><div className="mini-flow"><b>Brief</b><i /><b>Build</b><i /><b>Ship</b></div></div>
+}
+
+function InfoCard({ label, title, body, accent = false }: { label: string; title: string; body: string; accent?: boolean }) {
+  return <article className={accent ? 'accent-card' : undefined}><span>{label}</span><h3>{title}</h3><p>{body}</p></article>
+}
+
+function ExampleCard({ number, title, description, href, live = false, openLabel, liveLabel }: { number: string; title: string; description: string; href: string; live?: boolean; openLabel: string; liveLabel: string }) {
+  return <a className="example-card" href={href} target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noreferrer' : undefined}><div><span>{number}</span>{live && <b>{liveLabel}</b>}</div><h3>{title}</h3><p>{description}</p><strong>{openLabel} <span aria-hidden="true">↗</span></strong></a>
 }
 
 function BrandMark() {
-  return <svg className="brand-mark" viewBox="0 0 48 48" role="img" aria-label="CollabHub mark">
-    <rect x="2" y="2" width="44" height="44" rx="14" fill="#237a53" />
-    <circle cx="16" cy="24" r="5" fill="#edf1ed" />
-    <circle cx="32" cy="15" r="5" fill="#f0c766" />
-    <circle cx="32" cy="33" r="5" fill="#70e3a9" />
-    <path d="M20.4 21.5 27.6 17M20.5 26.5l7.2 4.1" stroke="#edf1ed" strokeWidth="3.2" strokeLinecap="round" />
-  </svg>
+  return <svg className="brand-mark" viewBox="0 0 48 48" role="img" aria-label="CollabHub mark"><rect x="2" y="2" width="44" height="44" rx="14" fill="#175cd3" /><circle cx="16" cy="24" r="5" fill="#ffffff" /><circle cx="32" cy="15" r="5" fill="#ffd24a" /><circle cx="32" cy="33" r="5" fill="#8fb8ff" /><path d="M20.4 21.5 27.6 17M20.5 26.5l7.2 4.1" stroke="#ffffff" strokeWidth="3.2" strokeLinecap="round" /></svg>
 }
 
 function StarIcon() {

@@ -30,6 +30,19 @@ try {
   await page.goto(origin)
   await expect(page.getByRole('heading', { name: 'Multiplayer, without rewriting your React app.' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Try two-client demo' })).toHaveAttribute('href', '/demo.html')
+  const sourceButton = page.getByRole('link', { name: 'View source' })
+  await expect(sourceButton).toBeVisible()
+  expect(await sourceButton.evaluate((element) => getComputedStyle(element).color)).toBe('rgb(11, 43, 92)')
+  expect(await page.getByRole('link', { name: 'Try two-client demo' }).evaluate((element) => getComputedStyle(element).backgroundColor)).toBe('rgb(23, 92, 211)')
+  await page.getByRole('button', { name: '中文' }).click()
+  await expect(page.getByRole('heading', { name: '无需重写 React 应用，也能多人协作。' })).toBeVisible()
+  expect(await page.locator('html').getAttribute('lang')).toBe('zh-CN')
+  expect(new URL(page.url()).searchParams.get('lang')).toBe('zh')
+  await page.reload()
+  await expect(page.getByRole('heading', { name: '无需重写 React 应用，也能多人协作。' })).toBeVisible()
+  await page.getByRole('button', { name: 'EN' }).click()
+  await expect(page.getByRole('heading', { name: 'Multiplayer, without rewriting your React app.' })).toBeVisible()
+  expect(new URL(page.url()).searchParams.has('lang')).toBe(false)
 
   await page.goto(`${origin}/demo.html?room=${documentId}`)
   const alice = page.frameLocator('iframe[title="Alice"]')
@@ -68,6 +81,8 @@ try {
     originRestricted: healthBody.originRestricted,
     untrustedOriginStatus: rejectedStatus,
     landingVerified: true,
+    bilingualLandingVerified: true,
+    blueThemeVerified: true,
     clients: ['alice', 'bob'],
     canonicalVersion: 4,
     nodeCount: 5,
