@@ -1,6 +1,7 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { basename, dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import WebSocket from 'ws'
 
 export function scaffoldReactApp(targetArgument: string, cwd = process.cwd()): string {
   const target = resolve(cwd, targetArgument)
@@ -95,15 +96,15 @@ function hasReact(manifest: ProjectManifest): boolean { return Boolean(manifest.
 function pass(message: string): DoctorCheck { return { level: 'pass', message } }
 function fail(message: string): DoctorCheck { return { level: 'fail', message } }
 
-export interface VerifyTwoClientsOptions { url: string; modelId: string; authToken?: string; timeoutMs?: number }
+export interface VerifyTwoClientsOptions { url: string; modelId: string; authToken?: string; origin?: string; timeoutMs?: number }
 export interface VerifyTwoClientsResult { ok: true; documentId: string; aliceVersion: number; bobVersion: number; linkedValue: number }
 
 /** Real WebSocket smoke: two independent clients observe one server-computed linked update. */
 export async function verifyTwoClients(options: VerifyTwoClientsOptions): Promise<VerifyTwoClientsResult> {
   const documentId = `verify-${Date.now().toString(36)}`
   const timeoutMs = options.timeoutMs ?? 8_000
-  const alice = await VerificationClient.open(options.url, documentId, 'alice', options.modelId, options.authToken, timeoutMs)
-  const bob = await VerificationClient.open(options.url, documentId, 'bob', options.modelId, options.authToken, timeoutMs)
+  const alice = await VerificationClient.open(options.url, documentId, 'alice', options.modelId, options.authToken, options.origin, timeoutMs)
+  const bob = await VerificationClient.open(options.url, documentId, 'bob', options.modelId, options.authToken, options.origin, timeoutMs)
   try {
     const result = await alice.submit({ type: 'collabhub.verify', value: 21 }, timeoutMs)
     if (result.kind !== 'accepted') throw new Error(`Alice operation was not accepted: ${JSON.stringify(result)}`)
@@ -126,10 +127,8 @@ class VerificationClient {
       for (const waiter of [...this.waiters]) waiter(message)
     })
   }
-  static async open(url: string, documentId: string, actorId: string, modelId: string, authToken: string | undefined, timeoutMs: number): Promise<VerificationClient> {
-    const Socket = (globalThis as any).WebSocket
-    if (!Socket) throw new Error('Node.js 22 or newer is required for collabhub verify')
-    const socket = new Socket(url)
+  static async open(url: string, documentId: string, actorId: string, modelId: string, authToken: string | undefined, origin: string | undefined, timeoutMs: number): Promise<VerificationClient> {
+    const socket = new WebSocket(url, { origin: origin ?? 'http://127.0.0.1:5173' })
     const client = new VerificationClient(socket, documentId, actorId, modelId)
     await once(socket, 'open', timeoutMs)
     socket.send(JSON.stringify({ kind: 'hello', protocolVersion: '0.1', tenantId: 'default', documentId, actorId, clientId: `${actorId}-verify`, lastKnownVersion: 0, ...(authToken ? { authToken } : {}) }))

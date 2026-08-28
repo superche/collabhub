@@ -21,6 +21,7 @@ try {
       url: value(rest, '--url') ?? 'ws://127.0.0.1:8787/collab',
       modelId: value(rest, '--model-id') ?? 'my-app',
       authToken: value(rest, '--token') ?? process.env.COLLABHUB_AUTH_TOKEN,
+      origin: value(rest, '--origin') ?? process.env.COLLABHUB_VERIFY_ORIGIN,
     })
     console.log(JSON.stringify(result, null, 2))
   } else {

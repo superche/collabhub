@@ -13,5 +13,7 @@
   "bin": { "create-collabhub-react": "./dist/cli.js", "collabhub": "./dist/cli.js" },
   "engines": { "node": ">=22" },
   "publishConfig": { "access": "public", "provenance": true },
-  "scripts": { "build": "node ../../scripts/clean-package-output.mjs && tsc -b --force", "prepack": "pnpm build" }
+  "scripts": { "build": "node ../../scripts/clean-package-output.mjs && tsc -b --force", "prepack": "pnpm build" },
+  "dependencies": { "ws": "^8.18.3" },
+  "devDependencies": { "@types/ws": "^8.18.1" }
 }
