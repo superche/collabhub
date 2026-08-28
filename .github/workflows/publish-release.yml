@@ -76,6 +76,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ inputs.expected_version }}
         run: |
+          git config user.name "superche"
+          git config user.email "35420957+superche@users.noreply.github.com"
           git tag -a "v${VERSION}" -m "CollabHub ${VERSION} technical preview"
           git push origin "v${VERSION}"
           gh release create "v${VERSION}" artifacts/packages/*.tgz \
