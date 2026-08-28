@@ -18,7 +18,9 @@
 
 ## 发布与公开 Demo 门禁
 
-`pnpm release:check` 通过。9 个 `0.1.0` package 均生成编译 ESM、declaration 与精简 manifest；审计确认没有 package `src`、test 或 `workspace:` 依赖泄漏，create-react 仅额外包含生成模板。`pnpm publish:dry-run` 按依赖顺序通过 9 个公共包的 npm dry-run。`Publish technical preview` workflow 会在 owner environment approval 后以 provenance 发布 npm、GHCR 双架构镜像与 GitHub prerelease；`v1.0.0` 仍需另行批准。
+`pnpm release:check` 通过。9 个 `0.1.0` package 均生成编译 ESM、declaration 与精简 manifest；审计确认没有 package `src`、test 或 `workspace:` 依赖泄漏，create-react 仅额外包含生成模板。`pnpm publish:dry-run` 按依赖顺序通过 9 个公共包的 npm dry-run。
+
+9 个 `@collabhub/*@0.1.0` 包已发布到 npm 官方 registry，并逐包确认版本与 public access。公开安装验收在全新临时目录执行 `npm create @collabhub/react@0.1.0 registry-smoke`、`npm install` 与 `npm run build`：安装 102 个依赖、0 漏洞，TypeScript 与 Vite production build 通过。全部包已配置 GitHub OIDC Trusted Publisher（`superche/collabhub`、`publish-release.yml`、`release-approval`、仅 `npm publish`）及严格 2FA 发布策略；后续 workflow 不使用长期 `NPM_TOKEN`，由 npm 自动生成 provenance。`v1.0.0` 仍需另行批准。
 
 `pnpm smoke:fresh-react` 通过：在系统临时目录生成全新项目，只安装 9 个本地 tarball，断言 `App.tsx`/application 为 0 个 CollabHub import，完成 TypeScript/Vite 构建，启动 server/Alice/Bob 三个独立进程，并由两个 Chromium 客户端收敛到 title `Fresh install works`、canonical v1 / pending 0。
 

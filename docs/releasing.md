@@ -20,9 +20,11 @@ Run **Prepare release artifacts** with the committed version and confirmation `P
 
 ## Technical-preview publication
 
-Configure the GitHub `release-approval` environment with the repository owner as required reviewer. Add an npm granular automation token as the `NPM_TOKEN` Actions secret, then run **Publish technical preview** with confirmation `PUBLISH_TECHNICAL_PREVIEW`.
+Configure the GitHub `release-approval` environment with the repository owner as required reviewer. Every public package trusts `superche/collabhub`, workflow `publish-release.yml`, environment `release-approval`, and the `npm publish` action. No long-lived npm write token is used.
 
-The workflow reruns every release gate, publishes packages in dependency order with npm provenance, pushes an amd64/arm64 GHCR image with SBOM, creates an immutable annotated tag, and attaches tarballs to a GitHub prerelease. It can resume a partial npm publication: an already-existing exact version is verified and skipped.
+The release job uses a GitHub-hosted runner, Node.js 24, npm 11.16.0, `id-token: write`, and disabled package-manager caching. Run **Publish technical preview** with confirmation `PUBLISH_TECHNICAL_PREVIEW`.
+
+The workflow reruns every release gate, publishes packages in dependency order through npm Trusted Publishing with automatic provenance, pushes an amd64/arm64 GHCR image with SBOM, creates an immutable annotated tag, and attaches tarballs to a GitHub prerelease. It can resume a partial npm publication: an already-existing exact version is verified and skipped.
 
 For a local non-publishing audit:
 
