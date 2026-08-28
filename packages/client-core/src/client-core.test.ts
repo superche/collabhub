@@ -128,6 +128,18 @@ describe('collaboration client recovery', () => {
     store.close()
   })
 
+  it('accepts ordinary application interfaces without a JsonObject intersection', () => {
+    interface AppDocument { title: string; cards: Array<{ id: string; text: string }> }
+    type AppCommand = { type: 'card.add'; card: { id: string; text: string } }
+    const store = createCollaboration<AppDocument, AppCommand>({
+      url: 'fake://', documentId: 'd', actorId: 'a', autoConnect: false,
+      initialState: { title: 'Plain interface', cards: [] },
+      command: (command) => json.create('cards', command.card.id, command.card),
+    })
+    expect(store.getSnapshot()).toEqual({ title: 'Plain interface', cards: [] })
+    store.close()
+  })
+
   it('keeps the same pending operation through retryLater and an accepted version gap', async () => {
     const server = new ScriptedServer()
     const client = new CollaborationClient<JsonObject>({

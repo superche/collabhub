@@ -4,6 +4,13 @@ All notable changes are recorded here. CollabHub follows Semantic Versioning aft
 
 ## Unreleased
 
+## 0.1.2 — safer WebSocket edge and clearer React onboarding
+
+- Reject untrusted WebSocket origins before the HTTP upgrade in the public demo and `@collabhub/server-ws`.
+- Make the live deployment smoke close rejected upgrade responses cleanly so hosted checks cannot hang after success.
+- Rewrite the README integration path around an existing React runtime, with copyable code and a clear map of where custom rules, access checks, and storage belong.
+- Let `createCollaboration` accept ordinary application interfaces and ordinary entity objects without a `JsonObject` intersection.
+
 ## 0.1.1 — lower-friction technical preview
 
 - Added `createCollaboration` and `json.*` as the default React-facing API.

@@ -16,7 +16,7 @@ docker run --name collabhub -p 4100:4100 -v collabhub-data:/data \
   -e COLLABHUB_ALLOWED_ORIGINS=http://localhost:5173 \
   -e COLLABHUB_ALLOW_INSECURE_DEVELOPMENT_IDENTITY=true \
   -e COLLABHUB_INITIAL_STATE_JSON='{"title":"Untitled"}' \
-  ghcr.io/superche/collabhub-standalone:0.1.1
+  ghcr.io/superche/collabhub-standalone:0.1.2
 ```
 
 The container exposes `/collab` and `/healthz`. `/data` stores snapshots and WAL. Copy [the Dockerfile](../deploy/standalone.Dockerfile) when the host needs a custom Domain Pack.
@@ -37,7 +37,7 @@ The [TODO List migration](integration/todo-list-tutorial.en.md) is the complete 
 ## 2. Add one SDK package
 
 ```bash
-npm add @collabhub/client-core@0.1.1
+npm add @collabhub/client-core@0.1.2
 ```
 
 If the app defaults to a private registry, add `@collabhub:registry=https://registry.npmjs.org` to its `.npmrc`.
@@ -105,7 +105,7 @@ The [TODO List migration](integration/todo-list-tutorial.en.md) demonstrates RES
 ## Inspect a complete project
 
 ```bash
-npm create @collabhub/react@0.1.1 my-collab-app
+npm create @collabhub/react@0.1.2 my-collab-app
 cd my-collab-app
 npm install
 npm run dev

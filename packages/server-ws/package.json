@@ -1,6 +1,6 @@
 {
   "name": "@collabhub/server-ws",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Standalone WebSocket adapter for the CollabHub server-authoritative core",
   "type": "module",
   "license": "Apache-2.0",

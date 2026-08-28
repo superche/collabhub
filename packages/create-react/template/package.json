@@ -1,6 +1,6 @@
 {
   "name": "collabhub-react-app",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,8 +11,8 @@
     "build": "tsc --noEmit && vite build"
   },
   "dependencies": {
-    "@collabhub/client-core": "^0.1.1",
-    "@collabhub/server-ws": "^0.1.1",
+    "@collabhub/client-core": "^0.1.2",
+    "@collabhub/server-ws": "^0.1.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },

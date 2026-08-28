@@ -1,6 +1,6 @@
 {
   "name": "@collabhub/server-core",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Server-authoritative operation pipeline, WAL, and snapshot runtime",
   "type": "module",
   "license": "Apache-2.0",

@@ -1,6 +1,6 @@
 # Acceptance evidence
 
-CollabHub is promoted as a `0.1.1` technical preview, not a production SLO. The release gate validates the following on Node.js 22/24 and Playwright Chromium.
+CollabHub is promoted as a `0.1.2` technical preview, not a production SLO. The release gate validates the following on Node.js 22/24 and Playwright Chromium.
 
 ## Existing React adoption
 
@@ -35,7 +35,7 @@ The default production shape is one React SDK entry plus one persistent authorit
 
 ## Public edge and room lifecycle
 
-The production-bundle smoke rejects an untrusted Origin with code `1008`, applies connection limits, keeps active rooms warm, and reclaims disconnected rooms after TTL. Reopening an expired public-demo URL starts a clean graph.
+The production-bundle smoke rejects an untrusted Origin with HTTP `403` before the WebSocket upgrade, applies connection limits, keeps active rooms warm, and reclaims disconnected rooms after TTL. Reopening an expired public-demo URL starts a clean graph.
 
 The scheduled live smoke checks the deployed `/healthz`, requires the Origin allowlist to be observable as active, rejects an untrusted WebSocket Origin, and completes an allowed handshake.
 

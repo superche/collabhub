@@ -1,14 +1,14 @@
 <h1 align="center">CollabHub</h1>
 
-<p align="center"><strong>Low-intrusion, server-authoritative collaboration for existing React applications.</strong></p>
+<p align="center"><strong>Add real-time collaboration to an existing React app with little code, and keep REST as a fallback.</strong></p>
 
 <p align="center">
-  Keep your domain model. Keep your React components. No CRDT migration required.<br>
-  Collaboration stays behind Transport, Adapter, and Domain Pack boundaries.
+  Keep your data model, store, and React components. No CRDT migration required.<br>
+  Collaboration code stays in one small integration area instead of spreading through the UI.
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.1.1-1f6f4a">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.1.2-1f6f4a">
   <a href="https://github.com/superche/collabhub/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/superche/collabhub/actions/workflows/ci.yml/badge.svg"></a>
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.9-3178c6?logo=typescript&logoColor=white">
   <img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-4c566a">
@@ -26,37 +26,35 @@
   <a href="docs/capabilities.md">Capabilities</a>
 </p>
 
-| Your app keeps | CollabHub adds | Collaboration off |
+| Your app keeps | CollabHub adds | When collaboration is off |
 |---|---|---|
-| Domain, Store, React components | Command Transport, Projection Adapter, Domain Pack | Fall back to the existing REST transport |
+| Data types, store, React components | One client file and one deployable service | Use the existing REST path |
 
-> **Release status:** `0.1.1` technical preview for structured React state. It is not a production-ready security or multi-region platform; `v1.0.0` still requires owner approval.
+> **Release status:** `0.1.2` technical preview for structured React state. It is not a production-ready security or multi-region platform; `v1.0.0` still requires owner approval.
 
-For an existing React app, the default path has two moving parts: one React-facing SDK package and one deployable authoritative service. Protocol, strategies, WAL, reconnect, and room lifecycle stay behind those entries.
+An existing React app only needs two things: one deployable service and one SDK at the app startup boundary. CollabHub handles connections, reconnects, recovery, and multi-user messages.
 
-The standalone image is the fast path for new documents and evaluation. Existing server-owned documents stay server-owned: seed their canonical snapshot through a `StorageAdapter`, then route shared REST writes through the same authority. Client `initialState` is only a local pre-connection projection, not a server import.
+The standalone image is the fast path for new documents and evaluation. Existing database records can stay where they are: load and save them through a `StorageAdapter`, and stop the old REST endpoint from writing the same document while collaboration is active. Client `initialState` only fills the screen before connection; it does not import data into the server.
 
 ## Features
 
 | Capability | Scope |
 |---|---|
-| **Server authoritative** | The server orders, validates, and publishes canonical patches |
-| **Atomic linked updates** | One business intent atomically updates one document's entities, summaries, and derived fields |
-| **Host-owned domain** | No migration to a CollabHub or CRDT data model |
-| **Pluggable strategies** | LWW, entity lifecycle, list ordering, and strict transactions |
-| **Business conflict policy** | Each Domain Pack chooses resolve, reject, or resync for stale operations |
-| **Reliable recovery** | Idempotent operations, pending replay, WAL, and snapshot recovery |
-| **Horizontal scale** | Reference runtime with stateless Gateways, single-writer Room Workers, PostgreSQL fencing/outbox, and ephemeral Redis routing |
-| **Single-writer contract** | The host routes shared mutations through its gateway; the TODO example gates REST while collaboration is active |
-| **Ephemeral presence** | Presence never enters WAL, snapshots, or document versions |
-| **Public-edge controls** | JWT/JWKS identity binding plus configurable origin, connection, room, and message limits |
-| **Two-entry onboarding** | Install `@collabhub/client-core`; deploy `@collabhub/server-ws` or the standalone image |
+| **Small integration surface** | Keep existing data types, store, components, and REST fallback |
+| **Linked changes land together** | One action can update content, counters, and progress without showing a half-finished state |
+| **Custom conflict rules** | Your app can accept, reject, or reload when edits arrive late |
+| **Automatic recovery** | Reconnect, resend unfinished work, and reload the document when needed |
+| **Common edits included** | Field changes, item add/delete, and list ordering |
+| **Horizontal scaling** | A PostgreSQL / Redis multi-node runtime is included |
+| **Temporary presence channel** | Cursor and selection messages do not enter document history |
+| **Public-edge controls** | Login checks, Origin rules, connection limits, and message-rate limits |
+| **Two-step start** | Install `@collabhub/client-core`; deploy `@collabhub/server-ws` or the standalone image |
 
 ## Examples
 
 ### 1. TODO List
 
-A classic React TODO app keeps its own Domain, Store, CommandBus, REST API, and repository. Transport, Adapter, and Domain Pack add collaboration around it.
+A classic React TODO app keeps its data types, store, command handling, and REST API. Collaboration is selected only at app startup.
 
 ```bash
 pnpm dev
@@ -68,9 +66,9 @@ pnpm dev
 | Alice | `http://127.0.0.1:5173/?client=alice` |
 | Bob | `http://127.0.0.1:5174/?client=bob` |
 
-Linked-update demo: Alice checks one task and sends one `section.setCompleted` intent. The server updates task state, completed count, total count, and progress in one canonical version; Bob receives the complete result.
+Linked-update demo: Alice checks one task once. Task state, completed count, total count, and progress update together, so Bob never sees a half-updated page.
 
-Verified: authoritative linked updates, business-defined stale-operation rebase, ordering, offline replay, snapshot recovery, REST/Collab switching, and double-write prevention. See the [TODO List integration guide](docs/integration/todo-list-tutorial.en.md).
+Verified: linked updates, app-defined conflict handling, ordering, offline recovery, REST/Collab switching, and double-write prevention. See the [TODO List integration guide](docs/integration/todo-list-tutorial.en.md).
 
 https://github.com/user-attachments/assets/58963835-fffe-43ff-875b-617e635ec282
 
@@ -78,7 +76,7 @@ https://github.com/user-attachments/assets/58963835-fffe-43ff-875b-617e635ec282
 
 ### 2. BlockNote
 
-BlockNote connects through an adapter to the server-authoritative core without enabling its built-in Yjs provider.
+BlockNote keeps its normal editor API and connects through one integration file without enabling its built-in Yjs provider.
 
 ```bash
 pnpm dev:blocknote
@@ -108,7 +106,7 @@ pnpm dev:react-flow
 
 [Open the live Alice/Bob React Flow demo](https://collabhub-demo.onrender.com/demo.html)
 
-The free deployment opens two React Flow clients against one authoritative graph. Active WebSocket rooms are protected; disconnected rooms expire after 30 minutes, with at most 500 warm rooms. Demo state is in memory. See [demo deployment](docs/demo.md).
+The free deployment opens two React Flow pages on the same graph. Rooms stay alive while someone is connected; empty rooms expire after 30 minutes, with at most 500 kept in memory. Demo state is in memory. See [demo deployment](docs/demo.md).
 Opening the [single-client demo](https://collabhub-demo.onrender.com/) creates a room ID in `?document=...`; share that URL to invite another client.
 
 | Process | Address |
@@ -125,86 +123,166 @@ https://github.com/user-attachments/assets/40594baa-6181-4e9f-a227-4d650c8eac35
 
 ## Integration
 
-### 1. Deploy the authoritative service
+Assume your React app already has an `AppRuntime`: components read data from it and call `runtime.execute(command)` after user actions. CollabHub does not need to appear in those components, and you keep your existing data types.
 
-The standalone image persists snapshots and WAL under `/data`:
+There are only three steps: run the service, map app commands to data changes, and choose collaboration or your existing REST runtime at startup.
+
+### 1. Run the collaboration service
+
+Start locally:
 
 ```bash
 docker run --name collabhub -p 4100:4100 -v collabhub-data:/data \
   -e COLLABHUB_ALLOWED_ORIGINS=http://localhost:5173 \
   -e COLLABHUB_ALLOW_INSECURE_DEVELOPMENT_IDENTITY=true \
-  -e COLLABHUB_INITIAL_STATE_JSON='{"title":"Untitled"}' \
-  ghcr.io/superche/collabhub-standalone:0.1.1
+  -e COLLABHUB_INITIAL_STATE_JSON='{"title":"Untitled","cards":[]}' \
+  ghcr.io/superche/collabhub-standalone:0.1.2
 ```
 
-Use explicit development identity only for evaluation. Production deployments provide `authenticate`, tenant authorization, TLS, and retention policy. PostgreSQL/Redis is optional until horizontal scale is needed.
+The browser connects to `ws://localhost:4100/collab`. Data stays in the `collabhub-data` Docker volume across container restarts.
 
-The image is built from [deploy/standalone.Dockerfile](deploy/standalone.Dockerfile). A custom Domain Pack can use the same Docker shape when business rules must compute linked patches.
+`COLLABHUB_INITIAL_STATE_JSON` is the easy path for a new app. If your documents already live in a database, use a `StorageAdapter` to load and save them. Do not let REST and CollabHub write the same document at the same time. See [existing server data](docs/getting-started.md#existing-server-owned-documents).
 
-For existing repository data, embed `startJsonCollaborationServer`, make `StorageAdapter.loadSnapshot` read the first canonical document, and gate the old REST mutation path while collaboration is active. The [existing React app guide](docs/getting-started.md#existing-server-owned-documents) separates this production migration from the standalone evaluation path.
-
-### 2. Connect the existing React app
+### 2. Add one collaboration file to the React app
 
 ```bash
-npm add @collabhub/client-core@0.1.1
+npm add @collabhub/client-core@0.1.2
 ```
 
-Using a private company registry? Add `@collabhub:registry=https://registry.npmjs.org` to the app's `.npmrc`.
-
-Create one file at the composition root. Your components keep reading the existing runtime/store and sending business commands.
+Create `src/collab/create-collab-runtime.ts`. Its only job is to say which data each app command changes.
 
 ```tsx
 import { createCollaboration, json } from '@collabhub/client-core'
+import type { AppCommand, AppDocument, AppRuntime } from '../app/types'
 
-function createAppRuntime(options: RuntimeOptions) {
-  if (!options.collabEnabled) return createRestRuntime(options)
-
-  const store = createCollaboration<AppDocument, AppCommand>({
+export function createCollabRuntime(options: {
+  wsUrl: string
+  documentId: string
+  userId: string
+  initialDocument: AppDocument
+}): AppRuntime {
+  const collab = createCollaboration<AppDocument, AppCommand>({
     url: options.wsUrl,
     documentId: options.documentId,
-    actorId: options.actorId,
+    actorId: options.userId,
     initialState: options.initialDocument,
-    command: (command) => {
-      if (command.type === 'document.rename') return json.set('/title', command.title)
-      throw new Error(`Unsupported command: ${command.type}`)
+    command(command) {
+      switch (command.type) {
+        case 'document.rename': return json.set('/title', command.title)
+        case 'card.add': return json.create('cards', command.card.id, command.card)
+        case 'card.delete': return json.delete('cards', command.cardId)
+        case 'card.move': return json.move('cards', command.cardId, command.afterId)
+        default: throw new Error(`Command is not connected yet: ${command.type}`)
+      }
     },
   })
 
   return {
-    store,
-    execute: (command: AppCommand) => store.execute(command),
-    close: () => store.close(),
+    subscribe: collab.subscribe,
+    getSnapshot: () => collab.getSnapshot() as AppDocument,
+    execute: (command) => collab.execute(command),
+    close: () => collab.close(),
   }
 }
 ```
 
-`createCollaboration` owns connection, pending, reconnect, recovery, canonical projection, and diagnostics. `json.set/create/delete/move/transaction` hide protocol and strategy identifiers. Switching back to the REST runtime leaves the domain model and React components unchanged. Follow the [existing React app guide](docs/getting-started.md).
+Common commands are ready to use:
+
+| Your app does | Use |
+|---|---|
+| Change a field | `json.set('/title', value)` |
+| Add an item | `json.create('cards', id, card)` |
+| Delete an item | `json.delete('cards', id)` |
+| Reorder items | `json.move('cards', id, afterId)` |
+
+The SDK handles connection, reconnect, and reloading after a gap.
+
+### 3. Choose collaboration or REST when the app starts
+
+```tsx
+const runtime = import.meta.env.VITE_COLLAB_ENABLED === 'true'
+  ? createCollabRuntime({
+      wsUrl: 'ws://localhost:4100/collab',
+      documentId: 'project-123',
+      userId: currentUser.id,
+      initialDocument,
+    })
+  : createRestRuntime() // your existing implementation
+
+createRoot(document.getElementById('root')!).render(<App runtime={runtime} />)
+```
+
+Your components do not need to know which runtime is active:
+
+```tsx
+import { useSyncExternalStore } from 'react'
+
+function App({ runtime }: { runtime: AppRuntime }) {
+  const document = useSyncExternalStore(runtime.subscribe, runtime.getSnapshot)
+
+  return <button onClick={() => runtime.execute({
+    type: 'document.rename',
+    title: 'New title',
+  })}>{document.title}</button>
+}
+```
+
+Turn off `VITE_COLLAB_ENABLED` to use REST again. Components, `AppDocument`, and `AppCommand` stay unchanged.
+
+### 4. Where custom logic goes
+
+| What you want to change | Put it here |
+|---|---|
+| Add a normal field, item, delete, or reorder command | The `switch` in `src/collab/create-collab-runtime.ts` |
+| One action must update several fields together | `server/app-domain-pack.ts` |
+| Check whether data is valid | `server/app-domain-pack.ts` |
+| Decide whether an older edit can still run | `server/app-domain-pack.ts` |
+| Check whether a user may open or edit a document | `authenticate` in the server startup file |
+| Save documents in your own database | The server `StorageAdapter` |
+
+For example, “rename the document and update its last-modified time” starts as one client command:
+
+```ts
+// src/collab/create-collab-runtime.ts
+return json.custom({
+  operationType: 'document.renameAndTouch',
+  strategyId: 'app.rename-and-touch',
+  strategyVersion: '1.0',
+  payload: { title: command.title },
+})
+```
+
+The shared rule runs on the server so every client receives the same result:
+
+```ts
+// server/app-domain-pack.ts
+const renameAndTouch = {
+  id: 'app.rename-and-touch',
+  version: '1.0',
+  supports: (type: string) => type === 'document.renameAndTouch',
+  resolve({ operation }: any) {
+    const { title } = operation.payload
+    if (!title.trim()) {
+      return { kind: 'reject', reason: { code: 'emptyTitle', message: 'Title is required' } }
+    }
+    return {
+      kind: 'accept',
+      patches: [
+        { op: 'set', path: '/title', value: title },
+        { op: 'set', path: '/updatedAt', value: new Date().toISOString() },
+      ],
+    }
+  },
+}
+```
+
+Add it to the server's `strategies` array. This server-side rule configuration is called a `Domain Pack` in the API. See the runnable [TODO List server rule](examples/todo-list-app/server/draft-domain-pack.ts) and the full [existing React app guide](docs/getting-started.md).
 
 To inspect a complete generated project:
 
 ```bash
-npm create @collabhub/react@0.1.1 my-collab-app
+npm create @collabhub/react@0.1.2 my-collab-app
 ```
-
-Linked business rules stay in the server Domain Pack. Clients send intent, not authoritative computed state:
-
-```ts
-resolve({ currentState, operation }) {
-  const command = operation.payload as AppCommand
-  const next = applyCommand(currentState, command)
-
-  return {
-    kind: 'accept',
-    patches: diffCanonicalState(currentState, next),
-  }
-}
-```
-
-The server validates, writes, and broadcasts all `patches` in one canonical version. Other devices never observe a partial linked update.
-
-Stale intent handling is also owned by the Domain Pack. The operation keeps its original `baseVersion`; safe commands can re-run against current canonical state while strict transactions reject or request resync. See [version and conflict semantics](docs/architecture/protocol.en.md#version-policy).
-
-Reference implementation: [composition root](examples/todo-list-app/src/app/composition-root.ts), [command adapter](examples/todo-list-app/src/collab/draft-command-adapter.ts), [projection adapter](examples/todo-list-app/src/collab/draft-projection-adapter.ts), and [server Domain Pack](examples/todo-list-app/server/draft-domain-pack.ts).
 
 ## Repository
 

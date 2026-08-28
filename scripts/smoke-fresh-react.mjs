@@ -29,7 +29,7 @@ try {
   if (JSON.stringify(collabHubPackages) !== JSON.stringify(expectedPackages)) {
     throw new Error(`starter must expose exactly two CollabHub packages: ${collabHubPackages.join(', ')}`)
   }
-  if (!readFileSync(resolve(app, 'Dockerfile.collabhub'), 'utf8').includes('@collabhub/server-ws@0.1.1')) {
+  if (!readFileSync(resolve(app, 'Dockerfile.collabhub'), 'utf8').includes('@collabhub/server-ws@0.1.2')) {
     throw new Error('starter Dockerfile does not pin the standalone CollabHub service')
   }
   const packageArchives = readdirSync(archives).filter((file) => file.endsWith('.tgz')).map((file) => resolve(archives, file))

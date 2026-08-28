@@ -1,14 +1,14 @@
 <h1 align="center">CollabHub</h1>
 
-<p align="center"><strong>给现有 React 应用低侵入地外挂中心权威协同。</strong></p>
+<p align="center"><strong>给现有 React 应用外挂多人实时协同，改动少，随时可切回 REST。</strong></p>
 
 <p align="center">
-  不接管领域模型，不要求迁移 CRDT。<br>
-  协同代码收敛在 Transport、Adapter 与 Domain Pack，业务组件保持原样。
+  保留你的数据结构、Store 和 React 组件，不要求迁移 CRDT。<br>
+  协同代码集中在单独目录，不散落进业务页面。
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.1.1-1f6f4a">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.1.2-1f6f4a">
   <a href="https://github.com/superche/collabhub/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/superche/collabhub/actions/workflows/ci.yml/badge.svg"></a>
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.9-3178c6?logo=typescript&logoColor=white">
   <img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-4c566a">
@@ -26,37 +26,35 @@
   <a href="docs/capabilities.md">能力矩阵</a>
 </p>
 
-| 宿主继续拥有 | 协同只新增 | 关闭协同 |
+| 你的项目继续保留 | CollabHub 新增 | 关闭协同 |
 |---|---|---|
-| Domain、Store、React Components | Command Transport、Projection Adapter、Domain Pack | 切回原 REST transport |
+| 数据类型、Store、React 组件 | 一个前端接入文件、一个可部署服务 | 切回原来的 REST |
 
-> **发布状态：** `0.1.1` 是面向结构化 React 状态的技术预览，不宣称生产级安全或多地域能力；`v1.0.0` 仍需仓库所有者批准。
+> **发布状态：** `0.1.2` 是面向结构化 React 状态的技术预览，不宣称生产级安全或多地域能力；`v1.0.0` 仍需仓库所有者批准。
 
-已有 React App 的默认路径只需要理解两件事：部署一个中心权威服务，在 composition root 接入一个 React SDK。协议、策略、WAL、重连与 room 生命周期都藏在这两个入口之后。
+已有 React App 只需要理解两件事：部署一个服务，在应用启动入口接入一个 SDK。连接、重连、数据恢复和多人消息都由 CollabHub 处理。
 
-standalone 镜像适合新文档和快速评估。已有服务端文档仍由宿主拥有：通过 `StorageAdapter` 提供首份 canonical snapshot，再把共享 REST 写统一路由到同一权威。客户端 `initialState` 只是连接前的本地投影，不是服务端数据导入。
+standalone 镜像适合新文档和快速试用。已有数据库也可以继续使用：通过 `StorageAdapter` 读取和保存数据，并在协同开启时停止旧 REST 接口直接写同一份数据。客户端 `initialState` 只负责连接前的首屏展示，不会把数据导入服务端。
 
 ## Features
 
 | 能力 | 范围 |
 |---|---|
-| **Server authoritative** | 服务端定序、校验并发布 canonical patch |
-| **Atomic linked updates** | 一个业务 intent 在单个 document 内原子更新实体、汇总与派生字段 |
-| **Host-owned domain** | 无需迁移到 CollabHub 或 CRDT 数据模型 |
-| **Pluggable strategies** | LWW、实体生命周期、列表排序、严格事务 |
-| **Business conflict policy** | Domain Pack 可为旧版本 operation 选择 resolve、reject 或 resync |
-| **Reliable recovery** | 幂等 operation、pending replay、WAL、snapshot recovery |
-| **Horizontal scale** | 参考 runtime：无状态 Gateway、单写 Room Worker、PostgreSQL fencing/outbox、Redis 临时路由 |
-| **Single-writer contract** | 宿主把共享写统一路由到 mutation gateway；TODO 案例在协同活跃时关闭 REST 直写 |
-| **Ephemeral presence** | presence 不进入 WAL、snapshot 或文档版本 |
-| **Public-edge controls** | JWT/JWKS 身份绑定，并可配置 Origin、连接、room 与消息速率上限 |
-| **Two-entry onboarding** | React 只安装 `@collabhub/client-core`；服务部署 `@collabhub/server-ws` 或 standalone 镜像 |
+| **接入改动少** | 保留现有数据类型、Store、组件和 REST 备用路径 |
+| **联动一次完成** | 一次操作可以同时修改正文、数量、进度等多个字段，其他用户不会看到只改一半 |
+| **冲突规则可自定义** | 同时编辑时，可以按业务选择接受、拒绝或要求重新加载 |
+| **断线自动恢复** | 自动重连、重发未完成操作，并在需要时重新获取完整数据 |
+| **常见操作内置** | 支持字段修改、数据增删和列表排序 |
+| **可以水平扩容** | 提供 PostgreSQL / Redis 多节点运行方式 |
+| **在线状态单独发送** | 光标、选中项等临时消息不会写入文档历史 |
+| **公网保护** | 支持登录校验、来源限制、连接数和消息频率限制 |
+| **两步开始** | React 安装 `@collabhub/client-core`；服务部署 `@collabhub/server-ws` 或 standalone 镜像 |
 
 ## 案例
 
 ### 1. TODO List
 
-经典 React 待办清单：保留自己的 Domain、Store、CommandBus 与 REST API，通过 Transport、Adapter 和 Domain Pack 接入协同。
+经典 React 待办清单：保留原来的数据类型、Store、操作处理和 REST API，只在应用入口增加协同开关。
 
 ```bash
 pnpm dev
@@ -68,9 +66,9 @@ pnpm dev
 | Alice | `http://127.0.0.1:5173/?client=alice` |
 | Bob | `http://127.0.0.1:5174/?client=bob` |
 
-联动演示：Alice 勾选一项任务，只提交一个 `section.setCompleted` intent；服务端在同一 canonical version 更新任务状态、完成数、任务总数与进度，Bob 同步收到完整结果。
+联动演示：Alice 勾选一项任务，只发一次操作；任务状态、完成数、任务总数和进度会一起更新，Bob 不会看到只更新一半的页面。
 
-验证通过：权威联动、业务自定义旧版本解冲突、排序、断线重放、snapshot recovery、REST/Collab 切换与协同期间防双写。详见 [TODO List 接入说明](docs/integration/todo-list-tutorial.md)。
+验证通过：字段联动、同时编辑处理、排序、断线恢复、REST/协同切换，以及协同开启时阻止 REST 绕过服务直接写。详见 [TODO List 接入说明](docs/integration/todo-list-tutorial.md)。
 
 https://github.com/user-attachments/assets/58963835-fffe-43ff-875b-617e635ec282
 
@@ -78,7 +76,7 @@ https://github.com/user-attachments/assets/58963835-fffe-43ff-875b-617e635ec282
 
 ### 2. BlockNote
 
-BlockNote 通过适配器接入中心权威协同，不启用其内置 Yjs provider。
+BlockNote 保持原来的编辑器用法，通过单独的接入文件连接 CollabHub，不启用内置 Yjs provider。
 
 ```bash
 pnpm dev:blocknote
@@ -108,7 +106,7 @@ pnpm dev:react-flow
 
 [打开在线 Alice/Bob React Flow Demo](https://collabhub-demo.onrender.com/demo.html)
 
-免费部署让两个 React Flow 客户端连接同一中心权威图文档；活跃 WebSocket room 不回收，断开后 30 分钟过期，最多保留 500 个 warm room。Demo 状态仅保存在内存。详见 [Demo 部署](docs/demo.md)。
+免费部署让两个 React Flow 页面编辑同一张图；有人在线时房间会保留，所有人断开 30 分钟后清理，最多保留 500 个空闲房间。Demo 状态仅保存在内存。详见 [Demo 部署](docs/demo.md)。
 打开[单客户端 Demo](https://collabhub-demo.onrender.com/)会在 `?document=...` 中生成 room ID；分享该 URL 即可邀请其他客户端。
 
 | 进程 | 地址 |
@@ -125,86 +123,166 @@ https://github.com/user-attachments/assets/40594baa-6181-4e9f-a227-4d650c8eac35
 
 ## 接入案例
 
-### 1. 部署中心权威服务
+假设你已经有一个 React 项目：页面从 `AppRuntime` 读取数据，用户点击按钮时调用 `runtime.execute(command)`。接入后，页面组件不用 import CollabHub，也不用重写你的数据类型。
 
-standalone 镜像把 snapshot 与 WAL 持久化到 `/data`：
+你只需要做三件事：启动服务、把业务操作翻译成数据修改、在应用启动时选择协同或原来的 REST。
+
+### 1. 启动协同服务
+
+先在本机跑起来：
 
 ```bash
 docker run --name collabhub -p 4100:4100 -v collabhub-data:/data \
   -e COLLABHUB_ALLOWED_ORIGINS=http://localhost:5173 \
   -e COLLABHUB_ALLOW_INSECURE_DEVELOPMENT_IDENTITY=true \
-  -e COLLABHUB_INITIAL_STATE_JSON='{"title":"Untitled"}' \
-  ghcr.io/superche/collabhub-standalone:0.1.1
+  -e COLLABHUB_INITIAL_STATE_JSON='{"title":"Untitled","cards":[]}' \
+  ghcr.io/superche/collabhub-standalone:0.1.2
 ```
 
-显式开发身份只用于评估；生产环境需提供 `authenticate`、租户授权、TLS 与数据保留策略。需要水平扩容时再切 PostgreSQL/Redis runtime。
+浏览器连接 `ws://localhost:4100/collab`。数据保存在 Docker 卷 `collabhub-data`，重启容器不会丢。
 
-镜像来自 [deploy/standalone.Dockerfile](deploy/standalone.Dockerfile)。需要业务联动时，在同一服务形态中加入 Domain Pack。
+上面的 `COLLABHUB_INITIAL_STATE_JSON` 适合新项目试用。如果你的数据已经在数据库里，请让服务通过 `StorageAdapter` 读取和保存原数据；不要让 REST 和协同服务同时修改同一份数据。完整做法见[已有服务端数据接入](docs/getting-started.zh-CN.md#已有服务端文档)。
 
-已有 repository 数据应嵌入 `startJsonCollaborationServer`，让 `StorageAdapter.loadSnapshot` 读取首份 canonical 文档，并在协同活跃时封住旧 REST 写路径。[已有 React App 接入](docs/getting-started.zh-CN.md#已有服务端文档)将这条正式迁移路径与 standalone 评估路径分开说明。
-
-### 2. 接入已有 React App
+### 2. 在 React 项目里加一个协同文件
 
 ```bash
-npm add @collabhub/client-core@0.1.1
+npm add @collabhub/client-core@0.1.2
 ```
 
-如果公司默认使用私有 npm 镜像，请在应用 `.npmrc` 中加入 `@collabhub:registry=https://registry.npmjs.org`。
-
-只在 composition root 新建一个文件。组件继续读取原有 runtime/store、发送业务 Command。
+新建 `src/collab/create-collab-runtime.ts`。这里唯一要做的事，就是告诉 CollabHub：你的每种操作会改哪份数据。
 
 ```tsx
 import { createCollaboration, json } from '@collabhub/client-core'
+import type { AppCommand, AppDocument, AppRuntime } from '../app/types'
 
-function createAppRuntime(options: RuntimeOptions) {
-  if (!options.collabEnabled) return createRestRuntime(options)
-
-  const store = createCollaboration<AppDocument, AppCommand>({
+export function createCollabRuntime(options: {
+  wsUrl: string
+  documentId: string
+  userId: string
+  initialDocument: AppDocument
+}): AppRuntime {
+  const collab = createCollaboration<AppDocument, AppCommand>({
     url: options.wsUrl,
     documentId: options.documentId,
-    actorId: options.actorId,
+    actorId: options.userId,
     initialState: options.initialDocument,
-    command: (command) => {
-      if (command.type === 'document.rename') return json.set('/title', command.title)
-      throw new Error(`Unsupported command: ${command.type}`)
+    command(command) {
+      switch (command.type) {
+        case 'document.rename': return json.set('/title', command.title)
+        case 'card.add': return json.create('cards', command.card.id, command.card)
+        case 'card.delete': return json.delete('cards', command.cardId)
+        case 'card.move': return json.move('cards', command.cardId, command.afterId)
+        default: throw new Error(`还没有接入这个操作：${command.type}`)
+      }
     },
   })
 
   return {
-    store,
-    execute: (command: AppCommand) => store.execute(command),
-    close: () => store.close(),
+    subscribe: collab.subscribe,
+    getSnapshot: () => collab.getSnapshot() as AppDocument,
+    execute: (command) => collab.execute(command),
+    close: () => collab.close(),
   }
 }
 ```
 
-`createCollaboration` 托管连接、pending、重连、恢复、canonical projection 与诊断；`json.set/create/delete/move/transaction` 隐藏协议和 strategy id。切回 REST runtime 时，React 组件与领域模型无需修改。详见 [已有 React App 接入](docs/getting-started.zh-CN.md)。
+常见操作已经准备好了：
+
+| 你的操作 | 写法 |
+|---|---|
+| 改字段 | `json.set('/title', value)` |
+| 新增一条数据 | `json.create('cards', id, card)` |
+| 删除一条数据 | `json.delete('cards', id)` |
+| 调整顺序 | `json.move('cards', id, afterId)` |
+
+连接、断线重连和重新拿数据都由 SDK 处理。
+
+### 3. 在应用启动时选择协同或原来的 REST
+
+```tsx
+const runtime = import.meta.env.VITE_COLLAB_ENABLED === 'true'
+  ? createCollabRuntime({
+      wsUrl: 'ws://localhost:4100/collab',
+      documentId: 'project-123',
+      userId: currentUser.id,
+      initialDocument,
+    })
+  : createRestRuntime() // 你原来的实现
+
+createRoot(document.getElementById('root')!).render(<App runtime={runtime} />)
+```
+
+你的组件不需要知道当前走哪种方式：
+
+```tsx
+import { useSyncExternalStore } from 'react'
+
+function App({ runtime }: { runtime: AppRuntime }) {
+  const document = useSyncExternalStore(runtime.subscribe, runtime.getSnapshot)
+
+  return <button onClick={() => runtime.execute({
+    type: 'document.rename',
+    title: '新的标题',
+  })}>{document.title}</button>
+}
+```
+
+关闭 `VITE_COLLAB_ENABLED` 就会切回原来的 REST。组件、`AppDocument` 和 `AppCommand` 都不用改。
+
+### 4. 自定义逻辑写在哪里
+
+| 你想做什么 | 写在哪里 |
+|---|---|
+| 增加一种普通的增删改或排序 | `src/collab/create-collab-runtime.ts` 的 `switch` |
+| 一次操作要联动修改多个字段 | 服务端的 `server/app-domain-pack.ts` |
+| 检查内容是否合法 | `server/app-domain-pack.ts` |
+| 决定旧操作是继续执行还是拒绝 | `server/app-domain-pack.ts` |
+| 检查用户是否能打开或修改文档 | 服务启动文件里的 `authenticate` |
+| 把数据存进你自己的数据库 | 服务端的 `StorageAdapter` |
+
+例如“改标题时，同时更新最后修改时间”，客户端只发一次操作：
+
+```ts
+// src/collab/create-collab-runtime.ts
+return json.custom({
+  operationType: 'document.renameAndTouch',
+  strategyId: 'app.rename-and-touch',
+  strategyVersion: '1.0',
+  payload: { title: command.title },
+})
+```
+
+真正的联动规则放在服务端，所以所有用户都会得到同一个结果：
+
+```ts
+// server/app-domain-pack.ts
+const renameAndTouch = {
+  id: 'app.rename-and-touch',
+  version: '1.0',
+  supports: (type: string) => type === 'document.renameAndTouch',
+  resolve({ operation }: any) {
+    const { title } = operation.payload
+    if (!title.trim()) {
+      return { kind: 'reject', reason: { code: 'emptyTitle', message: '标题不能为空' } }
+    }
+    return {
+      kind: 'accept',
+      patches: [
+        { op: 'set', path: '/title', value: title },
+        { op: 'set', path: '/updatedAt', value: new Date().toISOString() },
+      ],
+    }
+  },
+}
+```
+
+把它加入服务端的 `strategies` 数组即可。这份服务端规则配置在代码里叫 `Domain Pack`。完整可运行代码见 [TODO List](examples/todo-list-app/server/draft-domain-pack.ts)，更详细的步骤见[已有 React App 接入](docs/getting-started.zh-CN.md)。
 
 如需查看完整生成项目：
 
 ```bash
-npm create @collabhub/react@0.1.1 my-collab-app
+npm create @collabhub/react@0.1.2 my-collab-app
 ```
-
-业务联动放在服务端 Domain Pack。客户端发送 intent，不提交权威计算结果：
-
-```ts
-resolve({ currentState, operation }) {
-  const command = operation.payload as AppCommand
-  const next = applyCommand(currentState, command)
-
-  return {
-    kind: 'accept',
-    patches: diffCanonicalState(currentState, next),
-  }
-}
-```
-
-`patches` 在一个 canonical version 中校验、写 WAL 并广播；其他设备不会看到只更新一半的中间状态。
-
-旧版本 intent 也由 Domain Pack 决策。operation 保留原始 `baseVersion`；安全命令可基于当前权威状态重算，严格事务则拒绝或要求 resync。详见[版本与冲突语义](docs/architecture/protocol.md#版本与冲突)。
-
-完整实现：[composition root](examples/todo-list-app/src/app/composition-root.ts)、[command adapter](examples/todo-list-app/src/collab/draft-command-adapter.ts)、[projection adapter](examples/todo-list-app/src/collab/draft-projection-adapter.ts)、[server Domain Pack](examples/todo-list-app/server/draft-domain-pack.ts)。
 
 ## 仓库结构
 

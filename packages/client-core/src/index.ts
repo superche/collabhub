@@ -46,7 +46,7 @@ interface PendingOperation {
   resolve: (result: OperationResult) => void
 }
 
-export interface CollaborationClientOptions<TState extends JsonObject> {
+export interface CollaborationClientOptions<TState extends object> {
   url: string
   tenantId: string
   documentId: string
@@ -71,7 +71,7 @@ type StateListener<TState> = (state: Readonly<TState>) => void
 type DiagnosticListener = (diagnostics: Readonly<ClientDiagnostics>) => void
 type PresenceListener = (presence: PresenceMessage) => void
 
-export class CollaborationClient<TState extends JsonObject> {
+export class CollaborationClient<TState extends object> {
   private socket?: SocketLike
   private canonical?: TState
   private projected?: TState
@@ -330,7 +330,7 @@ export interface AdaptedCollaborationCommand {
   optimisticPatches?: CanonicalPatch[]
 }
 
-export interface CollaborationStoreOptions<TState extends JsonObject, TCommand> extends CollaborationClientOptions<TState> {
+export interface CollaborationStoreOptions<TState extends object, TCommand> extends CollaborationClientOptions<TState> {
   initialState: TState
   adaptCommand(command: TCommand, currentState: Readonly<TState>): AdaptedCollaborationCommand
   autoConnect?: boolean
@@ -340,7 +340,7 @@ export interface CollaborationStoreOptions<TState extends JsonObject, TCommand> 
  * Framework-neutral external store designed for React's useSyncExternalStore.
  * Domain-specific command and patch semantics remain application-owned.
  */
-export class CollaborationStore<TState extends JsonObject, TCommand> {
+export class CollaborationStore<TState extends object, TCommand> {
   private readonly client: CollaborationClient<TState>
   private readonly listeners = new Set<() => void>()
   private current: Readonly<TState>
@@ -376,7 +376,7 @@ export class CollaborationStore<TState extends JsonObject, TCommand> {
   close(): void { this.client.disconnect(); this.listeners.clear() }
 }
 
-export interface CreateCollaborationOptions<TState extends JsonObject, TCommand> {
+export interface CreateCollaborationOptions<TState extends object, TCommand> {
   url: string
   documentId: string
   actorId: string
@@ -395,7 +395,7 @@ export interface CreateCollaborationOptions<TState extends JsonObject, TCommand>
 }
 
 /** High-level entry point for an existing React application. */
-export function createCollaboration<TState extends JsonObject, TCommand>(
+export function createCollaboration<TState extends object, TCommand>(
   options: CreateCollaborationOptions<TState, TCommand>,
 ): CollaborationStore<TState, TCommand> {
   return new CollaborationStore<TState, TCommand>({
@@ -408,7 +408,10 @@ export function createCollaboration<TState extends JsonObject, TCommand>(
     initialState: options.initialState,
     authToken: options.authToken,
     socketFactory: options.socketFactory,
-    applyPatches: options.applyPatches ?? applyCanonicalPatches,
+    applyPatches: options.applyPatches ?? ((state, patches) => applyCanonicalPatches(
+      state as unknown as JsonObject,
+      patches,
+    ) as unknown as TState),
     adaptCommand: options.command,
     maxPendingOperations: options.maxPendingOperations,
     maxPendingBytes: options.maxPendingBytes,
@@ -436,10 +439,10 @@ export const json = {
       optimisticPatches: [{ op: 'remove', path }],
     }
   },
-  create(collection: string, id: string, value: JsonObject): AdaptedCollaborationCommand {
+  create<TValue extends object>(collection: string, id: string, value: TValue): AdaptedCollaborationCommand {
     return {
-      operation: { operationType: 'entity.create', strategyId: 'json.entity-lifecycle', strategyVersion: '1.0', payload: { collection, id, value } },
-      optimisticPatches: [{ op: 'entityUpsert', collection, id, value: { ...value, id } }],
+      operation: { operationType: 'entity.create', strategyId: 'json.entity-lifecycle', strategyVersion: '1.0', payload: { collection, id, value: value as JsonObject } },
+      optimisticPatches: [{ op: 'entityUpsert', collection, id, value: { ...value as JsonObject, id } }],
     }
   },
   delete(collection: string, id: string): AdaptedCollaborationCommand {

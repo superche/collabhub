@@ -34,7 +34,7 @@ const connectionsByIp = new Map<string, number>()
 const app = express()
 app.get('/health', (_request, response) => response.json({ ok: true, example: 'react-flow' }))
 app.get('/healthz', (_request, response) => response.json({
-  status: 'ok', version: '0.1.1', example: 'react-flow', warmRooms: core.warmRoomCount,
+  status: 'ok', version: '0.1.2', example: 'react-flow', warmRooms: core.warmRoomCount,
   originRestricted: allowedOrigins.size > 0,
 }))
 if (staticDirectory) {
