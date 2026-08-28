@@ -23,6 +23,17 @@ docker run --name collabhub -p 4100:4100 -v collabhub-data:/data \
 
 显式开发身份只用于评估。生产部署必须实现 `authenticate`、租户/document 授权、TLS、备份和数据保留策略。
 
+### 已有服务端文档
+
+浏览器里的 `initialState` 只用于避免首屏为空，不会把数据导入中心权威。已有 REST 文档按下面的路径接入：
+
+1. 在宿主服务中嵌入 `startJsonCollaborationServer`。
+2. 用 `StorageAdapter.loadSnapshot` 从现有 repository 提供首份 canonical 文档，后续 WAL/snapshot 也经该 adapter 持久化。
+3. 共享写统一经过协同 Command Gateway；REST 只能作为关闭协同时的 fallback，不能并发直写。
+4. 一个命令需要校验 invariant 或原子联动多个字段时，再增加 Domain Pack。
+
+[TODO List 迁移教程](integration/todo-list-tutorial.md)给出了完整实现。新文档或由 CollabHub 持有的数据仍优先使用 standalone 镜像。
+
 ## 2. 只安装一个 SDK 包
 
 ```bash

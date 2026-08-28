@@ -34,6 +34,8 @@
 
 已有 React App 的默认路径只需要理解两件事：部署一个中心权威服务，在 composition root 接入一个 React SDK。协议、策略、WAL、重连与 room 生命周期都藏在这两个入口之后。
 
+standalone 镜像适合新文档和快速评估。已有服务端文档仍由宿主拥有：通过 `StorageAdapter` 提供首份 canonical snapshot，再把共享 REST 写统一路由到同一权威。客户端 `initialState` 只是连接前的本地投影，不是服务端数据导入。
+
 ## Features
 
 | 能力 | 范围 |
@@ -138,6 +140,8 @@ docker run --name collabhub -p 4100:4100 -v collabhub-data:/data \
 显式开发身份只用于评估；生产环境需提供 `authenticate`、租户授权、TLS 与数据保留策略。需要水平扩容时再切 PostgreSQL/Redis runtime。
 
 镜像来自 [deploy/standalone.Dockerfile](deploy/standalone.Dockerfile)。需要业务联动时，在同一服务形态中加入 Domain Pack。
+
+已有 repository 数据应嵌入 `startJsonCollaborationServer`，让 `StorageAdapter.loadSnapshot` 读取首份 canonical 文档，并在协同活跃时封住旧 REST 写路径。[已有 React App 接入](docs/getting-started.zh-CN.md#已有服务端文档)将这条正式迁移路径与 standalone 评估路径分开说明。
 
 ### 2. 接入已有 React App
 

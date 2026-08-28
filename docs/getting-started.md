@@ -23,6 +23,17 @@ The container exposes `/collab` and `/healthz`. `/data` stores snapshots and WAL
 
 Development identity is deliberately explicit. A real deployment supplies `authenticate`, tenant/document authorization, TLS, backups, and a retention policy.
 
+### Existing server-owned documents
+
+Browser `initialState` prevents an empty first render; it does not import data into the authority. For an existing REST-backed document:
+
+1. Embed `startJsonCollaborationServer` in the host service.
+2. Implement `StorageAdapter.loadSnapshot` from the existing repository and persist later WAL/snapshots through that adapter.
+3. Route shared mutations through the collaboration command gateway; keep REST only as the disabled/fallback transport, never a concurrent writer.
+4. Add a Domain Pack when one command must validate invariants or update linked fields atomically.
+
+The [TODO List migration](integration/todo-list-tutorial.en.md) is the complete reference. The standalone image remains the shortest path when documents are new or CollabHub-owned.
+
 ## 2. Add one SDK package
 
 ```bash

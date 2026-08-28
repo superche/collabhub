@@ -34,6 +34,8 @@
 
 For an existing React app, the default path has two moving parts: one React-facing SDK package and one deployable authoritative service. Protocol, strategies, WAL, reconnect, and room lifecycle stay behind those entries.
 
+The standalone image is the fast path for new documents and evaluation. Existing server-owned documents stay server-owned: seed their canonical snapshot through a `StorageAdapter`, then route shared REST writes through the same authority. Client `initialState` is only a local pre-connection projection, not a server import.
+
 ## Features
 
 | Capability | Scope |
@@ -138,6 +140,8 @@ docker run --name collabhub -p 4100:4100 -v collabhub-data:/data \
 Use explicit development identity only for evaluation. Production deployments provide `authenticate`, tenant authorization, TLS, and retention policy. PostgreSQL/Redis is optional until horizontal scale is needed.
 
 The image is built from [deploy/standalone.Dockerfile](deploy/standalone.Dockerfile). A custom Domain Pack can use the same Docker shape when business rules must compute linked patches.
+
+For existing repository data, embed `startJsonCollaborationServer`, make `StorageAdapter.loadSnapshot` read the first canonical document, and gate the old REST mutation path while collaboration is active. The [existing React app guide](docs/getting-started.md#existing-server-owned-documents) separates this production migration from the standalone evaluation path.
 
 ### 2. Connect the existing React app
 
