@@ -56,7 +56,7 @@ function upgradeRejectionStatus(socket, timeoutMs) {
     const timeout = setTimeout(() => { socket.terminate(); reject(new Error('untrusted Origin upgrade remained open')) }, timeoutMs)
     socket.once('unexpected-response', (_request, response) => {
       clearTimeout(timeout)
-      response.resume()
+      response.destroy()
       resolve(response.statusCode)
     })
     socket.once('open', () => { clearTimeout(timeout); socket.terminate(); reject(new Error('untrusted Origin completed the WebSocket upgrade')) })
