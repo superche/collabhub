@@ -1,19 +1,6 @@
-import type { JsonObject } from '@collabhub/protocol'
-import { jsonStrategies } from '@collabhub/domain-json'
-import { defineDomainPack } from '@collabhub/strategy-sdk'
+import { loadDomainPackFromEnvironment } from '@collabhub/domain-json/server-loader'
 import { installDistributedNodeSignalHandlers, startDistributedNodeFromEnvironment } from './bootstrap.js'
 
-const domainPack = defineDomainPack<JsonObject>({
-  id: 'collabhub.distributed-json',
-  schemaVersion: '1.0',
-  strategies: jsonStrategies,
-  initialState: (documentId) => ({
-    id: documentId,
-    title: 'CollabHub distributed document',
-    status: 'draft',
-    items: [],
-    sections: [],
-  }),
-})
-
-installDistributedNodeSignalHandlers(await startDistributedNodeFromEnvironment(domainPack))
+const { pack, source } = await loadDomainPackFromEnvironment()
+console.log(JSON.stringify({ level: 'info', message: 'CollabHub Domain Pack loaded', domainPack: pack.id, schemaVersion: pack.schemaVersion, source }))
+installDistributedNodeSignalHandlers(await startDistributedNodeFromEnvironment(pack))

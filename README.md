@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.1.2-1f6f4a">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.1.3-1f6f4a">
   <a href="https://github.com/superche/collabhub/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/superche/collabhub/actions/workflows/ci.yml/badge.svg"></a>
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.9-3178c6?logo=typescript&logoColor=white">
   <img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-4c566a">
@@ -30,7 +30,7 @@
 |---|---|---|
 | Data types, store, React components | One client file and one deployable service | Use the existing REST path |
 
-> **Release status:** `0.1.2` technical preview for structured React state. It is not a production-ready security or multi-region platform; `v1.0.0` still requires owner approval.
+> **Release status:** `0.1.3` technical preview for structured React state. It is not a production-ready security or multi-region platform; `v1.0.0` still requires owner approval.
 
 An existing React app only needs two things: one deployable service and one SDK at the app startup boundary. CollabHub handles connections, reconnects, recovery, and multi-user messages.
 
@@ -46,6 +46,7 @@ The standalone image is the fast path for new documents and evaluation. Existing
 | **Automatic recovery** | Reconnect, resend unfinished work, and reload the document when needed |
 | **Common edits included** | Field changes, item add/delete, and list ordering |
 | **Horizontal scaling** | A PostgreSQL / Redis multi-node runtime is included |
+| **Cloud deployment baselines** | Terraform stacks for AWS VM/RDS/ElastiCache and Alibaba Cloud ECS/RDS/Tair |
 | **Temporary presence channel** | Cursor and selection messages do not enter document history |
 | **Public-edge controls** | Login checks, Origin rules, connection limits, and message-rate limits |
 | **Two-step start** | Install `@collabhub/client-core`; deploy `@collabhub/server-ws` or the standalone image |
@@ -136,7 +137,7 @@ docker run --name collabhub -p 4100:4100 -v collabhub-data:/data \
   -e COLLABHUB_ALLOWED_ORIGINS=http://localhost:5173 \
   -e COLLABHUB_ALLOW_INSECURE_DEVELOPMENT_IDENTITY=true \
   -e COLLABHUB_INITIAL_STATE_JSON='{"title":"Untitled","cards":[]}' \
-  ghcr.io/superche/collabhub-standalone:0.1.2
+  ghcr.io/superche/collabhub-standalone:0.1.3
 ```
 
 The browser connects to `ws://localhost:4100/collab`. Data stays in the `collabhub-data` Docker volume across container restarts.
@@ -146,7 +147,7 @@ The browser connects to `ws://localhost:4100/collab`. Data stays in the `collabh
 ### 2. Add one collaboration file to the React app
 
 ```bash
-npm add @collabhub/client-core@0.1.2
+npm add @collabhub/client-core@0.1.3
 ```
 
 Create `src/collab/create-collab-runtime.ts`. Its only job is to say which data each app command changes.
@@ -278,10 +279,17 @@ const renameAndTouch = {
 
 Add it to the server's `strategies` array. This server-side rule configuration is called a `Domain Pack` in the API. See the runnable [TODO List server rule](examples/todo-list-app/server/draft-domain-pack.ts) and the full [existing React app guide](docs/getting-started.md).
 
+For either the standalone or distributed image, application rules do not have to be compiled into CollabHub:
+
+- mount a JSON file with `COLLABHUB_DOMAIN_PACK_CONFIG` for initial state, built-in strategies, and stale-operation rules;
+- mount a reviewed ESM file with `COLLABHUB_DOMAIN_PACK_MODULE` for linked fields, validation, and custom conflict handling.
+
+See [external Domain Packs](docs/deployment/domain-pack.en.md). The same file works in local Docker; AWS and Alibaba Cloud stacks distribute it read-only to every Gateway and Worker.
+
 To inspect a complete generated project:
 
 ```bash
-npm create @collabhub/react@0.1.2 my-collab-app
+npm create @collabhub/react@0.1.3 my-collab-app
 ```
 
 ## Repository
@@ -301,6 +309,11 @@ examples/
   todo-list-app/      REST baseline and collaboration integration
   blocknote-app/      Incremental BlockNote adapter
   react-flow-app/     Incremental React Flow adapter
+deploy/
+  docker/             Distributed, standalone, and demo images
+  local/              Local PostgreSQL/Redis cluster
+  kubernetes/         Cloud-neutral Kustomize base
+  aws/ alicloud/      VM + managed database Terraform stacks
 docs/                 Architecture, integration, and acceptance
 ```
 
@@ -324,7 +337,7 @@ pnpm dev:todo-cluster
 pnpm smoke:todo-cluster # Worker failover, linked update, offline replay
 
 # Fully containerized distributed runtime
-docker compose -f deploy/docker-compose.yml up --build -d
+docker compose -f deploy/local/docker-compose.yml up --build -d
 pnpm smoke:distributed
 ```
 
@@ -338,6 +351,8 @@ Recording commands: `pnpm record:todo-list`, `pnpm record:blocknote`, and `pnpm 
 - [Architecture](docs/architecture/overview.en.md)
 - [Protocol and pipeline](docs/architecture/protocol.en.md)
 - [Horizontal scaling and cloud deployment](docs/architecture/horizontal-scaling.en.md)
+- [AWS VM deployment](deploy/aws/README.md) · [Alibaba Cloud VM deployment](deploy/alicloud/README.md)
+- [JSON configuration and ESM Domain Pack files](docs/deployment/domain-pack.en.md)
 - [Local multi-process TODO List smoke](docs/acceptance-local-process-cluster.md)
 - [Integration readiness](docs/integration/readiness.en.md)
 - [TODO List integration](docs/integration/todo-list-tutorial.en.md)

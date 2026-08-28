@@ -1,6 +1,6 @@
 {
   "name": "collabhub",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
@@ -31,7 +31,7 @@
     "smoke:fresh-react": "pnpm build && node scripts/smoke-fresh-react.mjs",
     "release:check": "pnpm check && pnpm build:distributed && node scripts/check-package-artifacts.mjs",
     "pack:packages": "pnpm build && pnpm build:distributed && node scripts/check-package-artifacts.mjs --output artifacts/packages",
-    "publish:dry-run": "pnpm pack:packages && node scripts/publish-packages.mjs --input artifacts/packages --expected-version 0.1.2 --dry-run"
+    "publish:dry-run": "pnpm pack:packages && node scripts/publish-packages.mjs --input artifacts/packages --expected-version 0.1.3 --dry-run"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",

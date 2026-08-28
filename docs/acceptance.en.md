@@ -1,6 +1,6 @@
 # Acceptance evidence
 
-CollabHub is promoted as a `0.1.2` technical preview, not a production SLO. The release gate validates the following on Node.js 22/24 and Playwright Chromium.
+CollabHub is promoted as a `0.1.3` technical preview, not a production SLO. The release gate validates the following on Node.js 22/24 and Playwright Chromium.
 
 ## Existing React adoption
 

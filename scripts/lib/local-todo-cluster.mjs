@@ -4,7 +4,7 @@ import { dirname, resolve } from 'node:path'
 import { createInterface } from 'node:readline'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
-const infraFile = resolve(root, 'deploy/local-process-infra.yml')
+const infraFile = resolve(root, 'deploy/local/local-process-infra.yml')
 const tsxCli = resolve(root, 'node_modules/tsx/dist/cli.mjs')
 const viteCli = resolve(root, 'examples/todo-list-app/node_modules/vite/bin/vite.js')
 const distributedEntry = resolve(root, 'examples/todo-list-app/server/distributed-node.ts')

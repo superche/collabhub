@@ -39,9 +39,9 @@ max_worker_replicas = floor(0.6 × measured_db_commit_qps / worker_scheduling_qp
 要求 Docker 24+ / Compose v2。一次启动两个 Gateway、两个 Worker、PostgreSQL 16、Redis 7.2 与 Nginx：
 
 ```bash
-docker compose -f deploy/docker-compose.yml up --build -d
+docker compose -f deploy/local/docker-compose.yml up --build -d
 pnpm smoke:distributed
-docker compose -f deploy/docker-compose.yml down
+docker compose -f deploy/local/docker-compose.yml down
 ```
 
 入口：负载均衡 `http/ws://127.0.0.1:7090`；直连 Gateway 为 `7001`、`7002`。冒烟脚本验证跨 Gateway 同步、重复投递、Presence 不落盘、writer 宕机迁移与 snapshot recovery，并在结束时恢复被停止的 Worker。
@@ -63,11 +63,24 @@ Alice 经 Gateway 1，Bob 经 Gateway 2。冒烟会终止 PostgreSQL 当前记�
 
 ```bash
 docker buildx build --platform linux/amd64,linux/arm64 \
-  -t ghcr.io/superche/collabhub:0.1.2 --push .
-kubectl apply -f deploy/kubernetes/collabhub.yaml
+  -f deploy/docker/distributed.Dockerfile \
+  -t ghcr.io/superche/collabhub:0.1.3 --push .
+kubectl apply -k deploy/kubernetes/base
 ```
 
 基线兼容 Node.js 22 LTS、PostgreSQL 15/16、Redis 7.2/7.x、Kubernetes 1.29+。清单适用于 EKS、GKE、AKS、ACK 等标准 Kubernetes；生产使用托管 PostgreSQL/Redis、TLS、Secret Manager 与云负载均衡。Worker 使用 StatefulSet + headless Service 获得可路由实例地址；Gateway 使用 Deployment + LoadBalancer/HPA。
+
+不使用 Kubernetes 时，可以直接部署 VM + 托管数据库：
+
+```bash
+# AWS：ALB + Auto Scaling 2C4G VM + Multi-AZ RDS + ElastiCache
+cd deploy/aws/terraform && terraform init && terraform apply
+
+# 阿里云：ALB + 2C4G ECS + 高可用 RDS + Tair/Redis
+cd deploy/alicloud/terraform && terraform init && terraform apply
+```
+
+每台 VM 同时运行一个 Gateway 和一个 Worker。两套配置都会要求 HTTPS/JWT 参数，并将所选 JSON 或 ESM Domain Pack 分发到全部进程。详见[部署目录](../../deploy/README.md)和[外挂 Domain Pack](../deployment/domain-pack.md)。Terraform 校验通过不等于完成云上长稳压测，上线前仍需使用真实业务规则和数据规模验收。
 
 CPU HPA 只是兜底。生产应接入 Prometheus Adapter/KEDA，以 Gateway connection/egress 和 Worker mailbox/commit latency 作为主扩容指标。
 
@@ -89,6 +102,7 @@ CPU HPA 只是兜底。生产应接入 Prometheus Adapter/KEDA，以 Gateway con
 | `MAX_GATEWAY_CONNECTIONS` / `MAX_CONNECTIONS_PER_IP` | ✓ |  | `10000` / `50` |
 | `OPERATION_RATE_PER_SECOND` / `OPERATION_BURST` | ✓ |  | `30` / `60` |
 | `TRUST_PROXY_HEADERS` | ✓ |  | `false`；仅可信 LB 后开启 |
+| `COLLABHUB_DOMAIN_PACK_CONFIG` / `COLLABHUB_DOMAIN_PACK_MODULE` | ✓ | ✓ | 二选一；所有进程内容必须相同 |
 
 Standalone Server Core 与分布式 Worker 共用 `RoomCachePolicy`：保护排队操作、在 TTL/LRU 淘汰前持久化 snapshot，并限制 warm-room 内存。Standalone 还跟踪活跃 WebSocket lease；分布式淘汰仅释放计算内存和 owner lease，PostgreSQL 权威数据继续保留。持久数据 retention 与 warm-room 淘汰分开配置。
 

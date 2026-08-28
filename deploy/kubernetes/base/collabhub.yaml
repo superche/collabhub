@@ -18,6 +18,33 @@ stringData:
   JWT_AUDIENCE: collabhub
 ---
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: collabhub-domain-pack
+  namespace: collabhub
+data:
+  domain-pack.json: |
+    {
+      "formatVersion": 1,
+      "id": "app.json",
+      "schemaVersion": "1.0",
+      "initialState": { "id": "$documentId", "title": "Untitled", "items": [], "sections": [] },
+      "stalePolicy": {
+        "default": "resync",
+        "byOperationType": {
+          "property.set": "resolve",
+          "property.unset": "resolve",
+          "entity.create": "resolve",
+          "entity.delete": "resolve",
+          "entity.restore": "resolve",
+          "list.move": "resolve",
+          "list.insert": "resolve",
+          "transaction.apply": "reject"
+        }
+      }
+    }
+---
+apiVersion: v1
 kind: Service
 metadata:
   name: collabhub-worker-headless
@@ -48,7 +75,7 @@ spec:
       securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
       containers:
         - name: collabhub
-          image: ghcr.io/superche/collabhub:0.1.2
+          image: ghcr.io/superche/collabhub:0.1.3
           imagePullPolicy: IfNotPresent
           ports: [{ name: internal, containerPort: 7100 }]
           env:
@@ -57,6 +84,7 @@ spec:
             - { name: POD_NAME, valueFrom: { fieldRef: { fieldPath: metadata.name } } }
             - { name: INSTANCE_ID, value: "$(POD_NAME)" }
             - { name: INTERNAL_URL, value: "http://$(POD_NAME).collabhub-worker-headless.collabhub.svc.cluster.local:7100" }
+            - { name: COLLABHUB_DOMAIN_PACK_CONFIG, value: /config/domain-pack.json }
             - { name: DATABASE_URL, valueFrom: { secretKeyRef: { name: collabhub-runtime, key: DATABASE_URL } } }
             - { name: REDIS_URL, valueFrom: { secretKeyRef: { name: collabhub-runtime, key: REDIS_URL } } }
             - { name: INTERNAL_TOKEN, valueFrom: { secretKeyRef: { name: collabhub-runtime, key: INTERNAL_TOKEN } } }
@@ -65,12 +93,17 @@ spec:
             - { name: IDLE_ROOM_MS, value: "60000" }
             - { name: ROOM_CACHE_SCAN_INTERVAL_MS, value: "3000" }
             - { name: NODE_OPTIONS, value: --max-old-space-size=896 }
+          volumeMounts:
+            - { name: domain-pack, mountPath: /config, readOnly: true }
           resources:
             requests: { cpu: "1", memory: 2Gi }
             limits: { cpu: "2", memory: 4Gi }
           readinessProbe: { httpGet: { path: /readyz, port: internal }, periodSeconds: 5, timeoutSeconds: 2 }
           livenessProbe: { httpGet: { path: /healthz, port: internal }, periodSeconds: 10, timeoutSeconds: 2 }
           securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: ["ALL"] }, readOnlyRootFilesystem: true }
+      volumes:
+        - name: domain-pack
+          configMap: { name: collabhub-domain-pack }
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -89,7 +122,7 @@ spec:
       securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
       containers:
         - name: collabhub
-          image: ghcr.io/superche/collabhub:0.1.2
+          image: ghcr.io/superche/collabhub:0.1.3
           imagePullPolicy: IfNotPresent
           ports: [{ name: http, containerPort: 7000 }]
           env:
@@ -97,6 +130,7 @@ spec:
             - { name: PORT, value: "7000" }
             - { name: POD_NAME, valueFrom: { fieldRef: { fieldPath: metadata.name } } }
             - { name: INSTANCE_ID, value: "$(POD_NAME)" }
+            - { name: COLLABHUB_DOMAIN_PACK_CONFIG, value: /config/domain-pack.json }
             - { name: DATABASE_URL, valueFrom: { secretKeyRef: { name: collabhub-runtime, key: DATABASE_URL } } }
             - { name: REDIS_URL, valueFrom: { secretKeyRef: { name: collabhub-runtime, key: REDIS_URL } } }
             - { name: INTERNAL_TOKEN, valueFrom: { secretKeyRef: { name: collabhub-runtime, key: INTERNAL_TOKEN } } }
@@ -111,12 +145,17 @@ spec:
             - { name: OPERATION_RATE_PER_SECOND, value: "30" }
             - { name: OPERATION_BURST, value: "60" }
             - { name: NODE_OPTIONS, value: --max-old-space-size=896 }
+          volumeMounts:
+            - { name: domain-pack, mountPath: /config, readOnly: true }
           resources:
             requests: { cpu: "1", memory: 2Gi }
             limits: { cpu: "2", memory: 4Gi }
           readinessProbe: { httpGet: { path: /readyz, port: http }, periodSeconds: 5, timeoutSeconds: 2 }
           livenessProbe: { httpGet: { path: /healthz, port: http }, periodSeconds: 10, timeoutSeconds: 2 }
           securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: ["ALL"] }, readOnlyRootFilesystem: true }
+      volumes:
+        - name: domain-pack
+          configMap: { name: collabhub-domain-pack }
 ---
 apiVersion: v1
 kind: Service

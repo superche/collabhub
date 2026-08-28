@@ -18,15 +18,15 @@
 
 ## 发布与公开 Demo 门禁
 
-`pnpm release:check` 通过。9 个 `0.1.2` package 均生成编译 ESM、declaration 与精简 manifest；审计确认没有 package `src`、test 或 `workspace:` 依赖泄漏，create-react 仅额外包含生成模板。
+`pnpm release:check` 通过。9 个 `0.1.3` package 均生成编译 ESM、declaration 与精简 manifest；审计确认没有 package `src`、test 或 `workspace:` 依赖泄漏，create-react 仅额外包含生成模板。
 
-9 个 `@collabhub/*@0.1.1` 包已在 npm 官方 registry 公开；`0.1.2` 候选产物由同一门禁重新构建并审计。全部包已配置 GitHub OIDC Trusted Publisher（`superche/collabhub`、`publish-release.yml`、`release-approval`、仅 `npm publish`）及严格 2FA 发布策略；发布 workflow 不使用长期 `NPM_TOKEN`，由 npm 自动生成 provenance。`v1.0.0` 仍需另行批准。
+9 个 `@collabhub/*@0.1.2` 包已在 npm 官方 registry 公开；`0.1.3` 候选产物由同一门禁重新构建并审计。全部包已配置 GitHub OIDC Trusted Publisher（`superche/collabhub`、`publish-release.yml`、`release-approval`、仅 `npm publish`）及严格 2FA 发布策略；发布 workflow 不使用长期 `NPM_TOKEN`，由 npm 自动生成 provenance。`v1.0.0` 仍需另行批准。
 
 `pnpm smoke:fresh-react` 通过：在系统临时目录生成全新项目，断言 manifest 只暴露 `client-core` 与 `server-ws` 两个 CollabHub 依赖并包含独立服务 Dockerfile；以本地候选 tarball 集完成依赖解析、TypeScript/Vite 构建，启动 server/Alice/Bob 三个独立进程，并由两个 Chromium 客户端收敛到 title `Fresh install works`、canonical v1 / pending 0。`App.tsx`/application 为 0 个 CollabHub import。
 
 `pnpm smoke:demo` 通过：生产 React Flow 资源与 bundled Node server 在 `127.0.0.1:4400` 启动；先验证非法 Origin 在 WebSocket 升级前返回 HTTP 403、同 IP 第三个连接以 1013 拒绝，再由 Alice/Bob 经真实 WebSocket 完成 node.add v1 与 node.move v2。活跃 room 不回收；连接关闭后 TTL 删除 room，旧 URL 重新打开恢复为初始 v0。
 
-主 runtime、Demo 与 `deploy/standalone.Dockerfile` 均纳入 CI 构建。Standalone 镜像完成本机 Docker 构建，以 UID/GID `10001:10001` 运行，容器 `/healthz` 返回 `{"status":"ok","warmRooms":0}` 且 health 状态为 healthy。
+分布式 runtime、Demo 与 `deploy/docker/standalone.Dockerfile` 均纳入 CI 构建。Standalone 镜像完成本机 Docker 构建，以 UID/GID `10001:10001` 运行，容器 `/healthz` 返回 `{"status":"ok","warmRooms":0}` 且 health 状态为 healthy。
 
 ## 真实进程与网络
 
@@ -168,7 +168,7 @@ Server trace 中 `node.add` 108 bytes、`node.rename` 64 bytes、`node.move` 66 
 容器栈：Node.js 22、PostgreSQL 16、Redis 7.2、Nginx 1.27；两个 Gateway、两个 Room Worker。Gateway 直连端口 `7001/7002`，Nginx 负载均衡端口 `7090`。运行镜像使用 UID/GID `10001:10001`，本机 arm64 镜像约 80.4 MB。
 
 ```bash
-docker compose -f deploy/docker-compose.yml up --build -d
+docker compose -f deploy/local/docker-compose.yml up --build -d
 pnpm smoke:distributed
 docker buildx build --platform linux/amd64,linux/arm64 --output type=cacheonly .
 ```
@@ -215,6 +215,6 @@ pnpm dev:react-flow
 pnpm record:todo-list
 pnpm record:blocknote
 pnpm record:react-flow
-docker compose -f deploy/docker-compose.yml up --build -d
+docker compose -f deploy/local/docker-compose.yml up --build -d
 pnpm smoke:distributed
 ```

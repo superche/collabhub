@@ -21,11 +21,13 @@ ENV NODE_OPTIONS=--max-old-space-size=896
 WORKDIR /app
 
 RUN groupadd --system --gid 10001 collabhub \
-  && useradd --system --uid 10001 --gid collabhub --home-dir /app collabhub
+  && useradd --system --uid 10001 --gid collabhub --home-dir /app collabhub \
+  && mkdir -p /config && chown collabhub:collabhub /config
 
 COPY --from=build --chown=collabhub:collabhub /app/packages/server-distributed/dist/bin/collabhub-node.mjs /app/collabhub-node.mjs
 
 USER 10001:10001
+VOLUME ["/config"]
 EXPOSE 7000 7100
 
 CMD ["node", "/app/collabhub-node.mjs"]

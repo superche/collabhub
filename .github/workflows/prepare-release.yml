@@ -6,7 +6,7 @@ on:
       expected_version:
         description: Version already committed to every package
         required: true
-        default: 0.1.2
+        default: 0.1.3
       confirmation:
         description: Type PREPARE_ONLY; this workflow never publishes
         required: true

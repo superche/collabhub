@@ -1,6 +1,6 @@
 {
   "name": "@collabhub/testkit",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Golden trace and conformance helpers for CollabHub Domain Packs",
   "type": "module",
   "license": "Apache-2.0",

@@ -4,6 +4,13 @@ All notable changes are recorded here. CollabHub follows Semantic Versioning aft
 
 ## Unreleased
 
+## 0.1.3 — deployable Domain Packs and cloud baselines
+
+- Load the distributed JSON Domain Pack from a validated JSON file or a reviewed ESM module mounted read-only at runtime.
+- Add production-baseline Terraform stacks for two-zone AWS and Alibaba Cloud VM deployments with managed PostgreSQL, Redis, HTTPS load balancing, and at least two 2C4G nodes.
+- Move all Docker, local-cluster, and Kubernetes assets under a single `deploy/` hierarchy.
+- Validate Docker Compose, Kustomize, and both Terraform providers in CI.
+
 ## 0.1.2 — safer WebSocket edge and clearer React onboarding
 
 - Reject untrusted WebSocket origins before the HTTP upgrade in the public demo and `@collabhub/server-ws`.

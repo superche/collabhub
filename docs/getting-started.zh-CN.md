@@ -16,10 +16,10 @@ docker run --name collabhub -p 4100:4100 -v collabhub-data:/data \
   -e COLLABHUB_ALLOWED_ORIGINS=http://localhost:5173 \
   -e COLLABHUB_ALLOW_INSECURE_DEVELOPMENT_IDENTITY=true \
   -e COLLABHUB_INITIAL_STATE_JSON='{"title":"Untitled"}' \
-  ghcr.io/superche/collabhub-standalone:0.1.2
+  ghcr.io/superche/collabhub-standalone:0.1.3
 ```
 
-容器暴露 `/collab` 与 `/healthz`，snapshot 和 WAL 保存在 `/data`。需要自定义 Domain Pack 时，复制[同一份 Dockerfile](../deploy/standalone.Dockerfile)。
+容器暴露 `/collab` 与 `/healthz`，snapshot 和 WAL 保存在 `/data`。镜像由[单机 Dockerfile](../deploy/docker/standalone.Dockerfile)构建。
 
 显式开发身份只用于评估。生产部署必须实现 `authenticate`、租户/document 授权、TLS、备份和数据保留策略。
 
@@ -37,7 +37,7 @@ docker run --name collabhub -p 4100:4100 -v collabhub-data:/data \
 ## 2. 只安装一个 SDK 包
 
 ```bash
-npm add @collabhub/client-core@0.1.2
+npm add @collabhub/client-core@0.1.3
 ```
 
 如果应用默认使用私有 npm 镜像，请在其 `.npmrc` 中加入 `@collabhub:registry=https://registry.npmjs.org`。
@@ -105,7 +105,7 @@ function Title({ runtime }: { runtime: AppRuntime }) {
 ## 查看完整生成项目
 
 ```bash
-npm create @collabhub/react@0.1.2 my-collab-app
+npm create @collabhub/react@0.1.3 my-collab-app
 cd my-collab-app
 npm install
 npm run dev

@@ -1,6 +1,6 @@
 # v0.1 known limitations
 
-- `v1.0.0` requires explicit repository-owner approval after full acceptance; `0.1.2` remains a technical preview.
+- `v1.0.0` requires explicit repository-owner approval after full acceptance; `0.1.3` remains a technical preview.
 - Render Free sleeps, cold-starts, and resets in-memory demo data on restart or deploy.
 - The distributed runtime is single-region; it has no active-active multi-region control plane.
 - PostgreSQL snapshots use JSONB; WAL/receipt/outbox compaction, object storage, and automated PITR tooling are not included.

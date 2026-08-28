@@ -1,6 +1,6 @@
 # Capability matrix
 
-CollabHub `0.1.2` targets structured application state. “Supported” means the behavior has automated conformance or real multi-client evidence.
+CollabHub `0.1.3` targets structured application state. “Supported” means the behavior has automated conformance or real multi-client evidence.
 
 | Scenario | Status | Semantics / evidence |
 |---|---|---|

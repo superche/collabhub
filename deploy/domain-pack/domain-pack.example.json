@@ -1,0 +1,30 @@
+{
+  "formatVersion": 1,
+  "id": "app.json",
+  "schemaVersion": "1.0",
+  "initialState": {
+    "id": "$documentId",
+    "title": "Untitled",
+    "items": [],
+    "sections": []
+  },
+  "strategies": [
+    "json.property-lww",
+    "json.entity-lifecycle",
+    "json.list-order",
+    "json.reject-if-stale"
+  ],
+  "stalePolicy": {
+    "default": "resync",
+    "byOperationType": {
+      "property.set": "resolve",
+      "property.unset": "resolve",
+      "entity.create": "resolve",
+      "entity.delete": "resolve",
+      "entity.restore": "resolve",
+      "list.move": "resolve",
+      "list.insert": "resolve",
+      "transaction.apply": "reject"
+    }
+  }
+}

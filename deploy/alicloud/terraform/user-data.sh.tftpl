@@ -1,0 +1,90 @@
+#!/bin/bash
+set -euo pipefail
+
+dnf install -y docker jq
+systemctl enable --now docker
+install -d -m 0700 /etc/collabhub /opt/collabhub/config
+
+INSTANCE_ID=$(hostname)
+PRIVATE_IP=$(hostname -I | awk '{print $1}')
+printf '%s' '${domain_pack_source_base64}' | base64 -d > /opt/collabhub/config/${domain_pack_file_name}
+chmod 0400 /opt/collabhub/config/${domain_pack_file_name}
+
+cat > /etc/collabhub/common.env <<EOF
+DATABASE_URL=postgresql://collabhub:${database_password}@${database_host}:5432/collabhub?sslmode=require
+REDIS_URL=rediss://default:${redis_password}@${redis_host}:6379
+INTERNAL_TOKEN=${internal_token}
+${domain_pack_environment}=/config/${domain_pack_file_name}
+PG_POOL_MAX=10
+OWNER_LEASE_SECONDS=10
+MAX_WARM_ROOMS=1000
+IDLE_ROOM_MS=60000
+ROOM_CACHE_SCAN_INTERVAL_MS=3000
+RSS_LIMIT_BYTES=3221225472
+NODE_OPTIONS=--max-old-space-size=896
+EOF
+
+cat > /etc/collabhub/gateway.env <<EOF
+COLLABHUB_ROLE=gateway
+INSTANCE_ID=$INSTANCE_ID-gateway
+PORT=7000
+JWT_JWKS_URL=${jwt_jwks_url}
+JWT_ISSUER=${jwt_issuer}
+JWT_AUDIENCE=${jwt_audience}
+ALLOWED_ORIGINS=${allowed_origin}
+TRUST_PROXY_HEADERS=true
+MAX_GATEWAY_CONNECTIONS=10000
+MAX_CONNECTIONS_PER_IP=50
+OPERATION_RATE_PER_SECOND=30
+OPERATION_BURST=60
+EOF
+
+cat > /etc/collabhub/worker.env <<EOF
+COLLABHUB_ROLE=worker
+INSTANCE_ID=$INSTANCE_ID-worker
+PORT=7100
+INTERNAL_URL=http://$PRIVATE_IP:7100
+MAX_ROOM_MAILBOX=256
+SNAPSHOT_INTERVAL=100
+MAX_RECOVERY_GAP=100
+EOF
+
+chmod 0600 /etc/collabhub/*.env
+docker pull '${container_image}'
+
+cat > /etc/systemd/system/collabhub-gateway.service <<'EOF'
+[Unit]
+Description=CollabHub Gateway
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Restart=always
+RestartSec=5
+ExecStartPre=-/usr/bin/docker rm -f collabhub-gateway
+ExecStart=/usr/bin/docker run --name collabhub-gateway --network host --env-file /etc/collabhub/common.env --env-file /etc/collabhub/gateway.env --mount type=bind,src=/opt/collabhub/config,dst=/config,readonly ${container_image}
+ExecStop=/usr/bin/docker stop -t 30 collabhub-gateway
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+cat > /etc/systemd/system/collabhub-worker.service <<'EOF'
+[Unit]
+Description=CollabHub Room Worker
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Restart=always
+RestartSec=5
+ExecStartPre=-/usr/bin/docker rm -f collabhub-worker
+ExecStart=/usr/bin/docker run --name collabhub-worker --network host --env-file /etc/collabhub/common.env --env-file /etc/collabhub/worker.env --mount type=bind,src=/opt/collabhub/config,dst=/config,readonly ${container_image}
+ExecStop=/usr/bin/docker stop -t 30 collabhub-worker
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable --now collabhub-worker collabhub-gateway

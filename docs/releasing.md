@@ -1,6 +1,6 @@
 # Release process
 
-CollabHub remains a `0.1.2` technical preview. `v1.0.0` requires separate repository-owner approval.
+CollabHub remains a `0.1.3` technical preview. `v1.0.0` requires separate repository-owner approval.
 
 ## Required gates
 

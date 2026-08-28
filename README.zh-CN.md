@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.1.2-1f6f4a">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.1.3-1f6f4a">
   <a href="https://github.com/superche/collabhub/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/superche/collabhub/actions/workflows/ci.yml/badge.svg"></a>
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.9-3178c6?logo=typescript&logoColor=white">
   <img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-4c566a">
@@ -30,7 +30,7 @@
 |---|---|---|
 | 数据类型、Store、React 组件 | 一个前端接入文件、一个可部署服务 | 切回原来的 REST |
 
-> **发布状态：** `0.1.2` 是面向结构化 React 状态的技术预览，不宣称生产级安全或多地域能力；`v1.0.0` 仍需仓库所有者批准。
+> **发布状态：** `0.1.3` 是面向结构化 React 状态的技术预览，不宣称生产级安全或多地域能力；`v1.0.0` 仍需仓库所有者批准。
 
 已有 React App 只需要理解两件事：部署一个服务，在应用启动入口接入一个 SDK。连接、重连、数据恢复和多人消息都由 CollabHub 处理。
 
@@ -46,6 +46,7 @@ standalone 镜像适合新文档和快速试用。已有数据库也可以继续
 | **断线自动恢复** | 自动重连、重发未完成操作，并在需要时重新获取完整数据 |
 | **常见操作内置** | 支持字段修改、数据增删和列表排序 |
 | **可以水平扩容** | 提供 PostgreSQL / Redis 多节点运行方式 |
+| **云部署基线** | 提供 AWS VM/RDS/ElastiCache 与阿里云 ECS/RDS/Tair Terraform |
 | **在线状态单独发送** | 光标、选中项等临时消息不会写入文档历史 |
 | **公网保护** | 支持登录校验、来源限制、连接数和消息频率限制 |
 | **两步开始** | React 安装 `@collabhub/client-core`；服务部署 `@collabhub/server-ws` 或 standalone 镜像 |
@@ -136,7 +137,7 @@ docker run --name collabhub -p 4100:4100 -v collabhub-data:/data \
   -e COLLABHUB_ALLOWED_ORIGINS=http://localhost:5173 \
   -e COLLABHUB_ALLOW_INSECURE_DEVELOPMENT_IDENTITY=true \
   -e COLLABHUB_INITIAL_STATE_JSON='{"title":"Untitled","cards":[]}' \
-  ghcr.io/superche/collabhub-standalone:0.1.2
+  ghcr.io/superche/collabhub-standalone:0.1.3
 ```
 
 浏览器连接 `ws://localhost:4100/collab`。数据保存在 Docker 卷 `collabhub-data`，重启容器不会丢。
@@ -146,7 +147,7 @@ docker run --name collabhub -p 4100:4100 -v collabhub-data:/data \
 ### 2. 在 React 项目里加一个协同文件
 
 ```bash
-npm add @collabhub/client-core@0.1.2
+npm add @collabhub/client-core@0.1.3
 ```
 
 新建 `src/collab/create-collab-runtime.ts`。这里唯一要做的事，就是告诉 CollabHub：你的每种操作会改哪份数据。
@@ -278,10 +279,17 @@ const renameAndTouch = {
 
 把它加入服务端的 `strategies` 数组即可。这份服务端规则配置在代码里叫 `Domain Pack`。完整可运行代码见 [TODO List](examples/todo-list-app/server/draft-domain-pack.ts)，更详细的步骤见[已有 React App 接入](docs/getting-started.zh-CN.md)。
 
+无论使用单机还是分布式镜像，业务规则都不必编译进 CollabHub：
+
+- 用 `COLLABHUB_DOMAIN_PACK_CONFIG` 挂载 JSON，配置初始结构、内置策略和旧操作处理；
+- 用 `COLLABHUB_DOMAIN_PACK_MODULE` 挂载经过审查的 ESM 文件，编写联动字段、校验和自定义解冲突。
+
+详见[外挂 Domain Pack](docs/deployment/domain-pack.md)。同一份文件可用于本地 Docker；AWS 和阿里云配置会把它只读分发到每个 Gateway 和 Worker。
+
 如需查看完整生成项目：
 
 ```bash
-npm create @collabhub/react@0.1.2 my-collab-app
+npm create @collabhub/react@0.1.3 my-collab-app
 ```
 
 ## 仓库结构
@@ -301,6 +309,11 @@ examples/
   todo-list-app/      REST baseline 与协同接入样板
   blocknote-app/      BlockNote 增量块协同适配
   react-flow-app/     React Flow 增量图协同适配
+deploy/
+  docker/             分布式、单机与 Demo 镜像
+  local/              本地 PostgreSQL/Redis 集群
+  kubernetes/         云中立 Kustomize base
+  aws/ alicloud/      VM + 托管数据库 Terraform
 docs/                 架构、接入与验收文档
 ```
 
@@ -324,7 +337,7 @@ pnpm dev:todo-cluster
 pnpm smoke:todo-cluster # worker 故障迁移、联动更新、离线重放
 
 # 全容器分布式 runtime
-docker compose -f deploy/docker-compose.yml up --build -d
+docker compose -f deploy/local/docker-compose.yml up --build -d
 pnpm smoke:distributed
 ```
 
@@ -338,6 +351,8 @@ pnpm smoke:distributed
 - [架构](docs/architecture/overview.md)
 - [协议与 Pipeline](docs/architecture/protocol.md)
 - [水平扩容与云部署](docs/architecture/horizontal-scaling.md)
+- [AWS VM 部署](deploy/aws/README.zh-CN.md) · [阿里云 VM 部署](deploy/alicloud/README.zh-CN.md)
+- [JSON 配置与 ESM 外挂 Domain Pack](docs/deployment/domain-pack.md)
 - [本地多进程 TODO List 冒烟](docs/acceptance-local-process-cluster.md)
 - [接入条件](docs/integration/readiness.md)
 - [TODO List 接入](docs/integration/todo-list-tutorial.md)

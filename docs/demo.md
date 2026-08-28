@@ -6,7 +6,7 @@ The public demo runs two React Flow clients side by side against one server-auth
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/superche/collabhub)
 
-The root `render.yaml` builds `deploy/demo.Dockerfile`. One container serves the React Flow build and WebSocket endpoint.
+The root `render.yaml` builds `deploy/docker/demo.Dockerfile`. One container serves the React Flow build and WebSocket endpoint.
 
 Public deployment:
 

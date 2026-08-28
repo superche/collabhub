@@ -54,11 +54,11 @@ jobs:
     strategy:
       matrix:
         include:
-          - dockerfile: Dockerfile
+          - dockerfile: deploy/docker/distributed.Dockerfile
             tag: runtime
-          - dockerfile: deploy/demo.Dockerfile
+          - dockerfile: deploy/docker/demo.Dockerfile
             tag: demo
-          - dockerfile: deploy/standalone.Dockerfile
+          - dockerfile: deploy/docker/standalone.Dockerfile
             tag: standalone
     steps:
       - uses: actions/checkout@v7
@@ -71,3 +71,23 @@ jobs:
           tags: collabhub/ci:${{ matrix.tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  deploy-config:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+      - uses: azure/setup-kubectl@v4
+        with:
+          version: v1.29.14
+      - run: docker compose -f deploy/local/docker-compose.yml config --quiet
+      - run: kubectl kustomize deploy/kubernetes/base > /dev/null
+      - run: terraform fmt -check -recursive deploy/aws/terraform
+      - run: terraform -chdir=deploy/aws/terraform init -backend=false
+      - run: terraform -chdir=deploy/aws/terraform validate
+      - run: terraform fmt -check -recursive deploy/alicloud/terraform
+      - run: terraform -chdir=deploy/alicloud/terraform init -backend=false
+      - run: terraform -chdir=deploy/alicloud/terraform validate

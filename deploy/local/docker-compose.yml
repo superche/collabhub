@@ -5,6 +5,7 @@ x-node-env: &node-env
   REDIS_URL: redis://redis:6379
   INTERNAL_TOKEN: local-compose-token
   ALLOW_INSECURE_IDENTITY: "true"
+  COLLABHUB_DOMAIN_PACK_CONFIG: /config/domain-pack.json
   OWNER_LEASE_SECONDS: 10
   PG_POOL_MAX: 10
   SNAPSHOT_INTERVAL: 2
@@ -13,8 +14,8 @@ x-node-env: &node-env
 
 x-node: &node
   build:
-    context: ..
-    dockerfile: Dockerfile
+    context: ../..
+    dockerfile: deploy/docker/distributed.Dockerfile
   restart: unless-stopped
   depends_on:
     postgres:
@@ -22,6 +23,8 @@ x-node: &node
     redis:
       condition: service_healthy
   networks: [collabhub]
+  volumes:
+    - ../domain-pack/domain-pack.example.json:/config/domain-pack.json:ro
   healthcheck:
     test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:' + process.env.PORT + '/readyz').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
     interval: 5s

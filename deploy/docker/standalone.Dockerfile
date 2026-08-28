@@ -22,12 +22,12 @@ WORKDIR /app
 
 RUN groupadd --system --gid 10001 collabhub \
   && useradd --system --uid 10001 --gid collabhub --home-dir /app collabhub \
-  && mkdir -p /data && chown -R collabhub:collabhub /data
+  && mkdir -p /data /config && chown -R collabhub:collabhub /data /config
 
 COPY --from=build --chown=collabhub:collabhub /app/packages/server-ws/dist/bin/collabhub-server.mjs /app/collabhub-server.mjs
 
 USER 10001:10001
-VOLUME ["/data"]
+VOLUME ["/data", "/config"]
 EXPOSE 4100
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 CMD ["node", "-e", "fetch('http://127.0.0.1:4100/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
 

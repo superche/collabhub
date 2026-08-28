@@ -1,6 +1,6 @@
 {
   "name": "@collabhub/client-core",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Framework-neutral collaboration client and React-compatible external store",
   "type": "module",
   "license": "Apache-2.0",

@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import WebSocket from 'ws'
 
-const composeFile = new URL('../deploy/docker-compose.yml', import.meta.url).pathname
+const composeFile = new URL('../deploy/local/docker-compose.yml', import.meta.url).pathname
 const documentId = `smoke-${Date.now()}`
 const tenantId = 'acceptance'
 const trace = []

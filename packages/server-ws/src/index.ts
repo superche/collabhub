@@ -64,6 +64,7 @@ export interface JsonCollaborationServerOptions<TState extends JsonObject> exten
   'domainPack' | 'authenticate' | 'allowInsecureDevelopmentIdentity'
 > {
   initialState(documentId: string): TState
+  domainPack?: DomainPack<TState>
   domainPackId?: string
   schemaVersion?: string
   authToken?: string
@@ -77,6 +78,7 @@ export function startJsonCollaborationServer<TState extends JsonObject>(
 ): Promise<StandaloneWebSocketServerHandle<TState>> {
   const {
     initialState,
+    domainPack: configuredDomainPack,
     domainPackId = 'collabhub.json',
     schemaVersion = '1.0',
     authToken,
@@ -84,7 +86,7 @@ export function startJsonCollaborationServer<TState extends JsonObject>(
     allowInsecureDevelopmentIdentity,
     ...serverOptions
   } = options
-  const domainPack = defineDomainPack<TState>({ id: domainPackId, schemaVersion, strategies: jsonStrategies, initialState })
+  const domainPack = configuredDomainPack ?? defineDomainPack<TState>({ id: domainPackId, schemaVersion, strategies: jsonStrategies, initialState })
   const tokenAuthentication = authToken
     ? (hello: CapabilityHello) => {
       if (!hello.authToken || !sameSecret(hello.authToken, authToken)) throw new Error('unauthorized')

@@ -3,7 +3,7 @@ services:
     name: collabhub-demo
     runtime: docker
     plan: free
-    dockerfilePath: ./deploy/demo.Dockerfile
+    dockerfilePath: ./deploy/docker/demo.Dockerfile
     dockerContext: .
     healthCheckPath: /healthz
     envVars:
