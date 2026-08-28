@@ -33,7 +33,10 @@ const socketsByDocument = new Map<string, Set<WebSocket>>()
 const connectionsByIp = new Map<string, number>()
 const app = express()
 app.get('/health', (_request, response) => response.json({ ok: true, example: 'react-flow' }))
-app.get('/healthz', (_request, response) => response.json({ status: 'ok', version: '0.1.0', example: 'react-flow', warmRooms: core.warmRoomCount }))
+app.get('/healthz', (_request, response) => response.json({
+  status: 'ok', version: '0.1.1', example: 'react-flow', warmRooms: core.warmRoomCount,
+  originRestricted: allowedOrigins.size > 0,
+}))
 if (staticDirectory) {
   app.use(express.static(staticDirectory, { index: 'index.html', maxAge: '1h' }))
   app.use((request, response, next) => {

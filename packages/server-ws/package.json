@@ -1,6 +1,6 @@
 {
   "name": "@collabhub/server-ws",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Standalone WebSocket adapter for the CollabHub server-authoritative core",
   "type": "module",
   "license": "Apache-2.0",
@@ -10,15 +10,21 @@
   "files": ["dist"],
   "types": "./dist/index.d.ts",
   "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js", "default": "./dist/index.js" } },
+  "bin": { "collabhub-server": "./dist/bin/collabhub-server.mjs" },
   "sideEffects": false,
   "engines": { "node": ">=22" },
   "publishConfig": { "access": "public", "provenance": true },
-  "scripts": { "build": "node ../../scripts/clean-package-output.mjs && tsc -b --force", "prepack": "pnpm build" },
+  "scripts": {
+    "build": "node ../../scripts/clean-package-output.mjs && tsc -b --force",
+    "build:bundle": "esbuild src/cli.ts --bundle --platform=node --target=node22 --format=esm --banner:js=\"import{createRequire as __cr}from'node:module';const require=__cr(import.meta.url);\" --outfile=dist/bin/collabhub-server.mjs",
+    "prepack": "pnpm build && pnpm build:bundle"
+  },
   "dependencies": {
+    "@collabhub/domain-json": "workspace:*",
     "@collabhub/protocol": "workspace:*",
     "@collabhub/server-core": "workspace:*",
     "@collabhub/strategy-sdk": "workspace:*",
     "ws": "^8.18.3"
   },
-  "devDependencies": { "@collabhub/domain-json": "workspace:*", "@types/ws": "^8.18.1" }
+  "devDependencies": { "@types/ws": "^8.18.1", "esbuild": "^0.28.2" }
 }

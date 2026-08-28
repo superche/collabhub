@@ -1,19 +1,10 @@
-import type { JsonObject } from '@collabhub/protocol'
-import { jsonStrategies } from '@collabhub/domain-json'
-import { startStandaloneWebSocketServer } from '@collabhub/server-ws'
-import { defineDomainPack } from '@collabhub/strategy-sdk'
+import { startJsonCollaborationServer } from '@collabhub/server-ws'
 
-const domainPack = defineDomainPack<JsonObject>({
-  id: 'starter.document',
-  schemaVersion: '1.0',
-  strategies: jsonStrategies,
+const server = await startJsonCollaborationServer({
   initialState: (documentId) => ({ id: documentId, title: 'Shared document' }),
-})
-
-const server = await startStandaloneWebSocketServer({
-  domainPack,
   host: '127.0.0.1',
   port: 4100,
+  allowedOrigins: ['http://127.0.0.1:5173', 'http://127.0.0.1:5174'],
   allowInsecureDevelopmentIdentity: true,
 })
 

@@ -6,7 +6,7 @@ on:
       expected_version:
         description: Version already committed to every package
         required: true
-        default: 0.1.0
+        default: 0.1.1
       confirmation:
         description: Type PREPARE_ONLY; this workflow never publishes
         required: true
@@ -27,8 +27,8 @@ jobs:
           version: 10.11.0
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
-          cache: pnpm
+          node-version: 24
+          package-manager-cache: false
           registry-url: https://registry.npmjs.org
       - run: pnpm install --frozen-lockfile
       - run: node scripts/check-release-version.mjs "${{ inputs.expected_version }}"

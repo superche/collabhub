@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ClientWireMessage, JsonObject, ServerWireMessage } from '@collabhub/protocol'
-import { CollaborationClient, CollaborationStore, type SocketLike } from './index.js'
+import { CollaborationClient, CollaborationStore, createCollaboration, json, type SocketLike } from './index.js'
 
 class FakeSocket implements SocketLike {
   readyState = 0
@@ -109,6 +109,22 @@ describe('collaboration client recovery', () => {
     expect(store.diagnostics.pendingCount).toBe(0)
     expect(notifications).toBeGreaterThan(0)
     unsubscribe()
+    store.close()
+  })
+
+  it('offers a two-concept React entry point with built-in JSON intents', async () => {
+    const server = new FakeServer()
+    const store = createCollaboration<JsonObject, { type: 'rename'; title: string }>({
+      url: 'fake://', tenantId: 't', documentId: 'd', actorId: 'a', clientId: 'c',
+      initialState: { title: 'Loading' }, socketFactory: server.create,
+      command: (command) => json.set('/title', command.title),
+    })
+    await new Promise((resolve) => setTimeout(resolve, 1))
+    expect(store.getSnapshot().title).toBe('Initial')
+    const result = await store.execute({ type: 'rename', title: 'Recovered' })
+    expect(result.kind).toBe('accepted')
+    expect(store.getSnapshot().title).toBe('Recovered')
+    expect(store.diagnostics.pendingCount).toBe(0)
     store.close()
   })
 

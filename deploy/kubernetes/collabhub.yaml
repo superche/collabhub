@@ -48,7 +48,7 @@ spec:
       securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
       containers:
         - name: collabhub
-          image: ghcr.io/superche/collabhub:0.1.0
+          image: ghcr.io/superche/collabhub:0.1.1
           imagePullPolicy: IfNotPresent
           ports: [{ name: internal, containerPort: 7100 }]
           env:
@@ -89,7 +89,7 @@ spec:
       securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
       containers:
         - name: collabhub
-          image: ghcr.io/superche/collabhub:0.1.0
+          image: ghcr.io/superche/collabhub:0.1.1
           imagePullPolicy: IfNotPresent
           ports: [{ name: http, containerPort: 7000 }]
           env:

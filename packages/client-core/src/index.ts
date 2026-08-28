@@ -5,11 +5,15 @@ import {
   type ClientWireMessage,
   type CollaborationOperation,
   type JsonObject,
+  type JsonValue,
   type OperationResult,
   type PresenceMessage,
   type ServerWireMessage,
   type SnapshotMessage,
 } from '@collabhub/protocol'
+import { applyCanonicalPatches } from '@collabhub/domain-json'
+
+export type { CanonicalPatch, JsonObject, JsonValue, OperationResult } from '@collabhub/protocol'
 
 export interface SocketLike {
   readonly readyState: number
@@ -371,3 +375,91 @@ export class CollaborationStore<TState extends JsonObject, TCommand> {
   connect(): void { this.client.connect() }
   close(): void { this.client.disconnect(); this.listeners.clear() }
 }
+
+export interface CreateCollaborationOptions<TState extends JsonObject, TCommand> {
+  url: string
+  documentId: string
+  actorId: string
+  initialState: TState
+  command(command: TCommand, currentState: Readonly<TState>): AdaptedCollaborationCommand
+  tenantId?: string
+  clientId?: string
+  schemaVersion?: string
+  authToken?: string
+  socketFactory?: SocketFactory
+  applyPatches?(state: TState, patches: readonly CanonicalPatch[]): TState
+  maxPendingOperations?: number
+  maxPendingBytes?: number
+  reconnectDelayMs?: number
+  autoConnect?: boolean
+}
+
+/** High-level entry point for an existing React application. */
+export function createCollaboration<TState extends JsonObject, TCommand>(
+  options: CreateCollaborationOptions<TState, TCommand>,
+): CollaborationStore<TState, TCommand> {
+  return new CollaborationStore<TState, TCommand>({
+    url: options.url,
+    tenantId: options.tenantId ?? 'default',
+    documentId: options.documentId,
+    actorId: options.actorId,
+    clientId: options.clientId ?? createClientId(options.actorId),
+    schemaVersion: options.schemaVersion ?? '1.0',
+    initialState: options.initialState,
+    authToken: options.authToken,
+    socketFactory: options.socketFactory,
+    applyPatches: options.applyPatches ?? applyCanonicalPatches,
+    adaptCommand: options.command,
+    maxPendingOperations: options.maxPendingOperations,
+    maxPendingBytes: options.maxPendingBytes,
+    reconnectDelayMs: options.reconnectDelayMs,
+    autoConnect: options.autoConnect,
+  })
+}
+
+function createClientId(actorId: string): string {
+  const suffix = globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+  return `${actorId}-${suffix}`
+}
+
+/** Built-in JSON intents. Strategy ids and optimistic patches stay internal. */
+export const json = {
+  set(path: string, value: JsonValue): AdaptedCollaborationCommand {
+    return {
+      operation: { operationType: 'property.set', strategyId: 'json.property-lww', strategyVersion: '1.0', payload: { path, value } },
+      optimisticPatches: [{ op: 'set', path, value }],
+    }
+  },
+  unset(path: string): AdaptedCollaborationCommand {
+    return {
+      operation: { operationType: 'property.unset', strategyId: 'json.property-lww', strategyVersion: '1.0', payload: { path } },
+      optimisticPatches: [{ op: 'remove', path }],
+    }
+  },
+  create(collection: string, id: string, value: JsonObject): AdaptedCollaborationCommand {
+    return {
+      operation: { operationType: 'entity.create', strategyId: 'json.entity-lifecycle', strategyVersion: '1.0', payload: { collection, id, value } },
+      optimisticPatches: [{ op: 'entityUpsert', collection, id, value: { ...value, id } }],
+    }
+  },
+  delete(collection: string, id: string): AdaptedCollaborationCommand {
+    return {
+      operation: { operationType: 'entity.delete', strategyId: 'json.entity-lifecycle', strategyVersion: '1.0', payload: { collection, id } },
+      optimisticPatches: [{ op: 'entityDelete', collection, id }],
+    }
+  },
+  move(collection: string, id: string, afterId?: string): AdaptedCollaborationCommand {
+    return {
+      operation: { operationType: 'list.move', strategyId: 'json.list-order', strategyVersion: '1.0', payload: { collection, id, ...(afterId ? { afterId } : {}) } },
+    }
+  },
+  transaction(patches: CanonicalPatch[]): AdaptedCollaborationCommand {
+    return {
+      operation: { operationType: 'transaction.apply', strategyId: 'json.reject-if-stale', strategyVersion: '1.0', payload: { patches } },
+      optimisticPatches: patches,
+    }
+  },
+  custom(operation: CollaborationOperationInput, optimisticPatches: CanonicalPatch[] = []): AdaptedCollaborationCommand {
+    return { operation, optimisticPatches }
+  },
+} as const

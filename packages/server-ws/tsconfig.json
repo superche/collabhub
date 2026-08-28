@@ -4,6 +4,7 @@
   "include": ["src/**/*.ts"],
   "exclude": ["src/**/*.test.ts"],
   "references": [
+    { "path": "../domain-json" },
     { "path": "../protocol" },
     { "path": "../server-core" },
     { "path": "../strategy-sdk" }

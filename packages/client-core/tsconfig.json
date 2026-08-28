@@ -3,5 +3,8 @@
   "compilerOptions": { "outDir": "dist", "rootDir": "src", "lib": ["ES2022", "DOM"] },
   "include": ["src/**/*.ts"],
   "exclude": ["src/**/*.test.ts"],
-  "references": [{ "path": "../protocol" }]
+  "references": [
+    { "path": "../protocol" },
+    { "path": "../domain-json" }
+  ]
 }

@@ -24,12 +24,23 @@ try {
   }
   const manifestPath = resolve(app, 'package.json')
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
-  for (const archive of readdirSync(archives).filter((file) => file.endsWith('.tgz'))) {
-    const packed = JSON.parse(run('tar', ['-xOf', resolve(archives, archive), 'package/package.json'], root))
-    if (packed.name.startsWith('@collabhub/')) manifest.dependencies[packed.name] = `file:${resolve(archives, archive)}`
+  const expectedPackages = ['@collabhub/client-core', '@collabhub/server-ws']
+  const collabHubPackages = Object.keys(manifest.dependencies).filter((name) => name.startsWith('@collabhub/')).sort()
+  if (JSON.stringify(collabHubPackages) !== JSON.stringify(expectedPackages)) {
+    throw new Error(`starter must expose exactly two CollabHub packages: ${collabHubPackages.join(', ')}`)
+  }
+  if (!readFileSync(resolve(app, 'Dockerfile.collabhub'), 'utf8').includes('@collabhub/server-ws@0.1.1')) {
+    throw new Error('starter Dockerfile does not pin the standalone CollabHub service')
+  }
+  const packageArchives = readdirSync(archives).filter((file) => file.endsWith('.tgz')).map((file) => resolve(archives, file))
+  for (const archive of packageArchives) {
+    const packed = JSON.parse(run('tar', ['-xOf', archive, 'package/package.json'], root))
+    if (packed.name in manifest.dependencies) manifest.dependencies[packed.name] = `file:${archive}`
   }
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
-  run('npm', ['install', '--registry=https://registry.npmjs.org', '--ignore-scripts=false'], app)
+  // All local package artifacts are supplied to npm so their unpublished patch-version
+  // dependencies resolve, while the generated consumer manifest still exposes only two.
+  run('npm', ['install', '--no-save', '--registry=https://registry.npmjs.org', '--ignore-scripts=false', ...packageArchives], app)
   run('npm', ['run', 'build'], app)
   development = spawn('npm', ['run', 'dev'], { cwd: app, detached: true, stdio: ['ignore', 'pipe', 'pipe'] })
   const logs = []
@@ -56,7 +67,7 @@ try {
   await waitForValue(bob, 'shared-title', 'Fresh install works')
   await waitForText(alice, 'version', '1')
   await waitForText(bob, 'version', '1')
-  console.log(JSON.stringify({ event: 'fresh_react_install_passed', install: 'npm tarballs', businessImports: 0, aliceVersion: 1, bobVersion: 1, title: 'Fresh install works' }))
+  console.log(JSON.stringify({ event: 'fresh_react_install_passed', install: 'npm tarballs', collabHubPackages: 2, dockerfile: true, businessImports: 0, aliceVersion: 1, bobVersion: 1, title: 'Fresh install works' }))
   await Promise.all([aliceContext.close(), bobContext.close()])
 } catch (error) {
   console.error(development ? 'fresh starter process failed' : 'fresh starter setup failed')

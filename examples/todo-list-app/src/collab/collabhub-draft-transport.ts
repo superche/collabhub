@@ -1,5 +1,4 @@
-import { CollaborationStore, type ClientDiagnostics } from '@collabhub/client-core'
-import type { JsonObject } from '@collabhub/protocol'
+import { createCollaboration, type CollaborationStore, type ClientDiagnostics, type JsonObject } from '@collabhub/client-core'
 import type { DraftCommandTransport } from '../application/draft-command-bus.js'
 import type { DraftStore } from '../application/draft-store.js'
 import type { DraftCommand, DraftCommandResult, DraftDocument, DraftDomainEvent } from '../domain/draft.js'
@@ -14,10 +13,10 @@ export class CollabHubDraftTransport implements DraftCommandTransport {
   private readonly onOnline = () => this.collaboration.setNetworkAvailable(true)
 
   constructor(url: string, actorId: string, clientId: string, store: DraftStore) {
-    this.collaboration = new CollaborationStore<JsonObject, DraftCommand>({
-      url, tenantId: 'demo', documentId: store.getSnapshot().id, actorId, clientId, schemaVersion: '1.0',
+    this.collaboration = createCollaboration<JsonObject, DraftCommand>({
+      url, tenantId: 'demo', documentId: store.getSnapshot().id, actorId, clientId,
       initialState: store.getSnapshot() as unknown as JsonObject,
-      adaptCommand: (command, state) => {
+      command: (command, state) => {
         const adapted = adaptDraftCommand(command, state as unknown as DraftDocument)
         return {
           operation: {

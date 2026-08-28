@@ -1,6 +1,8 @@
+import { timingSafeEqual } from 'node:crypto'
 import { createServer, type IncomingMessage, type Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { PROTOCOL_VERSION, type CapabilityHello, type ClientWireMessage, type JsonObject, type PresenceMessage } from '@collabhub/protocol'
+import { jsonStrategies } from '@collabhub/domain-json'
 import {
   CollaborationServerCore,
   InMemoryStorageAdapter,
@@ -8,8 +10,14 @@ import {
   type RoomDataRetention,
   type StorageAdapter,
 } from '@collabhub/server-core'
-import type { DomainPack } from '@collabhub/strategy-sdk'
+import { defineDomainPack, type DomainPack } from '@collabhub/strategy-sdk'
 import { WebSocket, WebSocketServer } from 'ws'
+
+export { FileStorageAdapter } from './file-storage.js'
+export { jsonStrategies } from '@collabhub/domain-json'
+export { defineDomainPack } from '@collabhub/strategy-sdk'
+export type { DomainPack } from '@collabhub/strategy-sdk'
+export type { JsonObject } from '@collabhub/protocol'
 
 export interface StandaloneConnectionIdentity {
   tenantId: string
@@ -49,6 +57,46 @@ export interface StandaloneWebSocketServerHandle<TState extends JsonObject> {
   readonly port: number
   readonly webSocketUrl: string
   close(): Promise<void>
+}
+
+export interface JsonCollaborationServerOptions<TState extends JsonObject> extends Omit<
+  StandaloneWebSocketServerOptions<TState>,
+  'domainPack' | 'authenticate' | 'allowInsecureDevelopmentIdentity'
+> {
+  initialState(documentId: string): TState
+  domainPackId?: string
+  schemaVersion?: string
+  authToken?: string
+  authenticate?: StandaloneWebSocketServerOptions<TState>['authenticate']
+  allowInsecureDevelopmentIdentity?: boolean
+}
+
+/** Starts the built-in JSON collaboration service without Domain Pack plumbing. */
+export function startJsonCollaborationServer<TState extends JsonObject>(
+  options: JsonCollaborationServerOptions<TState>,
+): Promise<StandaloneWebSocketServerHandle<TState>> {
+  const {
+    initialState,
+    domainPackId = 'collabhub.json',
+    schemaVersion = '1.0',
+    authToken,
+    authenticate,
+    allowInsecureDevelopmentIdentity,
+    ...serverOptions
+  } = options
+  const domainPack = defineDomainPack<TState>({ id: domainPackId, schemaVersion, strategies: jsonStrategies, initialState })
+  const tokenAuthentication = authToken
+    ? (hello: CapabilityHello) => {
+      if (!hello.authToken || !sameSecret(hello.authToken, authToken)) throw new Error('unauthorized')
+      return pickIdentity(hello)
+    }
+    : undefined
+  return startStandaloneWebSocketServer({
+    ...serverOptions,
+    domainPack,
+    authenticate: authenticate ?? tokenAuthentication,
+    allowInsecureDevelopmentIdentity,
+  })
 }
 
 export async function startStandaloneWebSocketServer<TState extends JsonObject>(
@@ -209,6 +257,12 @@ function send(socket: WebSocket, message: unknown): void {
 
 function pickIdentity(hello: CapabilityHello): StandaloneConnectionIdentity {
   return { tenantId: hello.tenantId, documentId: hello.documentId, actorId: hello.actorId, clientId: hello.clientId }
+}
+
+function sameSecret(received: string, expected: string): boolean {
+  const left = Buffer.from(received)
+  const right = Buffer.from(expected)
+  return left.length === right.length && timingSafeEqual(left, right)
 }
 
 function validateIdentity(identity: StandaloneConnectionIdentity): void {

@@ -1,6 +1,6 @@
 {
   "name": "@collabhub/client-core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Framework-neutral collaboration client and React-compatible external store",
   "type": "module",
   "license": "Apache-2.0",
@@ -15,6 +15,7 @@
   "publishConfig": { "access": "public", "provenance": true },
   "scripts": { "build": "node ../../scripts/clean-package-output.mjs && tsc -b --force", "prepack": "pnpm build" },
   "dependencies": {
+    "@collabhub/domain-json": "workspace:*",
     "@collabhub/protocol": "workspace:*"
   }
 }
