@@ -9,8 +9,8 @@ if (typeof healthBody.warmRooms !== 'number') throw new Error('deployed demo doe
 if (healthBody.originRestricted !== true) throw new Error('deployed demo does not enforce an Origin allowlist')
 
 const rejected = new WebSocket(webSocketUrl, { headers: { Origin: 'https://untrusted.example' } })
-const rejectedCode = await closeCode(rejected, 10_000)
-if (rejectedCode !== 1008) throw new Error(`untrusted Origin closed with ${rejectedCode}, expected 1008`)
+const rejectedStatus = await upgradeRejectionStatus(rejected, 10_000)
+if (rejectedStatus !== 403) throw new Error(`untrusted Origin upgrade returned ${rejectedStatus}, expected 403`)
 
 const documentId = `live-smoke-${Date.now()}`
 const allowed = new WebSocket(webSocketUrl, { headers: { Origin: origin } })
@@ -23,7 +23,7 @@ allowed.send(JSON.stringify({
 await ready
 await closeSocket(allowed)
 
-console.log(JSON.stringify({ event: 'live_demo_smoke_passed', origin, documentId, warmRooms: healthBody.warmRooms, originRestricted: healthBody.originRestricted, untrustedOriginCloseCode: rejectedCode }))
+console.log(JSON.stringify({ event: 'live_demo_smoke_passed', origin, documentId, warmRooms: healthBody.warmRooms, originRestricted: healthBody.originRestricted, untrustedOriginStatus: rejectedStatus }))
 
 function opened(socket) {
   return new Promise((resolve, reject) => { socket.once('open', resolve); socket.once('error', reject) })
@@ -47,6 +47,19 @@ function closeCode(socket, timeoutMs) {
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => { socket.terminate(); reject(new Error('socket remained open')) }, timeoutMs)
     socket.once('close', (code) => { clearTimeout(timeout); resolve(code) })
+    socket.once('error', reject)
+  })
+}
+
+function upgradeRejectionStatus(socket, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => { socket.terminate(); reject(new Error('untrusted Origin upgrade remained open')) }, timeoutMs)
+    socket.once('unexpected-response', (_request, response) => {
+      clearTimeout(timeout)
+      response.resume()
+      resolve(response.statusCode)
+    })
+    socket.once('open', () => { clearTimeout(timeout); socket.terminate(); reject(new Error('untrusted Origin completed the WebSocket upgrade')) })
     socket.once('error', reject)
   })
 }

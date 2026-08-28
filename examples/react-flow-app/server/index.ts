@@ -47,12 +47,20 @@ if (staticDirectory) {
 const server = createServer(app)
 server.keepAliveTimeout = 120_000
 server.headersTimeout = 121_000
-const webSockets = new WebSocketServer({ server, path: '/collab', maxPayload: 128 * 1024 })
+const webSockets = new WebSocketServer({
+  server,
+  path: '/collab',
+  maxPayload: 128 * 1024,
+  verifyClient: ({ req }, done) => {
+    if (!originAllowed(req.headers.origin)) { done(false, 403, 'Origin not allowed'); return }
+    done(true)
+  },
+})
 
 webSockets.on('connection', (socket, request) => {
   const ip = clientIp(trustProxyHeaders ? request.headers['x-forwarded-for'] : undefined, request.socket.remoteAddress)
   const origin = request.headers.origin
-  if (allowedOrigins.size > 0 && (!origin || !allowedOrigins.has(origin))) { socket.close(1008, 'origin not allowed'); return }
+  if (!originAllowed(origin)) { socket.close(1008, 'origin not allowed'); return }
   if (webSockets.clients.size > maxConnections || (connectionsByIp.get(ip) ?? 0) >= maxConnectionsPerIp) { socket.close(1013, 'connection limit reached'); return }
   connectionsByIp.set(ip, (connectionsByIp.get(ip) ?? 0) + 1)
   let tokens = messageBurst
@@ -134,6 +142,10 @@ webSockets.on('connection', (socket, request) => {
     else connectionsByIp.set(ip, remaining)
   })
 })
+
+function originAllowed(origin: string | undefined): boolean {
+  return allowedOrigins.size === 0 || (typeof origin === 'string' && allowedOrigins.has(origin))
+}
 
 server.listen(port, host, () => {
   console.log(`[collabhub:react-flow] server pid=${process.pid} http=${host}:${port} ws=ws://${host}:${port}/collab static=${staticDirectory ?? 'disabled'}`)

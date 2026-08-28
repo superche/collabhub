@@ -30,7 +30,7 @@ describe('standalone WebSocket adapter', () => {
       initialState: () => ({ title: 'Untitled' }), authToken: 'shared-secret', allowedOrigins: ['https://app.example'],
     })
     const rejected = new WebSocket(handle.webSocketUrl, { origin: 'https://evil.example' })
-    await expect(closeCode(rejected)).resolves.toBe(1008)
+    await expect(upgradeRejectionStatus(rejected)).resolves.toBe(403)
     const alice = await connect(handle.webSocketUrl, 'alice', { origin: 'https://app.example', authToken: 'shared-secret' })
     clients.push(alice)
   })
@@ -86,6 +86,17 @@ async function connect(url: string, actorId: string, options: { origin?: string;
 
 function closeCode(socket: WebSocket): Promise<number> {
   return new Promise((resolve, reject) => { socket.once('close', resolve); socket.once('error', reject) })
+}
+
+function upgradeRejectionStatus(socket: WebSocket): Promise<number | undefined> {
+  return new Promise((resolve, reject) => {
+    socket.once('unexpected-response', (_request, response) => {
+      response.resume()
+      resolve(response.statusCode)
+    })
+    socket.once('open', () => reject(new Error('untrusted Origin completed the WebSocket upgrade')))
+    socket.once('error', reject)
+  })
 }
 
 function nextMessage(socket: WebSocket, kind: string): Promise<ServerWireMessage> {

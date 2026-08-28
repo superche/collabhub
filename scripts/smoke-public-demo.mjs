@@ -52,7 +52,7 @@ try {
   await page.close()
   await expect.poll(warmRoomCount, { timeout: 5000 }).toBe(0)
   const badOrigin = new WebSocket(`ws://127.0.0.1:${port}/collab`, { headers: { Origin: 'https://untrusted.example' } })
-  expect(await closeCode(badOrigin)).toBe(1008)
+  expect(await upgradeRejectionStatus(badOrigin)).toBe(403)
   const first = await openSocket()
   const second = await openSocket()
   const overLimit = new WebSocket(`ws://127.0.0.1:${port}/collab`, { headers: { Origin: `http://127.0.0.1:${port}` } })
@@ -96,6 +96,17 @@ async function openSocket() {
 async function closeCode(socket) {
   return new Promise((resolveClose, reject) => {
     socket.once('close', resolveClose)
+    socket.once('error', reject)
+  })
+}
+
+async function upgradeRejectionStatus(socket) {
+  return new Promise((resolveReject, reject) => {
+    socket.once('unexpected-response', (_request, response) => {
+      response.resume()
+      resolveReject(response.statusCode)
+    })
+    socket.once('open', () => reject(new Error('untrusted Origin completed the WebSocket upgrade')))
     socket.once('error', reject)
   })
 }

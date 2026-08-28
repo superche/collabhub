@@ -125,15 +125,24 @@ export async function startStandaloneWebSocketServer<TState extends JsonObject>(
     response.end('not found')
   })
   const path = options.path ?? '/collab'
-  const sockets = new WebSocketServer({ server, path, maxPayload: options.maxPayloadBytes ?? 128 * 1024 })
+  const allowedOrigins = new Set(options.allowedOrigins ?? [])
+  const originAllowed = (origin: string | undefined) => allowedOrigins.size === 0 || (typeof origin === 'string' && allowedOrigins.has(origin))
+  const sockets = new WebSocketServer({
+    server,
+    path,
+    maxPayload: options.maxPayloadBytes ?? 128 * 1024,
+    verifyClient: ({ req }, done) => {
+      if (!originAllowed(req.headers.origin)) { done(false, 403, 'Origin not allowed'); return }
+      done(true)
+    },
+  })
   const socketsByRoom = new Map<string, Set<WebSocket>>()
   const connectionsByIp = new Map<string, number>()
-  const allowedOrigins = new Set(options.allowedOrigins ?? [])
 
   sockets.on('connection', (socket, request) => {
     const ip = requestIp(request, options.trustProxyHeaders ?? false)
     const origin = request.headers.origin
-    if (allowedOrigins.size > 0 && (!origin || !allowedOrigins.has(origin))) return socket.close(1008, 'origin not allowed')
+    if (!originAllowed(origin)) return socket.close(1008, 'origin not allowed')
     if (sockets.clients.size > (options.maxConnections ?? 10_000)) return socket.close(1013, 'connection capacity reached')
     if ((connectionsByIp.get(ip) ?? 0) >= (options.maxConnectionsPerIp ?? 50)) return socket.close(1013, 'connection limit reached')
     connectionsByIp.set(ip, (connectionsByIp.get(ip) ?? 0) + 1)
