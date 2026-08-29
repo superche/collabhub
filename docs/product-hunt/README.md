@@ -2,6 +2,8 @@
 
 This directory contains the listing copy, launch assets, and launch-day checklist for CollabHub `v1.0.0`. CollabHub is free, open source, and Apache-2.0 licensed. There is no pricing page or paid plan.
 
+For Hacker News, DEV, V2EX, Reddit, and personal social posts, use the separate [technical-community launch kit](../community-launch/README.md).
+
 ## Listing
 
 | Field | Copy |
