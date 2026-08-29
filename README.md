@@ -53,6 +53,10 @@ A controlled React Flow canvas backed by the app's own `GraphDocument`. Demonstr
 
 https://github.com/user-attachments/assets/40594baa-6181-4e9f-a227-4d650c8eac35
 
+### 4. CollabHub + Yjs
+
+CollabHub owns the title and workflow; Yjs exclusively owns the document body. Demonstrates the safe way to add character-level text collaboration without sending one field through two sync systems. [Code](examples/yjs-hybrid-app) · [Guide](docs/integration/yjs-hybrid.md)
+
 ## Integration
 
 ### Add it to an existing React app
@@ -135,13 +139,13 @@ Standalone is for evaluation and small single-node installs. Use the [PostgreSQL
 
 ### CollabHub or Yjs?
 
-Choose CollabHub when you already have structured React data, business commands, server validation, and a database. Choose Yjs for character-level rich text, local-first data, and peer/offline merge semantics. A hybrid app can use CollabHub for business objects and Yjs for a rich-text field. [Detailed comparison](docs/choosing-collabhub-or-yjs.md)
+Choose CollabHub when you already have structured React data, business commands, server validation, and a database. Choose Yjs for character-level rich text, local-first data, and peer/offline merge semantics. A hybrid app can use CollabHub for business objects and Yjs for a rich-text field. [Runnable example](examples/yjs-hybrid-app) · [Guide](docs/integration/yjs-hybrid.md) · [Detailed comparison](docs/choosing-collabhub-or-yjs.md)
 
 ## Repository structure
 
 ```text
 packages/       protocol, client SDK, shared model, server runtimes, strategies, testkit
-examples/       TODO List, BlockNote, React Flow
+examples/       TODO List, BlockNote, React Flow, CollabHub + Yjs
 deploy/         Docker, Kubernetes, AWS, Alibaba Cloud
 docs/           integration, architecture, operations, acceptance
 scripts/        smoke tests, benchmarks, release checks

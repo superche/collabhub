@@ -1,0 +1,31 @@
+{
+  "name": "@collabhub/yjs-hybrid-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev:web": "vite --host 127.0.0.1 --port 5193",
+    "dev:web:a": "vite --host 127.0.0.1 --port 5193 --strictPort",
+    "dev:web:b": "vite --host 127.0.0.1 --port 5194 --strictPort",
+    "dev:collabhub": "tsx server/index.ts",
+    "dev:yjs": "tsx server/yjs-server.ts",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@collabhub/client-core": "workspace:*",
+    "@collabhub/model": "workspace:*",
+    "@collabhub/server-ws": "workspace:*",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "ws": "^8.18.3",
+    "yjs": "^13.6.32"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "@types/react": "^19.1.12",
+    "@types/react-dom": "^19.1.9",
+    "@types/ws": "^8.18.1",
+    "@vitejs/plugin-react": "^5.0.2",
+    "vite": "^7.1.3"
+  }
+}

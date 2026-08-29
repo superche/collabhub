@@ -52,6 +52,10 @@ React Flow 只是受控画布，业务仍保留自己的 `GraphDocument`。演�
 
 https://github.com/user-attachments/assets/40594baa-6181-4e9f-a227-4d650c8eac35
 
+### 4. CollabHub + Yjs
+
+CollabHub 管标题和工作流，Yjs 单独管理正文。演示如何安全加入字符级文本协同，同时避免一个字段被两套同步系统重复写入。[代码](examples/yjs-hybrid-app) · [接入说明](docs/integration/yjs-hybrid.zh-CN.md)
+
 ## 接入案例
 
 ### 给已有 React 项目增加协同
@@ -132,13 +136,13 @@ docker run -p 4100:4100 -v collabhub-data:/data \
 
 ### CollabHub 还是 Yjs？
 
-已有结构化 React 数据、业务命令、服务端校验和数据库时，选 CollabHub。字符级富文本、local-first 和离线多副本合并时，选 Yjs。混合项目可以让 CollabHub 管业务对象，让 Yjs 管富文本字段。[详细对比](docs/choosing-collabhub-or-yjs.md)
+已有结构化 React 数据、业务命令、服务端校验和数据库时，选 CollabHub。字符级富文本、local-first 和离线多副本合并时，选 Yjs。混合项目可以让 CollabHub 管业务对象，让 Yjs 管富文本字段。[可运行案例](examples/yjs-hybrid-app) · [接入说明](docs/integration/yjs-hybrid.zh-CN.md) · [详细对比](docs/choosing-collabhub-or-yjs.md)
 
 ## 仓库结构
 
 ```text
 packages/       协议、客户端 SDK、共享模型、服务端、策略、测试工具
-examples/       TODO List、BlockNote、React Flow
+examples/       TODO List、BlockNote、React Flow、CollabHub + Yjs
 deploy/         Docker、Kubernetes、AWS、阿里云
 docs/           接入、架构、运维、验收
 scripts/        冒烟、性能基线、发布检查

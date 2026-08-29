@@ -17,3 +17,5 @@ Choose CollabHub when the app already has document types, commands, permissions,
 Choose Yjs when the shared object itself should be a CRDT, especially for character-level editors or local-first products.
 
 For mixed products, keep business objects, workflow state, and permissions in CollabHub; embed a Yjs document for the rich-text field. Do not mirror the same field through both systems.
+
+See the [runnable CollabHub + Yjs example](../examples/yjs-hybrid-app) and [integration guide](integration/yjs-hybrid.md).

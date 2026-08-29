@@ -13,6 +13,7 @@
     { "path": "packages/testkit" },
     { "path": "examples/todo-list-app" },
     { "path": "examples/blocknote-app" },
-    { "path": "examples/react-flow-app" }
+    { "path": "examples/react-flow-app" },
+    { "path": "examples/yjs-hybrid-app" }
   ]
 }

@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist-types",
+    "rootDir": ".",
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM"],
+    "types": ["node", "vite/client"]
+  },
+  "include": ["src", "server", "tests", "vite.config.ts"],
+  "references": [
+    { "path": "../../packages/protocol" },
+    { "path": "../../packages/model" },
+    { "path": "../../packages/client-core" },
+    { "path": "../../packages/server-ws" }
+  ]
+}
