@@ -52,7 +52,20 @@ presence_ephemeral: Alice observed by Bob
 durable_snapshot: v1, title read back from PostgreSQL
 ```
 
-A real Chromium session then opened two pages at `https://collabhub-demo.onrender.com`. Both joined the persisted document at v1; an Alice operation was accepted and observed by Bob at v2.
+The final run used the literal `wss://47.82.72.49/collab` endpoint and did not set `COLLABHUB_CONNECT_IP` or any DNS/browser resolver override. The smoke ran in a disposable Node container and used a fresh document, `indie-direct-ip-smoke-20260829`.
+
+### Certificate renewal
+
+The systemd timer was enabled and its first real check completed successfully:
+
+```text
+Certificate will not expire
+IP certificate remains valid for more than three days.
+collabhub-ip-certificate.service: status=0/SUCCESS
+next check: approximately 12 hours
+```
+
+The certificate is valid from 2026-08-29 through 2026-09-05 and contains the critical IP SAN `47.82.72.49`.
 
 ### Cold restart recovery
 
@@ -65,7 +78,7 @@ idempotent_duplicate: accepted at v3 without version advance
 durable_snapshot: v3
 ```
 
-This proves the room recovered from PostgreSQL rather than starting again at v0. The Caddy data volume also retained its certificate across the restart.
+This proves the room recovered from PostgreSQL rather than starting again at v0. The current IP certificate is stored in the ignored host-side `certbot` directory and remained usable across a forced Caddy container recreation.
 
 ### Backup restoration
 
