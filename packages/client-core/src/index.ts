@@ -27,6 +27,7 @@ export interface SocketLike {
 }
 
 export type SocketFactory = (url: string) => SocketLike
+export type AuthTokenProvider = () => string | undefined | Promise<string | undefined>
 
 export interface ClientDiagnostics {
   connection: 'offline' | 'connecting' | 'online' | 'resyncing'
@@ -77,6 +78,8 @@ export interface CollaborationClientOptions<TState extends object> {
   schemaVersion: string
   /** Bearer token forwarded in the WebSocket hello. Use WSS outside local development. */
   authToken?: string
+  /** Called for every connection and reconnect so short-lived tokens can be refreshed. */
+  getAuthToken?: AuthTokenProvider
   socketFactory?: SocketFactory
   applyPatches(state: TState, patches: readonly CanonicalPatch[]): TState
   maxPendingOperations?: number
@@ -139,16 +142,7 @@ export class CollaborationClient<TState extends object> {
     const factory = this.options.socketFactory ?? ((url) => new WebSocket(url))
     const socket = factory(this.options.url)
     this.socket = socket
-    socket.addEventListener('open', () => {
-      if (socket !== this.socket) return
-      this.send({
-        kind: 'hello', protocolVersion: PROTOCOL_VERSION,
-        tenantId: this.options.tenantId, documentId: this.options.documentId,
-        actorId: this.options.actorId, clientId: this.options.clientId,
-        lastKnownVersion: this.canonicalVersion,
-        authToken: this.options.authToken,
-      })
-    })
+    socket.addEventListener('open', () => { void this.sendHello(socket) })
     socket.addEventListener('message', (event) => {
       if (socket !== this.socket) return
       try { this.handle(JSON.parse(String(event.data)) as ServerWireMessage) }
@@ -162,6 +156,32 @@ export class CollaborationClient<TState extends object> {
       if (!this.manuallyClosed && this.networkAvailable) this.scheduleReconnect()
     })
     socket.addEventListener('error', () => undefined)
+  }
+
+  private async sendHello(socket: SocketLike): Promise<void> {
+    try {
+      const authToken = this.options.getAuthToken
+        ? await this.options.getAuthToken()
+        : this.options.authToken
+      if (socket !== this.socket || socket.readyState !== 1) return
+      this.send({
+        kind: 'hello', protocolVersion: PROTOCOL_VERSION,
+        tenantId: this.options.tenantId, documentId: this.options.documentId,
+        actorId: this.options.actorId, clientId: this.options.clientId,
+        lastKnownVersion: this.canonicalVersion,
+        authToken,
+      })
+    } catch (error) {
+      if (socket !== this.socket) return
+      this.setDiagnostics({
+        lastReject: {
+          operationId: 'authentication',
+          code: 'tokenProviderFailed',
+          message: error instanceof Error ? error.message : 'failed to load collaboration token',
+        },
+      })
+      socket.close()
+    }
   }
 
   disconnect(): void {
@@ -466,6 +486,7 @@ export interface CreateCollaborationOptions<TState extends object, TCommand> {
   clientId?: string
   schemaVersion?: string
   authToken?: string
+  getAuthToken?: AuthTokenProvider
   socketFactory?: SocketFactory
   applyPatches?(state: TState, patches: readonly CanonicalPatch[]): TState
   maxPendingOperations?: number
@@ -489,6 +510,7 @@ export function createCollaboration<TState extends object, TCommand>(
     schemaVersion: options.schemaVersion ?? '1.0',
     initialState: options.initialState,
     authToken: options.authToken,
+    getAuthToken: options.getAuthToken,
     socketFactory: options.socketFactory,
     applyPatches: options.applyPatches ?? ((state, patches) => applyCanonicalPatches(
       state as unknown as JsonObject,

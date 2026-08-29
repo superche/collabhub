@@ -1,6 +1,6 @@
-# v0.2 known limitations
+# v1.0 known limitations
 
-- `0.2.0` remains a technical preview. `v1.0.0` requires explicit repository-owner approval.
+- v1.0 stabilizes the structured-data APIs; it is not a character-level editor engine or a managed service SLA.
 - The shared model is JSON-only. Dates, maps, class instances, binary data, and cyclic objects need application encoding.
 - Generic array changes from reducer-style models may replace that array in one patch. Use built-in entity/list commands for large hot lists.
 - IndexedDB pending operations survive refresh and atomically merge queues from tabs in one browser profile; they do not provide cross-device offline merge and can be lost when site data is cleared.
@@ -12,6 +12,6 @@
 
 ## Next priorities
 
-1. Longer crash-injection and rolling-upgrade soak tests.
-2. Operational dashboards and a completed Alibaba Cloud restore/failover certification.
+1. Multi-node managed-cloud soak and regional failover certification.
+2. Packaged operational dashboards.
 3. Hybrid Yjs field adapter remains optional; built-in character-level OT/CRDT is not planned for this release.

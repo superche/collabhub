@@ -7,7 +7,7 @@ CollabHub 只接在 Store/API 边界。组件继续读取原来的文档、发�
 在 React 项目根目录执行：
 
 ```bash
-npx @collabhub/create-react@0.2.0 init .
+npx @collabhub/create-react@1.0.0 init .
 npm install
 npm run collabhub:doctor
 ```

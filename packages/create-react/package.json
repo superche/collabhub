@@ -1,6 +1,6 @@
 {
   "name": "@collabhub/create-react",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "Add CollabHub to an existing React app or create a minimal example",
   "type": "module",
   "license": "Apache-2.0",

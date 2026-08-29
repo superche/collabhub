@@ -13,6 +13,8 @@ describe('existing React project init', () => {
     initExistingReactApp(root)
     expect(readFileSync(resolve(root, 'src/App.tsx'), 'utf8')).toContain('return null')
     expect(readFileSync(resolve(root, 'collabhub.model.ts'), 'utf8')).toContain('verificationLinked')
+    expect(readFileSync(resolve(root, 'src/collab/collabhub.ts'), 'utf8')).toContain('VITE_COLLABHUB_TOKEN_ENDPOINT')
+    expect(readFileSync(resolve(root, 'src/collab/collabhub.ts'), 'utf8')).toContain('getAuthToken')
     expect(JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8')).dependencies).not.toHaveProperty('@collabhub/model')
     expect(doctorProject(root).ok).toBe(true)
   })

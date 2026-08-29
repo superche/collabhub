@@ -5,10 +5,10 @@ import { resolve } from 'node:path'
 
 const root = resolve(import.meta.dirname, '..')
 const rawDir = resolve(root, 'output/playwright/react-flow-smoke')
-const finalVideo = resolve(root, 'docs/assets/collabhub-react-flow-smoke.mp4')
-const poster = resolve(root, 'docs/assets/collabhub-react-flow-smoke-poster.jpg')
+const finalVideo = process.env.COLLABHUB_RECORDING_VIDEO ?? resolve(root, 'docs/assets/collabhub-react-flow-smoke.mp4')
+const poster = process.env.COLLABHUB_RECORDING_POSTER ?? resolve(root, 'docs/assets/collabhub-react-flow-smoke-poster.jpg')
 const traceFile = resolve(rawDir, 'trace.json')
-const documentId = `react-flow-smoke-${Date.now()}`
+const documentId = process.env.COLLABHUB_DOCUMENT_ID ?? `react-flow-smoke-${Date.now()}`
 const trace = []
 
 await rm(rawDir, { recursive: true, force: true })

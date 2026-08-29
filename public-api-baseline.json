@@ -1,0 +1,45 @@
+{
+  "version": "1.0.0",
+  "packages": {
+    "@collabhub/client-core": {
+      "declaration": "packages/client-core/dist/index.d.ts",
+      "sha256": "db42cb3778c7eabf51471ad95d0b67f01a83f2fd5da8bd2c1948f7530c460c56"
+    },
+    "@collabhub/create-react": {
+      "declaration": "packages/create-react/dist/index.d.ts",
+      "sha256": "238a49be35035fafdb055e7f49f54dbb46b897036428d086838d40d3391ef2dd"
+    },
+    "@collabhub/domain-json": {
+      "declaration": "packages/domain-json/dist/index.d.ts",
+      "sha256": "e47e16d344bbc69bfaafe6929171a73686e6697275d08d311d223fed79bc5704"
+    },
+    "@collabhub/model": {
+      "declaration": "packages/model/dist/index.d.ts",
+      "sha256": "fbbf88718f61b0ba1adb371a28b9dc251b8d2cba658ce85a2115c3b82f195a8b"
+    },
+    "@collabhub/protocol": {
+      "declaration": "packages/protocol/dist/index.d.ts",
+      "sha256": "fd701bd142960e5e5e9b6bc5e4486bce7762fee6aff8cefbe76583c57b2fdabb"
+    },
+    "@collabhub/server-core": {
+      "declaration": "packages/server-core/dist/index.d.ts",
+      "sha256": "ea02f8805af6cfb2958fcd9d67a429a8ef6e507370dd305acf944d18172ecd15"
+    },
+    "@collabhub/server-distributed": {
+      "declaration": "packages/server-distributed/dist/index.d.ts",
+      "sha256": "cfe89acddd594e87e776298c4463abdf53aa066c0ccdda894d0fa63b203d0866"
+    },
+    "@collabhub/server-ws": {
+      "declaration": "packages/server-ws/dist/index.d.ts",
+      "sha256": "1bd56645a3bcab1b77181b130754367b1a8aa7292350eeb77914f9ebe6216162"
+    },
+    "@collabhub/strategy-sdk": {
+      "declaration": "packages/strategy-sdk/dist/index.d.ts",
+      "sha256": "1c398ecf3edd04d6f0c45d67c0e3f6a70845d55c38627e1162e59c273c1bee3c"
+    },
+    "@collabhub/testkit": {
+      "declaration": "packages/testkit/dist/index.d.ts",
+      "sha256": "dc7b9e9c75db40a76b99f3893db1e8120c3c31803ed481ea8e893582f8a3758d"
+    }
+  }
+}

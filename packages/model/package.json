@@ -1,6 +1,6 @@
 {
   "name": "@collabhub/model",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "Shared business-command model for low-code CollabHub integrations",
   "type": "module",
   "license": "Apache-2.0",

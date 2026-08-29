@@ -5,7 +5,7 @@
 <p align="center">Keep your components, store, commands, and REST fallback. Add one shared rules file, one React SDK, and one deployable service.</p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.2.0-2563eb">
+  <img alt="Version" src="https://img.shields.io/badge/version-1.0.0-2563eb">
   <a href="https://github.com/superche/collabhub/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/superche/collabhub/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://www.npmjs.com/package/@collabhub/client-core"><img alt="npm" src="https://img.shields.io/npm/v/@collabhub/client-core?logo=npm"></a>
   <img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-4c566a">
@@ -20,7 +20,7 @@
   <a href="deploy/README.md">Deploy</a>
 </p>
 
-> **v0.2 technical preview.** Built for structured React state. Production security, storage, and operations still need application-owned configuration. `v1.0.0` requires a separate owner approval.
+> **v1.0:** stable APIs for structured React collaboration. Your application still owns login, document permissions, business rules, and its database.
 
 ## Features
 
@@ -62,7 +62,7 @@ Some apps have both structured business data and a rich-text body that needs cha
 ### Add it to an existing React app
 
 ```bash
-npx @collabhub/create-react@0.2.0 init .
+npx @collabhub/create-react@1.0.0 init .
 npm install
 npm run collabhub:doctor
 ```
@@ -93,10 +93,17 @@ export const collabModel = defineCollaborationModel<AppDocument, AppCommand>({
 })
 ```
 
-In production, your existing backend returns a short-lived token for the current user and document. CollabHub can verify it with one shared server secret; if Clerk, Auth0, Supabase, or another login provider already exposes JWKS, point CollabHub at that instead.
+In production, your existing backend returns a short-lived token for the current user and document. The SDK calls it again on reconnect, so expired tokens do not require rebuilding the app. CollabHub can verify one backend-only shared secret; if Clerk, Auth0, Supabase, or another login provider exposes JWKS, point CollabHub at that instead.
 
 ```ts
-const { token } = await fetch(`/api/collabhub-token?documentId=${documentId}`).then(r => r.json())
+const getAuthToken = async () => {
+  const response = await fetch('/api/collabhub/token', {
+    method: 'POST',
+    credentials: 'include',
+    body: JSON.stringify({ documentId }),
+  })
+  return (await response.json()).token
+}
 ```
 
 Create the collaboration runtime once, where your app currently chooses its store/API implementation:
@@ -109,7 +116,7 @@ const runtime = collaborationEnabled
       url: 'wss://collab.example.com/collab',
       documentId,
       actorId: currentUser.id,
-      authToken: token,
+      getAuthToken,
       model: collabModel,
       initialState: collabModel.initialState(documentId),
     })
@@ -138,7 +145,7 @@ For existing database records, implement a `StorageAdapter` and prevent REST fro
 docker run -p 4100:4100 -v collabhub-data:/data \
   -e COLLABHUB_ALLOWED_ORIGINS=https://app.example.com \
   -e COLLABHUB_AUTH_TOKEN=replace-me \
-  ghcr.io/superche/collabhub-standalone:0.2.0
+  ghcr.io/superche/collabhub-standalone:1.0.0
 ```
 
 Standalone is for evaluation and small single-node installs. Use the [existing-VM path](deploy/vm) with PostgreSQL + Redis for a cloud-neutral production setup. Provider adapters: [Kubernetes](deploy/kubernetes), [AWS](deploy/aws), [Alibaba Cloud](deploy/alicloud). The [Render deployment](render.yaml) is a real public demo, but its memory storage is intentionally not a durability reference.
@@ -176,7 +183,8 @@ pnpm dev:react-flow
 - [Production hardening](docs/production-hardening.md)
 - [Horizontal scaling](docs/architecture/horizontal-scaling.md)
 - [Known limitations](docs/known-limitations.en.md)
-- [v0.2 release notes](docs/release-notes-0.2.0.md)
+- [API stability](docs/api-stability.md)
+- [v1.0 release notes](docs/release-notes-1.0.0.md)
 
 ## License
 

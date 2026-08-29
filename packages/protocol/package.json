@@ -1,6 +1,6 @@
 {
   "name": "@collabhub/protocol",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "Versioned operation and canonical patch protocol for CollabHub",
   "type": "module",
   "license": "Apache-2.0",

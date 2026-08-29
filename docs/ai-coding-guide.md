@@ -8,7 +8,7 @@ Keep the application's components, state types, commands, and REST implementatio
 
 ## Safe agent workflow
 
-1. Run `npx @collabhub/create-react@0.2.0 init .`.
+1. Run `npx @collabhub/create-react@1.0.0 init .`.
 2. Run `npm install` and `npm run collabhub:doctor`.
 3. Read the app's document type and command union.
 4. Replace the sample types and reducer in `collabhub.model.ts` with those types and commands.
@@ -22,7 +22,7 @@ Keep the application's components, state types, commands, and REST implementatio
 ## Prompt for an agent
 
 ```text
-Add CollabHub v0.2 to this existing React app with minimal intrusion.
+Add CollabHub v1.0 to this existing React app with minimal intrusion.
 
 Preserve the current document types, commands, components, and REST runtime. Run the CollabHub init and doctor commands. Adapt the generated collabhub.model.ts to the existing command union. Put linked updates, validation, and stale-command choices in that one file. Connect the CollabHub runtime only at the app composition root, keeping REST as a feature-flag fallback. Components must not import @collabhub packages.
 

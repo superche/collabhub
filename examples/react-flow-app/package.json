@@ -9,7 +9,8 @@
     "dev:web:b": "vite --host 127.0.0.1 --port 5194 --strictPort",
     "dev:server": "tsx server/index.ts",
     "build": "vite build",
-    "build:server": "esbuild server/index.ts --bundle --platform=node --target=node22 --format=esm --banner:js=\"import{createRequire as __cr}from'node:module';const require=__cr(import.meta.url);\" --outfile=dist-server/collabhub-react-flow-demo.mjs"
+    "build:server": "esbuild server/index.ts --bundle --platform=node --target=node22 --format=esm --banner:js=\"import{createRequire as __cr}from'node:module';const require=__cr(import.meta.url);\" --outfile=dist-server/collabhub-react-flow-demo.mjs",
+    "build:domain-pack": "esbuild server/domain-pack-module.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist-server/react-flow-domain-pack.mjs"
   },
   "dependencies": {
     "@collabhub/client-core": "workspace:*",

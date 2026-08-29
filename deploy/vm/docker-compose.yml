@@ -1,7 +1,7 @@
 name: collabhub-vm
 
 x-runtime: &runtime
-  image: ${COLLABHUB_IMAGE:-ghcr.io/superche/collabhub:0.2.0}
+  image: ${COLLABHUB_IMAGE:-ghcr.io/superche/collabhub:1.0.0}
   restart: unless-stopped
   network_mode: host
   env_file: ${COLLABHUB_ENV_FILE:-.env}

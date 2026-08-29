@@ -1,4 +1,4 @@
-import { CollaborationClient, type ClientDiagnostics } from '@collabhub/client-core'
+import { CollaborationClient, type AuthTokenProvider, type ClientDiagnostics } from '@collabhub/client-core'
 import type { JsonObject } from '@collabhub/protocol'
 import type { GraphCommand, GraphCommandResult, GraphDocument } from '../domain/graph-document.js'
 import { initialGraphDocument } from '../domain/graph-document.js'
@@ -11,10 +11,10 @@ export class CollabHubGraphTransport {
   private currentDocument: GraphDocument
   private diagnosticsValue: Readonly<ClientDiagnostics>
 
-  constructor(url: string, documentId: string, actorId: string, clientId: string) {
+  constructor(url: string, documentId: string, actorId: string, clientId: string, getAuthToken?: AuthTokenProvider) {
     this.currentDocument = initialGraphDocument(documentId)
     this.client = new CollaborationClient<JsonObject>({
-      url, tenantId: 'demo', documentId, actorId, clientId, schemaVersion: '1.0',
+      url, tenantId: 'demo', documentId, actorId, clientId, schemaVersion: '1.0', getAuthToken,
       applyPatches: (state, patches) => applyGraphPatches(state as unknown as GraphDocument, patches) as unknown as JsonObject,
       maxPendingOperations: 100, maxPendingBytes: 128_000, reconnectDelayMs: 250,
     })

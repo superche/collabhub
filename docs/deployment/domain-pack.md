@@ -14,7 +14,7 @@ docker run --rm --network host \
   -e DATABASE_URL=... -e REDIS_URL=... -e INTERNAL_TOKEN=... \
   -v "$PWD/secrets:/run/secrets:ro" \
   -e JWT_SHARED_SECRET_FILE=/run/secrets/jwt-shared-secret -e JWT_ISSUER=my-app -e JWT_AUDIENCE=collabhub \
-  ghcr.io/superche/collabhub:0.2.0
+  ghcr.io/superche/collabhub:1.0.0
 ```
 
 简单路径由业务已有后端使用 HS256 签发短期 token。业务已经接入托管身份服务时，用 `JWT_JWKS_URL` 替代 `JWT_SHARED_SECRET_FILE`。
@@ -37,7 +37,7 @@ docker run --rm --network host \
   -v "$PWD/deploy/domain-pack/domain-pack.example.mjs:/config/domain-pack.mjs:ro" \
   -e COLLABHUB_DOMAIN_PACK_MODULE=/config/domain-pack.mjs \
   ... \
-  ghcr.io/superche/collabhub:0.2.0
+  ghcr.io/superche/collabhub:1.0.0
 ```
 
 模块导出 Domain Pack 对象或工厂函数。运行时会注入 `jsonStrategies` 和 `defineDomainPack`，外挂文件不需要安装 npm 依赖。完整代码见[联动示例](../../deploy/domain-pack/domain-pack.example.mjs)。

@@ -62,7 +62,7 @@ export function LandingPage() {
         <div className="hero-copy">
           <span className="landing-kicker"><i /> {t.kicker}</span><h1 id="hero-title">{t.heroTitle}</h1><p>{t.heroBody}</p>
           <div className="hero-actions"><a className="button primary" href="/demo.html">{t.tryDemo}</a><a className="button secondary" href={githubUrl} target="_blank" rel="noreferrer"><StarIcon /> {t.star}</a></div>
-          <code className="install-command"><span>$</span> npm create @collabhub/react@0.2.0 my-app</code>
+          <code className="install-command"><span>$</span> npm create @collabhub/react@1.0.0 my-app</code>
         </div>
         <div className="hero-system" aria-label={t.systemLabel}>
           <div className="system-meta"><span>{t.path}</span><strong>{t.online} <i /></strong></div>
@@ -85,7 +85,7 @@ export function LandingPage() {
         <div className="integration-copy"><span className="section-index">{t.integrationIndex}</span><h2>{t.integrationTitle}</h2><p>{t.integrationBody}</p><a href={docsUrl}>{t.guide} <span aria-hidden="true">→</span></a></div>
         <div className="code-stack" aria-label="CollabHub integration example">
           <div className="code-card"><header><span>src/collab/create-runtime.ts</span><b>{t.client}</b></header><pre><code><em>const</em> runtime = createCollabRuntime({'{'}{`\n  `}wsUrl, documentId,{`\n  `}store, commands{`\n`}{'}'})</code></pre></div>
-          <div className="code-card service-code"><header><span>your infrastructure</span><b>{t.server}</b></header><pre><code>docker run -p 8080:8080 \<br />  ghcr.io/superche/collabhub:0.2.0</code></pre></div>
+          <div className="code-card service-code"><header><span>your infrastructure</span><b>{t.server}</b></header><pre><code>docker run -p 8080:8080 \<br />  ghcr.io/superche/collabhub:1.0.0</code></pre></div>
         </div>
       </section>
 

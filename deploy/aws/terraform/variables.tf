@@ -86,7 +86,7 @@ variable "max_instances" {
 variable "container_image" {
   description = "Published or application-owned distributed CollabHub image."
   type        = string
-  default     = "ghcr.io/superche/collabhub:0.2.0"
+  default     = "ghcr.io/superche/collabhub:1.0.0"
 }
 
 variable "domain_pack_config_json" {

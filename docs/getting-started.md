@@ -7,7 +7,7 @@ CollabHub adds a shared room to the store/API boundary. Your components keep rea
 From the React project root:
 
 ```bash
-npx @collabhub/create-react@0.2.0 init .
+npx @collabhub/create-react@1.0.0 init .
 npm install
 npm run collabhub:doctor
 ```

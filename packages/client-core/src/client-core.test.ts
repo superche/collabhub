@@ -33,11 +33,13 @@ class FakeSocket implements SocketLike {
 
 class FakeServer {
   connections: FakeSocket[] = []
+  helloAuthTokens: Array<string | undefined> = []
   submissions = 0
   submittedBaseVersions: number[] = []
   create = () => { const socket = new FakeSocket(this); this.connections.push(socket); return socket }
   receive(socket: FakeSocket, message: ClientWireMessage) {
     if (message.kind === 'hello') {
+      this.helloAuthTokens.push(message.authToken)
       socket.deliver({ kind: 'snapshot', tenantId: 't', documentId: 'd', canonicalVersion: 0, schemaVersion: '1.0', snapshotRef: 's0', snapshot: { title: 'Initial' } })
       socket.deliver({ kind: 'ready', canonicalVersion: 0 })
     }
@@ -84,6 +86,23 @@ class ResyncServer extends FakeServer {
 }
 
 describe('collaboration client recovery', () => {
+  it('refreshes a short-lived token for every reconnect', async () => {
+    const server = new FakeServer()
+    let tokenSequence = 0
+    const client = new CollaborationClient<JsonObject>({
+      url: 'fake://', tenantId: 't', documentId: 'd', actorId: 'a', clientId: 'c', schemaVersion: '1.0',
+      socketFactory: server.create, reconnectDelayMs: 5,
+      getAuthToken: async () => `token-${++tokenSequence}`,
+      applyPatches: (state) => state,
+    })
+    client.connect()
+    await new Promise((resolve) => setTimeout(resolve, 1))
+    server.connections[0]!.close()
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    expect(server.helloAuthTokens).toEqual(['token-1', 'token-2'])
+    client.disconnect()
+  })
+
   it('queues while disconnected, reconnects, replays once, and clears pending', async () => {
     const server = new FakeServer()
     const client = new CollaborationClient<JsonObject>({

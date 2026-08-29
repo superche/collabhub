@@ -46,12 +46,12 @@ export function initExistingReactApp(targetArgument = '.', cwd = process.cwd()):
   }
   manifest.dependencies = {
     ...manifest.dependencies,
-    '@collabhub/client-core': '^0.2.0',
-    '@collabhub/server-ws': '^0.2.0',
+    '@collabhub/client-core': '^1.0.0',
+    '@collabhub/server-ws': '^1.0.0',
   }
   manifest.devDependencies = {
     ...manifest.devDependencies,
-    '@collabhub/create-react': '^0.2.0',
+    '@collabhub/create-react': '^1.0.0',
     tsx: manifest.devDependencies?.tsx ?? '^4.20.5',
   }
   manifest.scripts = {
@@ -193,13 +193,23 @@ const clientTemplate = `import { createModelCollaboration } from '@collabhub/cli
 import { collabModel } from '../../collabhub.model'
 
 export function createAppCollaboration(documentId: string, actorId: string) {
+  const tokenEndpoint = import.meta.env.VITE_COLLABHUB_TOKEN_ENDPOINT
   return createModelCollaboration({
     url: import.meta.env.VITE_COLLABHUB_URL ?? 'ws://127.0.0.1:8787/collab',
     documentId,
     actorId,
     model: collabModel,
     initialState: collabModel.initialState(documentId),
-    authToken: import.meta.env.VITE_COLLABHUB_AUTH_TOKEN,
+    getAuthToken: tokenEndpoint ? async () => {
+      const response = await fetch(tokenEndpoint, {
+        method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ tenantId: 'default', documentId, actorId }),
+      })
+      if (!response.ok) throw new Error('CollabHub token request failed (' + response.status + ')')
+      const body = await response.json() as { token?: unknown }
+      if (typeof body.token !== 'string' || !body.token) throw new Error('CollabHub token response is missing token')
+      return body.token
+    } : undefined,
   })
 }
 `
@@ -247,4 +257,5 @@ const integrationTemplate = (sourceRoot: string) => `# CollabHub files
 - React components call your existing command layer; use \`useSyncExternalStore(store.subscribe, store.getSnapshot)\` to read shared state.
 - Run \`npm run collabhub:server\`, then \`npm run collabhub:verify\` for a real two-client WebSocket check.
 - \`Dockerfile.collabhub\` is the service image. Configure production authentication before deploying it.
+- In production, set \`VITE_COLLABHUB_URL=wss://.../collab\` and \`VITE_COLLABHUB_TOKEN_ENDPOINT=/api/collabhub/token\`. That endpoint belongs to your existing backend and returns \`{ "token": "..." }\` for the signed-in user and requested document.
 `

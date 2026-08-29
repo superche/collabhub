@@ -3,13 +3,23 @@ import type { AppRuntime, DocumentCommand, DocumentState } from '../application.
 import { collabModel } from '../../collabhub.model.js'
 
 export function createCollabRuntime(options: { actorId: string; documentId: string }): AppRuntime {
+  const tokenEndpoint = import.meta.env.VITE_COLLABHUB_TOKEN_ENDPOINT
   const store = createModelCollaboration<DocumentState, DocumentCommand>({
-    url: 'ws://127.0.0.1:4100/collab',
+    url: import.meta.env.VITE_COLLABHUB_URL ?? 'ws://127.0.0.1:4100/collab',
     tenantId: 'demo',
     documentId: options.documentId,
     actorId: options.actorId,
     clientId: `${options.actorId}-${crypto.randomUUID()}`,
-    authToken: import.meta.env.VITE_COLLABHUB_AUTH_TOKEN,
+    getAuthToken: tokenEndpoint ? async () => {
+      const response = await fetch(tokenEndpoint, {
+        method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ tenantId: 'demo', documentId: options.documentId, actorId: options.actorId }),
+      })
+      if (!response.ok) throw new Error(`CollabHub token request failed (${response.status})`)
+      const body = await response.json() as { token?: unknown }
+      if (typeof body.token !== 'string' || !body.token) throw new Error('CollabHub token response is missing token')
+      return body.token
+    } : undefined,
     initialState: collabModel.initialState(options.documentId),
     model: collabModel,
   })

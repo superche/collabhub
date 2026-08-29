@@ -1,6 +1,6 @@
 {
   "name": "@collabhub/strategy-sdk",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "Strategy and Domain Pack SPI for CollabHub",
   "type": "module",
   "license": "Apache-2.0",

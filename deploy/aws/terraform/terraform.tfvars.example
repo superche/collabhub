@@ -13,7 +13,7 @@ min_instances = 2
 max_instances = 6
 
 # The published image can load either JSON or the self-contained ESM module below.
-container_image = "ghcr.io/superche/collabhub:0.2.0"
+container_image = "ghcr.io/superche/collabhub:1.0.0"
 
 # For trusted executable business rules, uncomment and review the source first:
 # domain_pack_module_source = file("../../domain-pack/domain-pack.example.mjs")

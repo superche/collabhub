@@ -5,7 +5,7 @@
 <p align="center">保留组件、Store、业务命令和 REST 兜底；只增加一个共享规则文件、一个 React SDK 和一个可部署服务。</p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.2.0-2563eb">
+  <img alt="Version" src="https://img.shields.io/badge/version-1.0.0-2563eb">
   <a href="https://github.com/superche/collabhub/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/superche/collabhub/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://www.npmjs.com/package/@collabhub/client-core"><img alt="npm" src="https://img.shields.io/npm/v/@collabhub/client-core?logo=npm"></a>
   <img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-4c566a">
@@ -20,7 +20,7 @@
   <a href="deploy/README.md">部署</a>
 </p>
 
-> **v0.2 技术预览。** 面向结构化 React 数据。生产环境的鉴权、存储和运维仍需业务配置；发布 `v1.0.0` 需要项目所有者另行批准。
+> **v1.0：** 面向结构化 React 协同的稳定 API。登录、文档权限、业务规则和业务数据库仍由你的应用管理。
 
 ## Features
 
@@ -61,7 +61,7 @@ https://github.com/user-attachments/assets/cc5117cb-3bff-49fd-82f9-bb1f8ece80bb
 ### 给已有 React 项目增加协同
 
 ```bash
-npx @collabhub/create-react@0.2.0 init .
+npx @collabhub/create-react@1.0.0 init .
 npm install
 npm run collabhub:doctor
 ```
@@ -92,10 +92,17 @@ export const collabModel = defineCollaborationModel<AppDocument, AppCommand>({
 })
 ```
 
-生产环境里，业务后端给当前用户和文档返回一个短期 token；CollabHub 可以只用一条服务端共享密钥验签。项目已经使用 Clerk、Auth0、Supabase 等能提供 JWKS 的登录服务时，直接让 CollabHub 复用它，不必再写 token 接口。
+生产环境里，业务后端给当前用户和文档返回短期 token；SDK 每次连接和重连都会重新获取，token 过期不需要重新构建前端。CollabHub 可以使用一条只放在后端的共享密钥验签。项目已经使用 Clerk、Auth0、Supabase 等能提供 JWKS 的登录服务时，可以直接复用。
 
 ```ts
-const { token } = await fetch(`/api/collabhub-token?documentId=${documentId}`).then(r => r.json())
+const getAuthToken = async () => {
+  const response = await fetch('/api/collabhub/token', {
+    method: 'POST',
+    credentials: 'include',
+    body: JSON.stringify({ documentId }),
+  })
+  return (await response.json()).token
+}
 ```
 
 只在应用启动、选择 Store/API 实现的位置创建协同运行时：
@@ -106,7 +113,7 @@ const runtime = collaborationEnabled
       url: 'wss://collab.example.com/collab',
       documentId,
       actorId: currentUser.id,
-      authToken: token,
+      getAuthToken,
       model: collabModel,
       initialState: collabModel.initialState(documentId),
     })
@@ -135,7 +142,7 @@ npm run collabhub:verify
 docker run -p 4100:4100 -v collabhub-data:/data \
   -e COLLABHUB_ALLOWED_ORIGINS=https://app.example.com \
   -e COLLABHUB_AUTH_TOKEN=replace-me \
-  ghcr.io/superche/collabhub-standalone:0.2.0
+  ghcr.io/superche/collabhub-standalone:1.0.0
 ```
 
 单机版用于试用和小规模部署。生产环境可以直接使用云无关的[已有 VM 部署](deploy/vm)，外接 PostgreSQL 和 Redis。云平台适配：[Kubernetes](deploy/kubernetes)、[AWS](deploy/aws)、[阿里云](deploy/alicloud)。[Render](render.yaml) 是真实公网 Demo，但内存存储不作为持久化参考。
@@ -173,7 +180,8 @@ pnpm dev:react-flow
 - [生产硬化](docs/production-hardening.zh-CN.md)
 - [水平扩容](docs/architecture/horizontal-scaling.md)
 - [已知限制](docs/known-limitations.md)
-- [v0.2 发布说明](docs/release-notes-0.2.0.md)
+- [API 稳定性](docs/api-stability.zh-CN.md)
+- [v1.0 发布说明](docs/release-notes-1.0.0.md)
 
 ## License
 

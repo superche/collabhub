@@ -1,4 +1,4 @@
-name: Publish technical preview
+name: Publish stable release
 
 on:
   workflow_dispatch:
@@ -6,9 +6,9 @@ on:
       expected_version:
         description: Version already committed to every public package
         required: true
-        default: 0.2.0
+        default: 1.0.0
       confirmation:
-        description: Type PUBLISH_TECHNICAL_PREVIEW
+        description: Type PUBLISH_STABLE_RELEASE
         required: true
 
 permissions:
@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   publish:
-    if: inputs.confirmation == 'PUBLISH_TECHNICAL_PREVIEW'
+    if: inputs.confirmation == 'PUBLISH_STABLE_RELEASE'
     environment: release-approval
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -60,7 +60,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: |
             ghcr.io/superche/collabhub:${{ inputs.expected_version }}
-            ghcr.io/superche/collabhub:0.2
+            ghcr.io/superche/collabhub:1
+            ghcr.io/superche/collabhub:latest
           provenance: mode=max
           sbom: true
       - uses: docker/build-push-action@v7
@@ -71,18 +72,19 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: |
             ghcr.io/superche/collabhub-standalone:${{ inputs.expected_version }}
-            ghcr.io/superche/collabhub-standalone:0.2
+            ghcr.io/superche/collabhub-standalone:1
+            ghcr.io/superche/collabhub-standalone:latest
           provenance: mode=max
           sbom: true
-      - name: Create immutable prerelease
+      - name: Create immutable release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ inputs.expected_version }}
         run: |
           git config user.name "superche"
           git config user.email "35420957+superche@users.noreply.github.com"
-          git tag -a "v${VERSION}" -m "CollabHub ${VERSION} technical preview"
+          git tag -a "v${VERSION}" -m "CollabHub ${VERSION}"
           git push origin "v${VERSION}"
           gh release create "v${VERSION}" artifacts/packages/*.tgz \
-            --prerelease --verify-tag --title "CollabHub ${VERSION} technical preview" \
+            --verify-tag --title "CollabHub ${VERSION}" \
             --notes-file docs/release-notes-${VERSION}.md

@@ -34,7 +34,7 @@ try {
   await expect(landing.getByRole('heading', { name: 'Multiplayer, without rewriting your React app.' })).toBeVisible()
   await expect(landing.getByRole('link', { name: 'Try two-client demo' })).toHaveAttribute('href', '/demo.html')
   await expect(landing.getByRole('link', { name: 'Star on GitHub' })).toHaveAttribute('href', 'https://github.com/superche/collabhub')
-  await expect(landing.getByText('npm create @collabhub/react@0.2.0 my-app')).toBeVisible()
+  await expect(landing.getByText('npm create @collabhub/react@1.0.0 my-app')).toBeVisible()
   const sourceButton = landing.getByRole('link', { name: 'View source' })
   await expect(sourceButton).toBeVisible()
   expect(await sourceButton.evaluate((element) => getComputedStyle(element).color)).toBe('rgb(11, 43, 92)')
