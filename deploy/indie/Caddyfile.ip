@@ -1,3 +1,7 @@
+{
+	default_sni {$COLLABHUB_HOST}
+}
+
 https://{$COLLABHUB_HOST} {
 	encode zstd gzip
 	tls /etc/letsencrypt/live/collabhub-ip/fullchain.pem /etc/letsencrypt/live/collabhub-ip/privkey.pem
