@@ -1,13 +1,20 @@
 {$COLLABHUB_HOST} {
-  encode zstd gzip
+	encode zstd gzip
 
-  reverse_proxy gateway:7000 {
-    header_up X-Forwarded-For {remote_host}
-    header_up X-Forwarded-Proto {scheme}
-  }
+	handle / {
+		header Content-Type application/json
+		respond `{"service":"CollabHub","status":"online","demo":"https://collabhub-demo.onrender.com/demo.html","health":"/readyz","websocket":"/collab"}` 200
+	}
 
-  log {
-    output stdout
-    format json
-  }
+	handle {
+		reverse_proxy gateway:7000 {
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+
+	log {
+		output stdout
+		format json
+	}
 }

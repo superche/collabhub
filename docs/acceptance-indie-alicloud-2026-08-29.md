@@ -9,7 +9,7 @@ This run certifies the one-VM Indie deployment path against a real Alibaba Cloud
 | Account | Verified before purchase; account identifier intentionally not published |
 | Region | Hong Kong (`cn-hongkong`) |
 | Instance | `collabhub-indie-cert` |
-| Public endpoint | `https://47.82.72.49.sslip.io` / `wss://47.82.72.49.sslip.io/collab` |
+| Public endpoint | `https://47-82-72-49.traefik.me` / `wss://47-82-72-49.traefik.me/collab` |
 | VM | 2 vCPU, 2 GiB RAM, 40 GB ESSD, Ubuntu 24.04 |
 | Purchase | CNY 39 for one month; `ManualRenewal` |
 | Expiry | 2026-09-29 16:00 UTC |
@@ -25,7 +25,7 @@ The preferred 2 vCPU / 4 GiB plan was unavailable in Hong Kong at purchase time.
 - Gateway diagnostics bind to `127.0.0.1:17000`; Caddy is the only public application entry point.
 - Browser Origin allowlist: `https://collabhub-demo.onrender.com`.
 - JWTs are document-scoped and signed from a server-side file secret. Acceptance tokens expired after ten minutes.
-- Let's Encrypt certificate: CN/SAN `47.82.72.49.sslip.io`, valid 2026-08-29 through 2026-11-27.
+- Let's Encrypt certificate: CN/SAN `47-82-72-49.traefik.me`, valid 2026-08-29 through 2026-11-27.
 
 ## Evidence
 
@@ -37,7 +37,7 @@ The preferred 2 vCPU / 4 GiB plan was unavailable in Hong Kong at purchase time.
 {"ready":true,"rooms":0}
 ```
 
-All five containers reported healthy: PostgreSQL 16, Redis 7.2, room worker, gateway, and Caddy.
+All five containers reported healthy: PostgreSQL 16, Redis 7.2, room worker, gateway, and Caddy. The root URL returns a small JSON service card; it does not expose the admin API or secrets.
 
 ### Public two-client protocol smoke
 
@@ -98,7 +98,7 @@ cp .env.example .env
 ./install.sh
 ```
 
-Run the public protocol smoke from a checkout. `COLLABHUB_CONNECT_IP` is optional; it bypasses a local DNS rewrite while preserving TLS SNI and hostname verification.
+Run the public protocol smoke from a checkout. `COLLABHUB_CONNECT_IP` is optional for diagnostics, but the final user-path acceptance must run without it.
 
 ```bash
 COLLABHUB_HTTP_ORIGIN=https://collabhub.example.com \
