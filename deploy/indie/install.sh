@@ -79,7 +79,9 @@ if [[ "$(uname -s)" == "Linux" ]]; then
 fi
 
 docker compose up -d --wait
-docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile
+# Git updates a tracked single-file bind mount by replacing its inode. Recreate
+# only Caddy so upgrades always bind the current Caddyfile.
+docker compose up -d --force-recreate caddy --wait
 curl --fail --silent --show-error --retry 20 --retry-delay 2 "https://${COLLABHUB_HOST}/readyz"
 echo
 echo "CollabHub is ready at https://${COLLABHUB_HOST} and wss://${COLLABHUB_HOST}/collab"
