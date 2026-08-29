@@ -2,7 +2,12 @@
 
 ## v1.0 认证（2026-08-29）
 
-源码与 10 个公开包均已更新为 `1.0.0`；只有精确发布提交通过 CI 和以下远程验收后才允许公开发布。
+源码与 10 个公开包均为 `1.0.0`。稳定版 `v1.0.0` 已于 2026-08-29 从 `main@77ef617f154d1c739a419c7bc1f1d109c5be9b92` 发布；发布前该精确提交通过了 CI 与以下远程验收。
+
+- [main CI 33249380314](https://github.com/superche/collabhub/actions/runs/33249380314) 的 6 个 job 全部通过，覆盖完整质量门禁、本地集群、三类容器构建和部署配置。
+- [稳定发布 workflow 33249539483](https://github.com/superche/collabhub/actions/runs/33249539483) 重跑发布门禁，通过 npm Trusted Publishing + provenance 发布 10 个包，构建两套 amd64/arm64 GHCR 镜像与 attestations，并创建不可变的 [v1.0.0 Release](https://github.com/superche/collabhub/releases/tag/v1.0.0)。
+- 发布后从 npm 官方源创建全新 Vite React 项目，安装 `@collabhub/create-react@1.0.0`；init、doctor、依赖安装、TypeScript 与 Vite production build 全部通过，npm 报告 0 个漏洞。
+- Render 手动部署精确源码 `77ef617`，`/healthz` 返回 `1.0.0`。部署后线上冒烟覆盖 Alice/Bob 收敛、单次拖拽提交、离线重放到 canonical v4、非法 Origin 拒绝、中英双语官网、蓝色主题、favicon 与 GitHub 链接，全部通过。
 
 - `pnpm release:check`：24 个 Vitest 文件、90 个测试通过；10 个 npm 包产物审计通过；1,000 section patch p95 0.011 ms，预算 4 ms。
 - 生产鉴权支持托管 JWKS，或只保存在业务后端与 CollabHub 的 32+ byte HS256 密钥。真实签名 token 测试覆盖 issuer、audience、tenant、文档授权与用户身份校验，并覆盖文件挂载密钥；React 不接触签名密钥。
@@ -12,7 +17,7 @@
 - `pnpm smoke:demo`：双客户端 v2、Origin 拒绝、连接上限、活跃 Room 保护、过期 Room 删除、蓝色主题、favicon 与 GitHub Star 链接通过。
 - 三张 Docker 镜像（distributed、demo、standalone）本地真实构建通过；AWS/阿里云 Terraform provider validate、Kustomize 渲染、通用 VM Compose 解析通过。阿里云 plan 已强制使用 OSS 加密 state 与 Tablestore 锁，不允许生产凭证落到本机 state。
 - `pnpm publish:dry-run`：10 个 `1.0.0` 包完成打包和审计，没有执行发布。
-- GitHub Actions 从候选源码构建了固定 SHA 的 amd64/arm64 镜像：`ghcr.io/superche/collabhub:sha-ebd517d00f028474671dea7592f69f8f3ecfb9fa`。
+- [GitHub Actions 33249111502](https://github.com/superche/collabhub/actions/runs/33249111502) 从精确发布源码构建固定 SHA 的 amd64/arm64 镜像：`ghcr.io/superche/collabhub:sha-77ef617f154d1c739a419c7bc1f1d109c5be9b92`。
 - 香港 2C2G 阿里云轻量服务器通过 `deploy/indie/upgrade.sh` 从旧固定镜像升级；升级前自动备份，Gateway/Worker 均以候选镜像恢复健康。
 - 本机真实启动 Alice/Bob 两个 React Flow 客户端，使用文档级短期 token 直连 `wss://47.82.72.49/collab`。人类速度操作覆盖新增节点、拖拽合并、离线 pending、重连重放和关联边删除，最终 canonical v5。[验收录屏](assets/collabhub-react-flow-smoke.mp4)。
 - Gateway/Worker 进程重启与整台 VM 重启后，全新客户端均恢复同一文档 v5 / 4 nodes / 0 edges；PostgreSQL 保留 head v5 和 5 条 WAL。
@@ -21,7 +26,7 @@
 
 以上认证覆盖低成本单 VM KISS 方案的公网 WSS、持久化、备份和重启恢复。Render 仍是公开 Demo，且故意使用临时存储。AWS/阿里云多节点模板只承诺 provider 校验通过，不等同托管 SLA 或已完成跨可用区故障认证。
 
-日期：2026-08-28（Asia/Shanghai）
+日期：2026-08-29（Asia/Shanghai）
 环境：macOS arm64、Node.js v24.18.0、pnpm 10.11.0、Playwright Chromium 151.0.7922.34。
 
 ## v0.2.0 本地发布 gate
@@ -53,7 +58,7 @@
 
 `pnpm release:check` 通过。9 个 `0.1.3` package 均生成编译 ESM、declaration 与精简 manifest；审计确认没有 package `src`、test 或 `workspace:` 依赖泄漏，create-react 仅额外包含生成模板。
 
-9 个 `@collabhub/*@0.1.3` 包已通过 GitHub OIDC Trusted Publisher 发布到 npm 官方 registry，并带 provenance；发布 workflow 不使用长期 `NPM_TOKEN`。`v0.1.3` prerelease 与 tag 指向 `b9093372faa14456148a1f104871486186336fd9`。分布式与 standalone GHCR 镜像均包含 `linux/amd64`、`linux/arm64` 和 attestation manifest。`v1.0.0` 仍需另行批准。
+9 个 `@collabhub/*@0.1.3` 包已通过 GitHub OIDC Trusted Publisher 发布到 npm 官方 registry，并带 provenance；发布 workflow 不使用长期 `NPM_TOKEN`。`v0.1.3` prerelease 与 tag 指向 `b9093372faa14456148a1f104871486186336fd9`。分布式与 standalone GHCR 镜像均包含 `linux/amd64`、`linux/arm64` 和 attestation manifest。该段记录的是 v0.1.3 发布时的状态；当时 `v1.0.0` 尚待另行批准，现已按上方 v1.0 认证流程正式发布。
 
 `pnpm smoke:fresh-react` 通过：在系统临时目录生成全新项目，断言 manifest 只暴露 `client-core` 与 `server-ws` 两个 CollabHub 依赖并包含独立服务 Dockerfile；以本地候选 tarball 集完成依赖解析、TypeScript/Vite 构建，启动 server/Alice/Bob 三个独立进程，并由两个 Chromium 客户端收敛到 title `Fresh install works`、canonical v1 / pending 0。`App.tsx`/application 为 0 个 CollabHub import。
 

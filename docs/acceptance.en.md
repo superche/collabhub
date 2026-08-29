@@ -2,7 +2,12 @@
 
 ## v1.0 certification — 2026-08-29
 
-The source and all ten public packages report `1.0.0`. Publication remains gated until the exact release commit passes CI and the remote checks below.
+The source and all ten public packages report `1.0.0`. Stable `v1.0.0` was published from `main@77ef617f154d1c739a419c7bc1f1d109c5be9b92` on 2026-08-29 after the exact release commit passed CI and the remote checks below.
+
+- [Main CI run 33249380314](https://github.com/superche/collabhub/actions/runs/33249380314) passed all six jobs, including the full quality, local-cluster, container, and deploy-configuration gates.
+- [Stable release run 33249539483](https://github.com/superche/collabhub/actions/runs/33249539483) repeated the release gates, published all ten packages through npm Trusted Publishing with provenance, built both multi-architecture GHCR images with attestations, and created the immutable [v1.0.0 release](https://github.com/superche/collabhub/releases/tag/v1.0.0).
+- A post-release clean Vite React project installed `@collabhub/create-react@1.0.0` from the public npm registry; init, doctor, dependency install, TypeScript, and Vite production build all passed with zero reported vulnerabilities.
+- Render manually deployed exact source `77ef617`; `/healthz` reports `1.0.0`. The post-deploy live smoke passed Alice/Bob convergence, one coalesced drag, offline replay to canonical v4, untrusted-Origin rejection, bilingual landing content, blue theme, favicon, and GitHub link.
 
 - `pnpm release:check`: 24 Vitest files / 90 tests; ten package artifact audits; 1,000-section patch p95 0.011 ms against a 4 ms budget.
 - Production authentication accepts either managed JWKS or a backend-only 32+ byte HS256 secret. Real signed-token tests prove issuer, audience, tenant, document grant, and subject enforcement; file-backed secret loading is also covered. React never receives the signing secret.
@@ -12,7 +17,7 @@ The source and all ten public packages report `1.0.0`. Publication remains gated
 - `pnpm smoke:demo`: two-client v2 convergence, Origin rejection, connection capacity, active-room protection, expired-room deletion, blue theme, favicon, and GitHub Star link.
 - Local builds passed for distributed, demo, and standalone images. Alibaba Cloud/AWS provider validation, Kustomize rendering, and generic VM Compose parsing passed. Alibaba Cloud planning now refuses local state and requires encrypted OSS state plus Tablestore locking.
 - `pnpm publish:dry-run` packed and audited all ten `1.0.0` packages without publishing them.
-- GitHub Actions built the immutable amd64/arm64 candidate `ghcr.io/superche/collabhub:sha-ebd517d00f028474671dea7592f69f8f3ecfb9fa` from the candidate source.
+- [GitHub Actions run 33249111502](https://github.com/superche/collabhub/actions/runs/33249111502) built the exact-release amd64/arm64 candidate `ghcr.io/superche/collabhub:sha-77ef617f154d1c739a419c7bc1f1d109c5be9b92`.
 - A real 2C2G Alibaba Cloud SWAS VM in Hong Kong upgraded from the prior immutable image through `deploy/indie/upgrade.sh`; the script created a backup first and both Gateway and Worker became healthy on the candidate image.
 - A locally started Alice/Bob React Flow pair connected directly to `wss://47.82.72.49/collab` with short-lived document-scoped tokens. The human-speed trace reached canonical v5 through add, coalesced drag, offline pending replay, reconnect, and linked-edge deletion. The recording is [`docs/assets/collabhub-react-flow-smoke.mp4`](assets/collabhub-react-flow-smoke.mp4).
 - Fresh clients recovered the same document at v5 / 4 nodes / 0 edges after both a Gateway+Worker restart and a full VM reboot. PostgreSQL retained head v5 and five WAL rows.
@@ -79,6 +84,6 @@ The scheduled live smoke checks the deployed `/healthz`, requires the Origin all
 
 CI builds the demo, standalone, and PostgreSQL/Redis distributed images. The local cluster acceptance starts two Gateways and two Room Workers as independent processes, kills the current writer, and verifies fenced takeover, linked updates, pending replay, and snapshot recovery.
 
-The deploy-configuration gate renders Docker Compose and the 11-resource Kustomize base, then initializes and validates the AWS and Alibaba Cloud Terraform stacks against their real provider schemas. Both cloud-init templates were also rendered locally with complete inputs. No managed-cloud resources were created and no cloud soak result is claimed.
+The deploy-configuration gate renders Docker Compose and the 11-resource Kustomize base, then initializes and validates the AWS and Alibaba Cloud Terraform stacks against their real provider schemas. Both cloud-init templates were also rendered locally with complete inputs. Those multi-node Terraform stacks were not applied; the separate real Indie Alibaba Cloud VM and its bounded soak are documented above.
 
 Detailed traces, payload sizes, process IDs, performance samples, and historical recordings remain in the [full Chinese acceptance log](acceptance.md). Read [known limitations](known-limitations.en.md) before adoption.

@@ -13,8 +13,8 @@ This run certifies the one-VM Indie deployment path against a real Alibaba Cloud
 | VM | 2 vCPU, 2 GiB RAM, 40 GB ESSD, Ubuntu 24.04 |
 | Purchase | CNY 39 for one month; `ManualRenewal` |
 | Expiry | 2026-09-29 16:00 UTC |
-| Application image | `ghcr.io/superche/collabhub:sha-ebd517d00f028474671dea7592f69f8f3ecfb9fa` |
-| Image workflow | [GitHub Actions run 33247777280](https://github.com/superche/collabhub/actions/runs/33247777280) |
+| Application image | `ghcr.io/superche/collabhub:sha-77ef617f154d1c739a419c7bc1f1d109c5be9b92` |
+| Image workflow | [GitHub Actions run 33249111502](https://github.com/superche/collabhub/actions/runs/33249111502) |
 
 The preferred 2 vCPU / 4 GiB plan was unavailable in Hong Kong at purchase time. This certification VM therefore uses the documented low-memory override plus 2 GiB swap. It certifies functionality and durability, not the published 2C4G performance envelope.
 
@@ -23,7 +23,7 @@ The preferred 2 vCPU / 4 GiB plan was unavailable in Hong Kong at purchase time.
 - Public firewall: TCP 80, TCP 443, and ICMP only. TCP 22 is closed.
 - PostgreSQL, Redis, and the room worker are attached only to the internal Docker network.
 - Gateway diagnostics bind to `127.0.0.1:17000`; Caddy is the only public application entry point.
-- Browser Origin allowlist: `https://collabhub-demo.onrender.com`. Localhost origins were added only for the recorded browser acceptance, then removed.
+- Browser Origin allowlist: `https://collabhub-demo.onrender.com`. Localhost origins were added only for the recorded browser acceptance, then removed. A public WebSocket retry from localhost closed with code `1008` and reason `origin not allowed` after cleanup.
 - JWTs are document-scoped and signed from a server-side file secret. Acceptance tokens expired after ten minutes.
 - Publicly trusted six-day Let's Encrypt certificate with IP SAN `47.82.72.49`.
 - A systemd timer checks the certificate twice daily and renews it with Certbot when fewer than three days remain.
@@ -68,6 +68,8 @@ linked delete: canonical v5, 4 nodes, 0 edges on both clients
 ```
 
 The recording is stored at `docs/assets/collabhub-react-flow-smoke.mp4`. A fresh verifier later recovered the same document at v5 directly from the public endpoint.
+
+Before merging, the VM was upgraded once more to exact release candidate `sha-77ef617…`; a fresh public-WSS verifier again recovered v5 / 4 nodes / 0 edges. After publication, temporary localhost origins and the test-only React Flow module mount were removed. Gateway and Worker remain healthy on the same immutable image with the checked-in JSON Domain Pack configuration.
 
 ### Certificate renewal
 
