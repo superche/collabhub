@@ -55,7 +55,7 @@ https://github.com/user-attachments/assets/cc5117cb-3bff-49fd-82f9-bb1f8ece80bb
 
 ### 4. CollabHub + Yjs
 
-CollabHub owns the title and workflow; Yjs exclusively owns the document body. Demonstrates the safe way to add character-level text collaboration without sending one field through two sync systems. [Code](examples/yjs-hybrid-app) · [Guide](docs/integration/yjs-hybrid.md)
+Some apps have both structured business data and a rich-text body that needs character-level collaboration; one sync model is not ideal for both. CollabHub handles fields and workflow, while Yjs handles the document body, with exactly one owner per field. [Code](examples/yjs-hybrid-app) · [Guide](docs/integration/yjs-hybrid.md)
 
 ## Integration
 

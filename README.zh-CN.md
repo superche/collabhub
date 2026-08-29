@@ -54,7 +54,7 @@ https://github.com/user-attachments/assets/cc5117cb-3bff-49fd-82f9-bb1f8ece80bb
 
 ### 4. CollabHub + Yjs
 
-CollabHub 管标题和工作流，Yjs 单独管理正文。演示如何安全加入字符级文本协同，同时避免一个字段被两套同步系统重复写入。[代码](examples/yjs-hybrid-app) · [接入说明](docs/integration/yjs-hybrid.zh-CN.md)
+有些应用既有结构化业务数据，又有需要字符级协同的富文本正文，一套同步方式很难同时适合两者。CollabHub 负责业务字段和流程，Yjs 负责正文，每个字段只交给一套系统管理。[代码](examples/yjs-hybrid-app) · [接入说明](docs/integration/yjs-hybrid.zh-CN.md)
 
 ## 接入案例
 
