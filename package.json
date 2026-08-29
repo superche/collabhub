@@ -26,6 +26,7 @@
     "test:distributed": "pnpm --filter @collabhub/server-distributed test",
     "smoke:distributed": "node scripts/distributed-smoke.mjs",
     "smoke:postgres-hardening": "pnpm build && node scripts/postgres-hardening-smoke.mjs",
+    "smoke:indie": "node scripts/indie-smoke.mjs",
     "benchmark:distributed": "node scripts/distributed-benchmark.mjs",
     "dev:todo-cluster": "pnpm build && node scripts/start-local-todo-cluster.mjs",
     "smoke:todo-cluster": "pnpm build && node scripts/smoke-local-todo-cluster.mjs",
