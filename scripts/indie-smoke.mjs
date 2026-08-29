@@ -1,5 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { createHmac, randomUUID } from 'node:crypto'
+import { request as httpRequest } from 'node:http'
+import { request as httpsRequest } from 'node:https'
 import WebSocket from 'ws'
 
 const httpOrigin = process.env.COLLABHUB_HTTP_ORIGIN ?? 'http://127.0.0.1:17000'
@@ -9,6 +11,44 @@ const issuer = process.env.COLLABHUB_JWT_ISSUER ?? 'https://app.example.com'
 const audience = process.env.COLLABHUB_JWT_AUDIENCE ?? 'collabhub'
 const tenantId = process.env.COLLABHUB_TENANT_ID ?? 'certification'
 const documentId = process.env.COLLABHUB_DOCUMENT_ID ?? `indie-smoke-${Date.now()}`
+const connectIp = process.env.COLLABHUB_CONNECT_IP
+
+function lookup(_hostname, _options, callback) {
+  if (_options?.all) {
+    callback(null, [{ address: connectIp, family: 4 }])
+    return
+  }
+  callback(null, connectIp, 4)
+}
+
+async function getJson(url, headers) {
+  const target = new URL(url)
+  const request = target.protocol === 'https:' ? httpsRequest : httpRequest
+  return await new Promise((resolve, reject) => {
+    const outbound = request(target, {
+      headers,
+      ...(connectIp ? { lookup } : {}),
+    }, (response) => {
+      const chunks = []
+      response.on('data', (chunk) => chunks.push(chunk))
+      response.on('end', () => {
+        const body = Buffer.concat(chunks).toString('utf8')
+        if ((response.statusCode ?? 500) >= 400) {
+          reject(new Error(`snapshot API returned ${response.statusCode}: ${body}`))
+          return
+        }
+        try {
+          resolve(JSON.parse(body))
+        } catch (error) {
+          reject(error)
+        }
+      })
+    })
+    outbound.setTimeout(15_000, () => outbound.destroy(new Error('snapshot API timed out')))
+    outbound.on('error', reject)
+    outbound.end()
+  })
+}
 
 async function token(actorId) {
   const provided = process.env[`COLLABHUB_${actorId.toUpperCase()}_TOKEN`]
@@ -35,7 +75,10 @@ class Peer {
   }
 
   async connect(lastKnownVersion = 0) {
-    this.socket = new WebSocket(webSocketUrl, { headers: { Origin: allowedOrigin } })
+    this.socket = new WebSocket(webSocketUrl, {
+      headers: { Origin: allowedOrigin },
+      ...(connectIp ? { lookup } : {}),
+    })
     this.socket.on('message', (raw) => this.receive(JSON.parse(String(raw))))
     await new Promise((resolve, reject) => {
       this.socket.once('open', resolve)
@@ -112,15 +155,11 @@ try {
   const presence = await bob.wait((message) => message.kind === 'presence' && message.data?.cursor === 7)
   trace.push({ event: 'presence_ephemeral', actorId: presence.actorId })
 
-  const snapshotResponse = await fetch(`${httpOrigin}/v1/tenants/${tenantId}/documents/${documentId}/snapshot`, {
-    headers: {
-      authorization: `Bearer ${aliceToken}`,
-      'x-collabhub-actor-id': 'alice',
-      'x-collabhub-client-id': alice.clientId,
-    },
+  const durable = await getJson(`${httpOrigin}/v1/tenants/${tenantId}/documents/${documentId}/snapshot`, {
+    authorization: `Bearer ${aliceToken}`,
+    'x-collabhub-actor-id': 'alice',
+    'x-collabhub-client-id': alice.clientId,
   })
-  if (!snapshotResponse.ok) throw new Error(`snapshot API returned ${snapshotResponse.status}`)
-  const durable = await snapshotResponse.json()
   if (durable.snapshot?.title !== 'Persisted through PostgreSQL') throw new Error('snapshot did not contain the committed title')
   trace.push({ event: 'durable_snapshot', canonicalVersion: durable.canonicalVersion, title: durable.snapshot.title })
 } finally {
