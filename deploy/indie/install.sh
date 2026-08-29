@@ -42,6 +42,31 @@ chmod 0600 secrets/database-url secrets/redis-url
 
 docker compose config --quiet
 docker compose pull
+
+# Docker Compose implements file-backed secrets as bind mounts. Linux keeps the
+# host file ownership, so the non-root CollabHub image user must own the secrets
+# it reads. Docker Desktop remaps bind mounts and does not need this adjustment.
+if [[ "$(uname -s)" == "Linux" ]]; then
+  collabhub_uid="${COLLABHUB_RUNTIME_UID:-10001}"
+  collabhub_gid="${COLLABHUB_RUNTIME_GID:-10001}"
+  application_secrets=(
+    secrets/database-url
+    secrets/redis-url
+    secrets/internal-token
+    secrets/jwt-shared-secret
+  )
+  if [[ "$(id -u)" == "0" ]]; then
+    chown "${collabhub_uid}:${collabhub_gid}" "${application_secrets[@]}"
+    chmod 0400 "${application_secrets[@]}"
+  else
+    docker run --rm --user 0:0 \
+      --entrypoint sh \
+      -v "$PWD/secrets:/secrets" \
+      "$COLLABHUB_IMAGE" \
+      -c "chown ${collabhub_uid}:${collabhub_gid} /secrets/database-url /secrets/redis-url /secrets/internal-token /secrets/jwt-shared-secret && chmod 0400 /secrets/database-url /secrets/redis-url /secrets/internal-token /secrets/jwt-shared-secret"
+  fi
+fi
+
 docker compose up -d --wait
 curl --fail --silent --show-error --retry 20 --retry-delay 2 "https://${COLLABHUB_HOST}/readyz"
 echo
