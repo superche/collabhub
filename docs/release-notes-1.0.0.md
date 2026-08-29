@@ -15,9 +15,10 @@ CollabHub 1.0 is the first stable release for adding server-controlled collabora
 - PostgreSQL + Redis Gateway/Worker runtime with room ownership, failover, idempotency, compaction, schema migration, shared rate limits, metrics, readiness, and graceful drain.
 - Docker, generic VM, Kubernetes, AWS, Alibaba Cloud, and a budget single-VM profile.
 - JWT through backend-only HS256 secrets or managed JWKS; tenant/document grants and Origin restrictions are enforced.
+- The budget single-VM profile was upgraded from an immutable candidate image on a real 2C2G Alibaba Cloud VM, then passed public WSS, process restart, full VM reboot, and PostgreSQL backup/restore checks.
 
 ## Verified examples
 
 TODO List, BlockNote, React Flow, and CollabHub + Yjs demonstrate structured updates, linked fields, ordering, coalescing, offline replay, snapshot recovery, and REST fallback. Character-level rich-text merge remains intentionally delegated to Yjs.
 
-Read [API stability](api-stability.md), [known limitations](known-limitations.en.md), [production hardening](production-hardening.md), and [acceptance evidence](acceptance.en.md) before production rollout.
+Read [API stability](api-stability.md), [known limitations](known-limitations.en.md), [production hardening](production-hardening.md), and [acceptance evidence](acceptance.en.md) before production rollout. The single-VM profile is the certified KISS path; the multi-node cloud templates remain an operator-owned baseline rather than a managed-service SLA.

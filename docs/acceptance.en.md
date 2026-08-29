@@ -1,19 +1,25 @@
 # Acceptance evidence
 
-## v1.0 production-hardening candidate — 2026-08-29
+## v1.0 certification — 2026-08-29
 
-The source still reports `0.2.0`: no `v1.0.0` tag or v1 npm package has been published. Current owner-approval evidence:
+The source and all ten public packages report `1.0.0`. Publication remains gated until the exact release commit passes CI and the remote checks below.
 
-- `pnpm release:check`: 24 Vitest files / 89 tests; ten package artifact audits; 1,000-section patch p95 0.006 ms against a 4 ms budget.
+- `pnpm release:check`: 24 Vitest files / 90 tests; ten package artifact audits; 1,000-section patch p95 0.011 ms against a 4 ms budget.
 - Production authentication accepts either managed JWKS or a backend-only 32+ byte HS256 secret. Real signed-token tests prove issuer, audience, tenant, document grant, and subject enforcement; file-backed secret loading is also covered. React never receives the signing secret.
 - `pnpm test:e2e`: five real-browser TODO List, BlockNote, and React Flow cases.
 - `pnpm smoke:todo-cluster`: two independent Gateways and Workers; cross-Gateway convergence, real writer termination/takeover, offline replay, and fresh-browser snapshot recovery; PostgreSQL ended at canonical v5 / owner epoch 2.
 - `pnpm smoke:postgres-hardening`: idempotent database migrations 1/2; transactional business schema `1.0 -> 2.0`; compaction removed 3 WAL, 5 receipts, 5 delivered outbox rows, and 2 snapshots; recovery returned v5; two independent Redis clients observed one shared bucket as `[true,true,false]`.
 - `pnpm smoke:demo`: two-client v2 convergence, Origin rejection, connection capacity, active-room protection, expired-room deletion, blue theme, favicon, and GitHub Star link.
 - Local builds passed for distributed, demo, and standalone images. Alibaba Cloud/AWS provider validation, Kustomize rendering, and generic VM Compose parsing passed. Alibaba Cloud planning now refuses local state and requires encrypted OSS state plus Tablestore locking.
-- `pnpm publish:dry-run` found all ten `0.2.0` packages already published and did not publish a new version.
+- `pnpm publish:dry-run` packed and audited all ten `1.0.0` packages without publishing them.
+- GitHub Actions built the immutable amd64/arm64 candidate `ghcr.io/superche/collabhub:sha-ebd517d00f028474671dea7592f69f8f3ecfb9fa` from the candidate source.
+- A real 2C2G Alibaba Cloud SWAS VM in Hong Kong upgraded from the prior immutable image through `deploy/indie/upgrade.sh`; the script created a backup first and both Gateway and Worker became healthy on the candidate image.
+- A locally started Alice/Bob React Flow pair connected directly to `wss://47.82.72.49/collab` with short-lived document-scoped tokens. The human-speed trace reached canonical v5 through add, coalesced drag, offline pending replay, reconnect, and linked-edge deletion. The recording is [`docs/assets/collabhub-react-flow-smoke.mp4`](assets/collabhub-react-flow-smoke.mp4).
+- Fresh clients recovered the same document at v5 / 4 nodes / 0 edges after both a Gateway+Worker restart and a full VM reboot. PostgreSQL retained head v5 and five WAL rows.
+- `backup.sh` created a private custom-format dump; `verify-backup.sh` restored it into a temporary database and verified all seven public tables.
+- A 600.3-second public HTTPS/WSS soak accepted and broadcast 961/961 incremental graph operations with zero retries, 19 successful readiness samples, and p50/p95/p99 latency of 344.10/386.35/430.69 ms from the developer machine. PostgreSQL ended at canonical v961 / snapshot v900 / 961 WAL / 961 receipts. Final container memory was 83 MiB Gateway, 122 MiB Worker, 61 MiB PostgreSQL, 59 MiB Caddy, and 25 MiB Redis; host swap remained unused.
 
-Render remains the real public HTTPS/WSS demo. Alibaba Cloud multi-node persistence certification still requires identity review, a Terraform plan, explicit apply approval, failure/recovery drills, and a short soak; local evidence does not replace that gate.
+This certifies the budget single-VM KISS profile and its public WSS, persistence, backup, and restart path. Render remains the public demo and intentionally uses ephemeral storage. The AWS/Alibaba Cloud multi-node templates are provider-validated deployment baselines, not a managed-service SLA or a completed regional failover certification.
 
 CollabHub `0.2.0` is a technical preview, not a production SLO. The 2026-08-28 local release gate produced this evidence:
 

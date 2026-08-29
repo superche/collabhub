@@ -1,19 +1,25 @@
-# v1.0 候选 / v0.2 / v0.1 验收记录
+# v1.0 / v0.2 / v0.1 验收记录
 
-## v1.0 生产硬化候选（2026-08-29）
+## v1.0 认证（2026-08-29）
 
-当前代码仍保持 `0.2.0`，没有创建 `v1.0.0` tag，也没有发布 v1 npm；以下是等待项目所有者批准前的候选证据。
+源码与 10 个公开包均已更新为 `1.0.0`；只有精确发布提交通过 CI 和以下远程验收后才允许公开发布。
 
-- `pnpm release:check`：24 个 Vitest 文件、89 个测试通过；10 个 npm 包产物审计通过；1,000 section patch p95 0.006 ms，预算 4 ms。
+- `pnpm release:check`：24 个 Vitest 文件、90 个测试通过；10 个 npm 包产物审计通过；1,000 section patch p95 0.011 ms，预算 4 ms。
 - 生产鉴权支持托管 JWKS，或只保存在业务后端与 CollabHub 的 32+ byte HS256 密钥。真实签名 token 测试覆盖 issuer、audience、tenant、文档授权与用户身份校验，并覆盖文件挂载密钥；React 不接触签名密钥。
 - `pnpm test:e2e`：5 个真实浏览器用例通过，覆盖 TODO List、BlockNote、React Flow。
 - `pnpm smoke:todo-cluster`：2 Gateway + 2 Worker 独立进程；跨 Gateway 收敛、真实 writer 退出与接管、离线重放、新浏览器 snapshot recovery 均通过，PostgreSQL 最终 canonical v5 / owner epoch 2。
 - `pnpm smoke:postgres-hardening`：数据库迁移 1/2 幂等执行；业务 schema `1.0 -> 2.0` 事务迁移；压缩删除 3 WAL、5 receipt、5 delivered outbox、2 snapshot；压缩后恢复到 v5；两个独立 Redis 客户端共享限流结果 `[true,true,false]`。
 - `pnpm smoke:demo`：双客户端 v2、Origin 拒绝、连接上限、活跃 Room 保护、过期 Room 删除、蓝色主题、favicon 与 GitHub Star 链接通过。
 - 三张 Docker 镜像（distributed、demo、standalone）本地真实构建通过；AWS/阿里云 Terraform provider validate、Kustomize 渲染、通用 VM Compose 解析通过。阿里云 plan 已强制使用 OSS 加密 state 与 Tablestore 锁，不允许生产凭证落到本机 state。
-- `pnpm publish:dry-run`：10 个 `0.2.0` 包均识别为已发布；没有执行新版本发布。
+- `pnpm publish:dry-run`：10 个 `1.0.0` 包完成打包和审计，没有执行发布。
+- GitHub Actions 从候选源码构建了固定 SHA 的 amd64/arm64 镜像：`ghcr.io/superche/collabhub:sha-ebd517d00f028474671dea7592f69f8f3ecfb9fa`。
+- 香港 2C2G 阿里云轻量服务器通过 `deploy/indie/upgrade.sh` 从旧固定镜像升级；升级前自动备份，Gateway/Worker 均以候选镜像恢复健康。
+- 本机真实启动 Alice/Bob 两个 React Flow 客户端，使用文档级短期 token 直连 `wss://47.82.72.49/collab`。人类速度操作覆盖新增节点、拖拽合并、离线 pending、重连重放和关联边删除，最终 canonical v5。[验收录屏](assets/collabhub-react-flow-smoke.mp4)。
+- Gateway/Worker 进程重启与整台 VM 重启后，全新客户端均恢复同一文档 v5 / 4 nodes / 0 edges；PostgreSQL 保留 head v5 和 5 条 WAL。
+- `backup.sh` 生成私有 custom-format 备份；`verify-backup.sh` 将其真实恢复到临时数据库并验证 7 张公开表。
+- 600.3 秒公网 HTTPS/WSS soak 共接受并广播 961/961 条增量图操作，0 retry，19 次 readiness 全部成功；开发机到香港的 p50/p95/p99 为 344.10/386.35/430.69 ms。PostgreSQL 最终 canonical v961 / snapshot v900 / 961 WAL / 961 receipt。结束时 Gateway 83 MiB、Worker 122 MiB、PostgreSQL 61 MiB、Caddy 59 MiB、Redis 25 MiB，主机 Swap 未使用。
 
-公网 Render 继续作为真实 HTTPS/WSS Demo；阿里云多节点持久化认证仍需完成账号核对、Terraform plan、用户批准 apply、故障/恢复演练和短时 soak，不能用上述本地证据替代。
+以上认证覆盖低成本单 VM KISS 方案的公网 WSS、持久化、备份和重启恢复。Render 仍是公开 Demo，且故意使用临时存储。AWS/阿里云多节点模板只承诺 provider 校验通过，不等同托管 SLA 或已完成跨可用区故障认证。
 
 日期：2026-08-28（Asia/Shanghai）
 环境：macOS arm64、Node.js v24.18.0、pnpm 10.11.0、Playwright Chromium 151.0.7922.34。
@@ -142,13 +148,13 @@ Alice 在 v2 断线；Bob 插入块推进到 v3；Alice 以 v2 重连取得 snap
 
 ## React Flow 验收
 
-录制文档：`react-flow-smoke-1787891536069`。左右画面来自两个独立 Chromium BrowserContext；视频为 1920×820、H.264、30 fps，鼠标移动 0.7–0.9 秒。
+录制文档：`react-flow-v1-20260829183326`。本机左右两个独立 Chromium BrowserContext 通过公网 WSS 直连阿里云候选实例；视频为 1920×820、H.264、30 fps，鼠标移动 0.7–0.9 秒。
 
 ```json
 {"event":"node_add_converged","aliceVersion":"1","bobVersion":"1"}
 {"event":"drag_stop_converged","aliceVersion":"2","bobVersion":"2","aliceMoves":"1"}
 {"event":"offline_pending","aliceVersion":"2","bobVersion":"2","bobPending":"1"}
-{"event":"online_client_advanced","aliceVersion":"3","bobVersion":"2","bobPending":"1"}
+{"event":"online_client_advanced","aliceVersion":"2","bobVersion":"2","alicePending":"1","bobPending":"1"}
 {"event":"reconnect_converged","aliceVersion":"4","bobVersion":"4","bobPending":"0","bobRecovery":"1 / 0"}
 {"event":"linked_delete_converged","aliceVersion":"5","bobVersion":"5","alicePending":"0","bobPending":"0"}
 ```

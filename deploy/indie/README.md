@@ -2,7 +2,7 @@
 
 Real-cloud acceptance evidence: [Alibaba Cloud, 2026-08-29](../../docs/acceptance-indie-alicloud-2026-08-29.md).
 
-This profile runs the persistent CollabHub runtime, PostgreSQL, Redis, and TLS on one 2 vCPU / 4 GiB Linux VM. It targets independent developers and certification environments with a hard monthly budget. It is intentionally single-node: a VM outage interrupts service, but PostgreSQL data survives ordinary container and process restarts.
+This profile runs the persistent CollabHub runtime, PostgreSQL, Redis, and TLS on one Linux VM. The v1.0 certification used a 2 vCPU / 2 GiB Alibaba Cloud instance with 2 GiB swap and no swap use during the 10-minute incremental-operation soak; choose 4 GiB when the Domain Pack or snapshots are materially larger. It targets independent developers and certification environments with a hard monthly budget. It is intentionally single-node: a VM outage interrupts service, but PostgreSQL data survives ordinary container and process restarts.
 
 Only ports `80` and `443` are public. Restrict SSH to an administrator IP. PostgreSQL, Redis, Gateway port `7000`, and Worker port `7100` remain inside Docker networks.
 

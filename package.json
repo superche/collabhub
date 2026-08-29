@@ -33,6 +33,8 @@
     "smoke:demo": "pnpm build && pnpm --filter @collabhub/react-flow-app build && pnpm --filter @collabhub/react-flow-app build:server && node scripts/smoke-public-demo.mjs",
     "smoke:live-demo": "node scripts/smoke-live-demo.mjs",
     "smoke:remote-react-flow": "node scripts/smoke-remote-react-flow.mjs",
+    "smoke:remote-snapshot": "node scripts/verify-remote-snapshot.mjs",
+    "smoke:remote-soak": "node scripts/remote-graph-soak.mjs",
     "smoke:fresh-react": "pnpm build && node scripts/smoke-fresh-react.mjs",
     "smoke:existing-react": "pnpm build && node scripts/smoke-existing-react-init.mjs",
     "release:check": "pnpm check && pnpm build:distributed && node scripts/check-package-artifacts.mjs && node scripts/check-public-api.mjs",

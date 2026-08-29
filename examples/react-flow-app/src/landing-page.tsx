@@ -6,7 +6,7 @@ type Language = 'en' | 'zh'
 const copy = {
   en: {
     pageTitle: 'CollabHub · Multiplayer for existing React apps', navLabel: 'Primary navigation', homeLabel: 'CollabHub home', how: 'How it works', examples: 'Examples', docs: 'Docs', github: 'GitHub', languageLabel: 'Language',
-    kicker: 'OPEN SOURCE · TECHNICAL PREVIEW', heroTitle: 'Multiplayer, without rewriting your React app.', heroBody: 'Keep your components, data model, store, and REST fallback. Add one client boundary and deploy one collaboration service.', tryDemo: 'Try two-client demo', star: 'Star on GitHub',
+    kicker: 'OPEN SOURCE · STABLE 1.0', heroTitle: 'Multiplayer, without rewriting your React app.', heroBody: 'Keep your components, data model, store, and REST fallback. Add one client boundary and deploy one collaboration service.', tryDemo: 'Try two-client demo', star: 'Star on GitHub',
     systemLabel: 'Your React app connects to CollabHub through a small SDK boundary', path: 'COLLABORATION PATH', online: 'ONLINE', clientAlice: 'CLIENT / ALICE', clientBob: 'CLIENT / BOB', yourApp: 'Your React app', operations: 'operations', patches: 'patches', infrastructure: 'YOUR INFRASTRUCTURE', service: 'CollabHub service', serviceDetails: 'order · validate · recover',
     proofExamples: 'real examples', proofTests: 'automated tests', proofDependencies: 'npm dependencies to start', proofLicense: 'free and open source',
     keepIndex: '01 / KEEP YOUR APP', keepTitle: 'Collaboration stays at the edge of your codebase.', keepBody: 'Your normal React code still reads business state and sends business commands. WebSocket details, reconnects, and recovery remain inside one integration area.', youKeep: 'YOU KEEP', components: 'Components', componentsBody: 'No collaboration imports in your UI.', domain: 'Domain model', domainBody: 'No migration into a library-owned document type.', rest: 'REST fallback', restBody: 'Turn collaboration off and use the existing path.', adds: 'COLLABHUB ADDS', sync: 'Sync + recovery', syncBody: 'Incremental changes, pending replay, snapshots, and diagnostics.',
@@ -16,7 +16,7 @@ const copy = {
   },
   zh: {
     pageTitle: 'CollabHub · 为现有 React 应用添加多人协作', navLabel: '主导航', homeLabel: 'CollabHub 首页', how: '工作原理', examples: '案例', docs: '文档', github: 'GitHub', languageLabel: '语言',
-    kicker: '开源 · 技术预览', heroTitle: '无需重写 React 应用，也能多人协作。', heroBody: '保留你的组件、数据模型、状态管理和 REST 单人模式。增加一个客户端边界，再部署一个协同服务即可。', tryDemo: '体验双客户端 Demo', star: '在 GitHub 上加星',
+    kicker: '开源 · 稳定版 1.0', heroTitle: '无需重写 React 应用，也能多人协作。', heroBody: '保留你的组件、数据模型、状态管理和 REST 单人模式。增加一个客户端边界，再部署一个协同服务即可。', tryDemo: '体验双客户端 Demo', star: '在 GitHub 上加星',
     systemLabel: '你的 React 应用通过一个轻量 SDK 边界连接 CollabHub', path: '协同链路', online: '在线', clientAlice: '客户端 / ALICE', clientBob: '客户端 / BOB', yourApp: '你的 React 应用', operations: '操作', patches: '变更', infrastructure: '你的基础设施', service: 'CollabHub 服务', serviceDetails: '排序 · 校验 · 恢复',
     proofExamples: '个真实案例', proofTests: '项自动化测试', proofDependencies: '个 npm 依赖即可开始', proofLicense: '免费开源',
     keepIndex: '01 / 保留你的应用', keepTitle: '协同逻辑只放在代码边缘。', keepBody: '普通 React 代码继续读取业务状态、发送业务命令。WebSocket、重连和恢复逻辑集中在一个接入目录里。', youKeep: '你继续使用', components: '现有组件', componentsBody: 'UI 组件无需引入 CollabHub。', domain: '业务模型', domainBody: '无需迁移到框架规定的数据类型。', rest: 'REST 单人模式', restBody: '关闭协同后继续走原来的接口。', adds: 'COLLABHUB 提供', sync: '同步与恢复', syncBody: '增量变更、离线重放、快照和诊断。',
@@ -74,7 +74,7 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section className="proof-strip" aria-label="Project proof"><div><strong>3</strong><span>{t.proofExamples}</span></div><div><strong>70</strong><span>{t.proofTests}</span></div><div><strong>2</strong><span>{t.proofDependencies}</span></div><div><strong>Apache-2.0</strong><span>{t.proofLicense}</span></div></section>
+      <section className="proof-strip" aria-label="Project proof"><div><strong>3</strong><span>{t.proofExamples}</span></div><div><strong>90</strong><span>{t.proofTests}</span></div><div><strong>2</strong><span>{t.proofDependencies}</span></div><div><strong>Apache-2.0</strong><span>{t.proofLicense}</span></div></section>
 
       <section className="keep-section" id="how-it-works">
         <div className="section-heading"><span className="section-index">{t.keepIndex}</span><h2>{t.keepTitle}</h2><p>{t.keepBody}</p></div>

@@ -145,11 +145,11 @@
           <div class="s3-code">
             <div class="launch-code-card" id="client-code">
               <div class="code-head"><span>src/collab/create-runtime.ts</span><strong>CLIENT</strong></div>
-              <div class="code-lines"><span><em>const</em> runtime = createCollabRuntime({</span><span>&nbsp;&nbsp;wsUrl, documentId, store, commands</span><span>})</span></div>
+              <div class="code-lines"><span><em>const</em> runtime = createModelCollaboration({</span><span>&nbsp;&nbsp;url, documentId, actorId, getAuthToken, model</span><span>})</span></div>
             </div>
             <div class="launch-code-card light" id="server-code">
               <div class="code-head"><span>your infrastructure</span><strong>SERVER</strong></div>
-              <div class="code-lines"><span><em>docker run</em> -p 8080:8080</span><span>ghcr.io/superche/collabhub:0.2.0</span></div>
+              <div class="code-lines"><span><em>docker run</em> -p 4100:4100</span><span>ghcr.io/superche/collabhub-standalone:1.0.0</span></div>
             </div>
           </div>
           <div class="s3-connector" data-layout-ignore></div>
@@ -166,7 +166,7 @@
             <div class="meta">FREE · OPEN SOURCE · APACHE-2.0</div>
             <h2>CollabHub</h2>
             <p>Add multiplayer to the React app you already have.</p>
-            <div class="cta-actions"><span class="cta-url">github.com/superche/collabhub</span><span class="cta-signal">TRY THE LIVE DEMO</span><span class="cta-license">v0.2.0</span></div>
+            <div class="cta-actions"><span class="cta-url">github.com/superche/collabhub</span><span class="cta-signal">TRY THE LIVE DEMO</span><span class="cta-license">v1.0.0</span></div>
           </div>
         </div>
       </section>
