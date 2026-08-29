@@ -9,7 +9,7 @@ Only ports `80` and `443` are public. Restrict SSH to an administrator IP. Postg
 ```bash
 cd deploy/indie
 cp .env.example .env
-# Set the public host, browser Origin, JWT issuer, audience, and an immutable image.
+# Set the public host, ACME email, browser Origin, JWT issuer, audience, and an immutable image.
 ./install.sh
 ./smoke.sh
 ```

@@ -1,6 +1,13 @@
 {$COLLABHUB_HOST} {
 	encode zstd gzip
 
+	tls {
+		issuer acme https://acme.zerossl.com/v2/DV90 {
+			email {$ACME_EMAIL}
+		}
+		issuer acme
+	}
+
 	handle / {
 		header Content-Type application/json
 		respond `{"service":"CollabHub","status":"online","demo":"https://collabhub-demo.onrender.com/demo.html","health":"/readyz","websocket":"/collab"}` 200

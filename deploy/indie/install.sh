@@ -15,6 +15,7 @@ set -a
 source .env
 set +a
 : "${COLLABHUB_HOST:?COLLABHUB_HOST is required}"
+: "${ACME_EMAIL:?ACME_EMAIL is required}"
 : "${ALLOWED_ORIGINS:?ALLOWED_ORIGINS is required}"
 : "${JWT_ISSUER:?JWT_ISSUER is required}"
 

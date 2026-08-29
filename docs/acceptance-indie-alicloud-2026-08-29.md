@@ -25,7 +25,7 @@ The preferred 2 vCPU / 4 GiB plan was unavailable in Hong Kong at purchase time.
 - Gateway diagnostics bind to `127.0.0.1:17000`; Caddy is the only public application entry point.
 - Browser Origin allowlist: `https://collabhub-demo.onrender.com`.
 - JWTs are document-scoped and signed from a server-side file secret. Acceptance tokens expired after ten minutes.
-- Let's Encrypt certificate: CN/SAN `47-82-72-49.traefik.me`, valid 2026-08-29 through 2026-11-27.
+- Publicly trusted certificate: CN/SAN `47-82-72-49.traefik.me`; Caddy manages automatic renewal through redundant ACME issuers.
 
 ## Evidence
 
@@ -94,7 +94,7 @@ Install from a clean Ubuntu VM:
 ```bash
 cd deploy/indie
 cp .env.example .env
-# Set COLLABHUB_HOST, ALLOWED_ORIGINS, and JWT_ISSUER.
+# Set COLLABHUB_HOST, ACME_EMAIL, ALLOWED_ORIGINS, and JWT_ISSUER.
 ./install.sh
 ```
 
