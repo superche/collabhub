@@ -31,7 +31,7 @@ try {
     bob.goto(`http://127.0.0.1:5194/room?client=bob&document=${documentId}`),
   ])
   await Promise.all([waitForText(alice, '.status', 'online'), waitForText(bob, '.status', 'online')])
-  await Promise.all([installCursor(alice, '#d94b3f'), installCursor(bob, '#287a56')])
+  await Promise.all([installCursor(alice, '#e5484d'), installCursor(bob, '#175cd3')])
   await pause(1_200)
 
   await activate(alice, bob, 'Alice adds one node')
@@ -112,7 +112,7 @@ async function installCursor(page, color) {
     document.body.append(cursor)
     const caption = document.createElement('div')
     caption.id = 'collabhub-recording-caption'
-    Object.assign(caption.style, { position: 'fixed', left: '18px', bottom: '16px', zIndex: '2147483646', padding: '9px 13px', borderRadius: '9px', background: '#17231ce8', color: '#f2f6f3', font: '600 12px ui-monospace, monospace', boxShadow: '0 8px 24px #0003', opacity: '0', transition: 'opacity 180ms ease', pointerEvents: 'none' })
+    Object.assign(caption.style, { position: 'fixed', left: '18px', bottom: '16px', zIndex: '2147483646', padding: '9px 13px', borderRadius: '9px', background: '#0b2b5ce8', color: '#ffffff', font: '600 12px ui-monospace, monospace', boxShadow: '0 8px 24px #0003', opacity: '0', transition: 'opacity 180ms ease', pointerEvents: 'none' })
     document.body.append(caption)
   }, color)
 }

@@ -6,15 +6,15 @@ Professional, calm developer tooling. The visual language should feel like a pre
 
 ## Palette
 
-- Canvas: `#edf1ed`
-- Canvas warm highlight: `#d8e8e0`
-- Ink: `#17231c`
-- Muted ink: `#637067`
-- Primary green: `#237a53`
-- Light green: `#70e3a9`
-- Signal yellow: `#f0c766`
-- Surface: `#f8faf8`
-- Rule: `#b9c9be`
+- Canvas: `#f5f8ff`
+- Canvas blue highlight: `#dbe9ff`
+- Ink: `#0b1f3a`
+- Muted ink: `#53677f`
+- Primary blue: `#175cd3`
+- Light blue: `#8fb8ff`
+- Signal yellow: `#ffd24a`
+- Surface: `#ffffff`
+- Rule: `#bfd0e8`
 
 ## Typography
 
@@ -27,7 +27,7 @@ Professional, calm developer tooling. The visual language should feel like a pre
 
 - Corners: 18-32 px, restrained and structural
 - Borders: 2-3 px in palette colors
-- Depth: soft green-tinted shadows; no glassmorphism
+- Depth: soft blue-tinted shadows; no glassmorphism
 - Density: editorial split frames, strong rules, visible metadata
 
 ## Motion
@@ -39,7 +39,7 @@ Professional, calm developer tooling. The visual language should feel like a pre
 ## Do
 
 - Show real CollabHub UI and real integration code
-- Keep one strong green focal point per scene
+- Keep one strong blue focal point per scene
 - Use the yellow signal only for a small call to action or status accent
 - Keep all text readable without sound
 
@@ -47,5 +47,5 @@ Professional, calm developer tooling. The visual language should feel like a pre
 
 - Do not imply CRDT or character-level rich-text merging
 - Do not invent product UI
-- Do not use gradient text, purple/blue gradients, floating glass cards, or generic AI imagery
+- Do not use gradient text, purple gradients, floating glass cards, or generic AI imagery
 - Do not claim production-ready, multi-region, or zero backend work

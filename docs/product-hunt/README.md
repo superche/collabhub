@@ -34,13 +34,13 @@ This is a `v0.2.0` technical preview, not a claim that every editor or productio
 | Gallery 3 | [`assets/gallery-03-integration.png`](assets/gallery-03-integration.png) | 1270 × 760 |
 | Video master | [`assets/collabhub-product-hunt.mp4`](assets/collabhub-product-hunt.mp4) | 1920 × 1080 · 30 s |
 
-Product Hunt accepts a YouTube link for the video rather than a direct MP4 upload. The final master is available as an [unlisted YouTube video](https://youtu.be/D5dOwIt4XOI); paste that URL into the launch draft.
+Product Hunt accepts a YouTube link for the video rather than a direct MP4 upload. Upload the current master as an unlisted video, then paste that URL into the launch draft.
 
 ## Launch-day checklist
 
 - [ ] Use a personal Product Hunt account that has been active for at least one week.
 - [ ] Create the launch draft with the exact copy and assets above.
-- [x] Upload the video master to YouTube and prepare its URL for the draft.
+- [ ] Upload the current video master to YouTube and add its URL to the draft.
 - [ ] Confirm the live landing page, two-client demo, GitHub repository, npm packages, and docs from a signed-out browser.
 - [ ] Run `pnpm smoke:live-demo` after the Render deployment is live.
 - [ ] Schedule for 12:01 a.m. Pacific unless a different audience window is intentional.
@@ -60,6 +60,15 @@ Product Hunt references: [prepare your launch](https://www.producthunt.com/launc
 ## Rebuild the video
 
 ```bash
+# Terminal 1: record the latest two-client React Flow proof.
+pnpm dev:react-flow
+
+# Terminal 2: refresh README footage and Product Hunt stills.
+pnpm record:react-flow
+cp docs/assets/collabhub-react-flow-smoke.mp4 \
+  docs/product-hunt/launch-video/collabhub-react-flow-smoke-render.mp4
+pnpm capture:product-hunt
+
 cd docs/product-hunt/launch-video
 npm ci
 npm run check

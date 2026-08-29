@@ -9,96 +9,96 @@
       @font-face { font-family: "IBM Plex Mono"; src: url("fonts/ibm-plex-mono-400-latin.woff2") format("woff2"); font-style: normal; font-weight: 400; font-display: block; }
       @font-face { font-family: "IBM Plex Mono"; src: url("fonts/ibm-plex-mono-600-latin.woff2") format("woff2"); font-style: normal; font-weight: 600; font-display: block; }
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      html, body { width: 1920px; height: 1080px; overflow: hidden; background: #edf1ed; color: #17231c; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: #f5f8ff; color: #0b1f3a; }
       body { font-family: "Archivo", Arial, sans-serif; }
       code, .mono { font-family: "IBM Plex Mono", monospace; font-variant-ligatures: none; }
-      #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #edf1ed; }
+      #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #f5f8ff; }
       .clip, .scene { position: absolute; inset: 0; width: 100%; height: 100%; }
-      .scene { overflow: hidden; background-color: #edf1ed; }
-      .grain { position: absolute; inset: 0; opacity: .18; background-image: radial-gradient(rgba(23,35,28,.2) .7px, rgba(23,35,28,0) .8px); background-size: 9px 9px; }
-      .grid { position: absolute; inset: 0; opacity: .34; background-image: linear-gradient(rgba(35,122,83,.2) 2px, rgba(35,122,83,0) 2px), linear-gradient(90deg, rgba(35,122,83,.2) 2px, rgba(35,122,83,0) 2px); background-size: 72px 72px; }
-      .glow { position: absolute; width: 880px; height: 880px; border-radius: 50%; background: radial-gradient(circle, rgba(35,122,83,.23), rgba(35,122,83,0) 68%); }
-      .rule { position: absolute; height: 3px; background: #237a53; transform-origin: left center; }
-      .meta { color: #237a53; font: 600 20px "IBM Plex Mono", monospace; letter-spacing: .12em; text-transform: uppercase; }
-      .meta-dot { display: inline-block; width: 14px; height: 14px; margin-right: 14px; border-radius: 50%; background: #70e3a9; box-shadow: 0 0 0 9px rgba(35,122,83,.13); }
-      .ghost { position: absolute; color: rgba(35,122,83,.12); font-size: 220px; font-weight: 900; letter-spacing: -.06em; }
+      .scene { overflow: hidden; background-color: #f5f8ff; }
+      .grain { position: absolute; inset: 0; opacity: .18; background-image: radial-gradient(rgba(11,31,58,.2) .7px, rgba(11,31,58,0) .8px); background-size: 9px 9px; }
+      .grid { position: absolute; inset: 0; opacity: .34; background-image: linear-gradient(rgba(23,92,211,.2) 2px, rgba(23,92,211,0) 2px), linear-gradient(90deg, rgba(23,92,211,.2) 2px, rgba(23,92,211,0) 2px); background-size: 72px 72px; }
+      .glow { position: absolute; width: 880px; height: 880px; border-radius: 50%; background: radial-gradient(circle, rgba(23,92,211,.23), rgba(23,92,211,0) 68%); }
+      .rule { position: absolute; height: 3px; background: #175cd3; transform-origin: left center; }
+      .meta { color: #175cd3; font: 600 20px "IBM Plex Mono", monospace; letter-spacing: .12em; text-transform: uppercase; }
+      .meta-dot { display: inline-block; width: 14px; height: 14px; margin-right: 14px; border-radius: 50%; background: #8fb8ff; box-shadow: 0 0 0 9px rgba(23,92,211,.13); }
+      .ghost { position: absolute; color: rgba(23,92,211,.12); font-size: 220px; font-weight: 900; letter-spacing: -.06em; }
       #scene-1 .scene-content { position: relative; z-index: 2; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; padding: 110px 130px; gap: 32px; }
       #scene-1 .glow { right: -190px; top: -210px; }
       #scene-1 .ghost { right: -80px; bottom: -40px; transform: rotate(-5deg); }
       #scene-1 .rule-a { left: 0; top: 132px; width: 660px; }
       #scene-1 .rule-b { right: 0; bottom: 146px; width: 520px; }
       #s1-title { max-width: 1410px; font-size: 112px; line-height: .9; letter-spacing: -.055em; font-weight: 900; }
-      #s1-subtitle { max-width: 980px; color: #637067; font-size: 33px; line-height: 1.45; font-weight: 400; }
+      #s1-subtitle { max-width: 980px; color: #53677f; font-size: 33px; line-height: 1.45; font-weight: 400; }
       .architecture { width: 1320px; display: grid; grid-template-columns: 1fr 120px 1fr 120px 1fr; align-items: center; gap: 14px; margin-top: 14px; }
-      .arch-card { min-height: 136px; display: flex; flex-direction: column; justify-content: center; padding: 28px 32px; border: 3px solid #b9c9be; border-radius: 24px; background: #f8faf8; box-shadow: 0 20px 55px rgba(23,35,28,.12); }
-      .arch-card span { color: #637067; font: 600 18px "IBM Plex Mono", monospace; letter-spacing: .08em; }
+      .arch-card { min-height: 136px; display: flex; flex-direction: column; justify-content: center; padding: 28px 32px; border: 3px solid #bfd0e8; border-radius: 24px; background: #ffffff; box-shadow: 0 20px 55px rgba(11,31,58,.12); }
+      .arch-card span { color: #53677f; font: 600 18px "IBM Plex Mono", monospace; letter-spacing: .08em; }
       .arch-card strong { margin-top: 14px; font-size: 32px; }
-      .arch-card.accent { border-color: #237a53; background: #17231c; color: #edf1ed; }
-      .arch-card.accent span { color: #70e3a9; }
-      .arch-arrow { height: 3px; background: #237a53; position: relative; }
-      .arch-arrow::after { content: ''; position: absolute; right: -2px; top: -8px; width: 15px; height: 15px; border-top: 3px solid #237a53; border-right: 3px solid #237a53; transform: rotate(45deg); }
-      .s1-status { position: absolute; right: 132px; top: 110px; display: flex; align-items: center; gap: 14px; color: #17231c; font: 600 19px "IBM Plex Mono", monospace; letter-spacing: .1em; }
-      .s1-status i { width: 16px; height: 16px; border-radius: 50%; background: #70e3a9; }
+      .arch-card.accent { border-color: #175cd3; background: #0b1f3a; color: #f5f8ff; }
+      .arch-card.accent span { color: #8fb8ff; }
+      .arch-arrow { height: 3px; background: #175cd3; position: relative; }
+      .arch-arrow::after { content: ''; position: absolute; right: -2px; top: -8px; width: 15px; height: 15px; border-top: 3px solid #175cd3; border-right: 3px solid #175cd3; transform: rotate(45deg); }
+      .s1-status { position: absolute; right: 132px; top: 110px; display: flex; align-items: center; gap: 14px; color: #0b1f3a; font: 600 19px "IBM Plex Mono", monospace; letter-spacing: .1em; }
+      .s1-status i { width: 16px; height: 16px; border-radius: 50%; background: #8fb8ff; }
       #scene-2 .grid { opacity: .22; }
       #scene-2 .ghost { left: 44px; top: 28px; font-size: 164px; }
       #scene-2 .scene-content { position: relative; z-index: 3; width: 100%; height: 100%; padding: 72px 84px; }
       .proof-heading { position: absolute; top: 62px; left: 92px; display: flex; align-items: center; gap: 26px; }
       .proof-heading strong { font-size: 42px; letter-spacing: -.04em; }
-      .proof-heading span { padding: 10px 15px; border: 2px solid #237a53; border-radius: 999px; color: #237a53; background: #edf1ed; font: 600 18px "IBM Plex Mono", monospace; }
-      .proof-frame { position: absolute; left: 142px; top: 164px; width: 1636px; height: 720px; border: 4px solid #17231c; border-radius: 28px; box-shadow: 0 32px 84px rgba(23,35,28,.17); pointer-events: none; }
-      #proof-video { position: absolute; z-index: 2; left: 152px; top: 174px; width: 1616px; height: 700px; object-fit: cover; border-radius: 20px; background: #f8faf8; }
-      .client-label { position: absolute; z-index: 4; top: 190px; padding: 10px 16px; border-radius: 9px; background: #17231c; color: #edf1ed; font: 600 18px "IBM Plex Mono", monospace; letter-spacing: .1em; }
+      .proof-heading span { padding: 10px 15px; border: 2px solid #175cd3; border-radius: 999px; color: #175cd3; background: #f5f8ff; font: 600 18px "IBM Plex Mono", monospace; }
+      .proof-frame { position: absolute; left: 142px; top: 164px; width: 1636px; height: 720px; border: 4px solid #0b1f3a; border-radius: 28px; box-shadow: 0 32px 84px rgba(11,31,58,.17); pointer-events: none; }
+      #proof-video { position: absolute; z-index: 2; left: 152px; top: 174px; width: 1616px; height: 700px; object-fit: cover; border-radius: 20px; background: #ffffff; }
+      .client-label { position: absolute; z-index: 4; top: 190px; padding: 10px 16px; border-radius: 9px; background: #0b1f3a; color: #f5f8ff; font: 600 18px "IBM Plex Mono", monospace; letter-spacing: .1em; }
       .client-label.alice { left: 168px; }
       .client-label.bob { left: 980px; }
       .proof-chips { position: absolute; left: 142px; right: 142px; bottom: 74px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
-      .proof-chip { min-height: 96px; display: flex; align-items: center; gap: 20px; padding: 18px 24px; border: 3px solid #b9c9be; border-radius: 18px; background: #f8faf8; box-shadow: 0 16px 42px rgba(23,35,28,.1); }
-      .proof-chip b { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: #237a53; color: #edf1ed; font: 600 18px "IBM Plex Mono", monospace; }
+      .proof-chip { min-height: 96px; display: flex; align-items: center; gap: 20px; padding: 18px 24px; border: 3px solid #bfd0e8; border-radius: 18px; background: #ffffff; box-shadow: 0 16px 42px rgba(11,31,58,.1); }
+      .proof-chip b { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: #175cd3; color: #f5f8ff; font: 600 18px "IBM Plex Mono", monospace; }
       .proof-chip span { font-size: 23px; font-weight: 700; }
-      .scan-rule { position: absolute; left: 142px; bottom: 50px; width: 1636px; height: 5px; background: #237a53; transform-origin: left center; }
+      .scan-rule { position: absolute; left: 142px; bottom: 50px; width: 1636px; height: 5px; background: #175cd3; transform-origin: left center; }
       #scene-3 .scene-content { position: relative; z-index: 2; width: 100%; height: 100%; display: grid; grid-template-columns: .82fr 1.18fr; align-items: center; gap: 110px; padding: 105px 130px; }
       #scene-3 .glow { left: -280px; bottom: -320px; }
       #scene-3 .ghost { right: -30px; top: -20px; font: 900 310px "IBM Plex Mono", monospace; }
       .s3-copy { display: flex; flex-direction: column; gap: 28px; }
       .s3-copy h2 { max-width: 760px; font-size: 91px; line-height: .92; letter-spacing: -.055em; }
-      .s3-copy p { max-width: 700px; color: #637067; font-size: 31px; line-height: 1.45; }
+      .s3-copy p { max-width: 700px; color: #53677f; font-size: 31px; line-height: 1.45; }
       .keep-chips { display: flex; flex-wrap: wrap; gap: 12px; }
-      .keep-chip { padding: 12px 17px; border: 2px solid #237a53; border-radius: 999px; background: #f8faf8; color: #237a53; font: 600 18px "IBM Plex Mono", monospace; }
+      .keep-chip { padding: 12px 17px; border: 2px solid #175cd3; border-radius: 999px; background: #ffffff; color: #175cd3; font: 600 18px "IBM Plex Mono", monospace; }
       .s3-code { display: grid; gap: 22px; }
-      .launch-code-card { overflow: hidden; border: 3px solid #17231c; border-radius: 24px; background: #17231c; color: #edf1ed; box-shadow: 0 28px 70px rgba(23,35,28,.16); }
-      .launch-code-card.light { width: 88%; justify-self: end; border-color: #b9c9be; background: #f8faf8; color: #17231c; }
-      .code-head { min-height: 60px; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; border-bottom: 2px solid #345044; color: #9eb0a4; font: 600 17px "IBM Plex Mono", monospace; }
-      .light .code-head { border-color: #b9c9be; color: #637067; }
-      .code-head strong { color: #70e3a9; font-size: 16px; letter-spacing: .1em; }
-      .light .code-head strong { color: #237a53; }
+      .launch-code-card { overflow: hidden; border: 3px solid #0b1f3a; border-radius: 24px; background: #0b1f3a; color: #f5f8ff; box-shadow: 0 28px 70px rgba(11,31,58,.16); }
+      .launch-code-card.light { width: 88%; justify-self: end; border-color: #bfd0e8; background: #ffffff; color: #0b1f3a; }
+      .code-head { min-height: 60px; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; border-bottom: 2px solid #294f85; color: #a9c3e8; font: 600 17px "IBM Plex Mono", monospace; }
+      .light .code-head { border-color: #bfd0e8; color: #53677f; }
+      .code-head strong { color: #8fb8ff; font-size: 16px; letter-spacing: .1em; }
+      .light .code-head strong { color: #175cd3; }
       .code-lines { padding: 32px; font: 500 25px/1.65 "IBM Plex Mono", monospace; }
       .code-lines span { display: block; }
-      .code-lines em { color: #f0c766; font-style: normal; }
-      .light .code-lines em { color: #237a53; font-weight: 600; }
-      .s3-connector { position: absolute; z-index: 3; right: 130px; top: 533px; width: 670px; height: 4px; background: #237a53; transform-origin: left center; }
+      .code-lines em { color: #ffd24a; font-style: normal; }
+      .light .code-lines em { color: #175cd3; font-weight: 600; }
+      .s3-connector { position: absolute; z-index: 3; right: 130px; top: 533px; width: 670px; height: 4px; background: #175cd3; transform-origin: left center; }
       #scene-4 .scene-content { position: relative; z-index: 2; width: 100%; height: 100%; display: grid; grid-template-columns: 390px 1fr; align-items: center; gap: 90px; padding: 120px 155px; }
       #scene-4 .glow { right: -160px; top: -230px; }
       #scene-4 .ghost { right: -80px; bottom: -100px; font-size: 480px; }
       #scene-4 .rule-a { left: 0; top: 130px; width: 780px; }
       #scene-4 .rule-b { right: 0; bottom: 130px; width: 590px; }
-      .cta-mark { position: relative; width: 340px; height: 340px; border-radius: 104px; background: #237a53; box-shadow: 0 36px 90px rgba(23,35,28,.2); }
+      .cta-mark { position: relative; width: 340px; height: 340px; border-radius: 104px; background: #175cd3; box-shadow: 0 36px 90px rgba(11,31,58,.2); }
       .cta-node { position: absolute; width: 68px; height: 68px; border-radius: 50%; z-index: 2; }
-      .cta-left { left: 74px; top: 136px; background: #edf1ed; }
-      .cta-top { right: 74px; top: 68px; background: #f0c766; }
-      .cta-bottom { right: 74px; bottom: 68px; background: #70e3a9; }
-      .cta-line { position: absolute; left: 137px; width: 126px; height: 17px; border-radius: 17px; background: #edf1ed; transform-origin: left center; }
+      .cta-left { left: 74px; top: 136px; background: #f5f8ff; }
+      .cta-top { right: 74px; top: 68px; background: #ffd24a; }
+      .cta-bottom { right: 74px; bottom: 68px; background: #8fb8ff; }
+      .cta-line { position: absolute; left: 137px; width: 126px; height: 17px; border-radius: 17px; background: #f5f8ff; transform-origin: left center; }
       .cta-line.top { top: 149px; transform: rotate(-32deg); }
       .cta-line.bottom { top: 176px; transform: rotate(32deg); }
       .cta-copy { display: flex; flex-direction: column; align-items: flex-start; gap: 26px; }
       .cta-copy h2 { font-size: 126px; line-height: .9; letter-spacing: -.06em; }
-      .cta-copy p { max-width: 930px; color: #637067; font-size: 36px; line-height: 1.4; }
-      .cta-url { padding: 17px 23px; border: 3px solid #17231c; border-radius: 13px; background: #f8faf8; font: 600 24px "IBM Plex Mono", monospace; }
+      .cta-copy p { max-width: 930px; color: #53677f; font-size: 36px; line-height: 1.4; }
+      .cta-url { padding: 17px 23px; border: 3px solid #0b1f3a; border-radius: 13px; background: #ffffff; font: 600 24px "IBM Plex Mono", monospace; }
       .cta-actions { display: flex; align-items: center; gap: 16px; }
-      .cta-signal { padding: 15px 22px; border-radius: 11px; background: #f0c766; color: #17231c; font: 600 20px "IBM Plex Mono", monospace; letter-spacing: .08em; }
-      .cta-license { color: #237a53; font: 600 19px "IBM Plex Mono", monospace; }
+      .cta-signal { padding: 15px 22px; border-radius: 11px; background: #ffd24a; color: #0b1f3a; font: 600 20px "IBM Plex Mono", monospace; letter-spacing: .08em; }
+      .cta-license { color: #175cd3; font: 600 19px "IBM Plex Mono", monospace; }
       .transition { z-index: 20; overflow: hidden; pointer-events: none; }
-      .transition-panel { position: absolute; inset: -5%; width: 110%; height: 110%; background: #237a53; }
-      #transition-2 .transition-panel { background: #f8faf8; border: 24px solid #237a53; }
-      #transition-3 .transition-panel { background: #f0c766; }
+      .transition-panel { position: absolute; inset: -5%; width: 110%; height: 110%; background: #175cd3; }
+      #transition-2 .transition-panel { background: #ffffff; border: 24px solid #175cd3; }
+      #transition-3 .transition-panel { background: #ffd24a; }
     </style>
   </head>
   <body>

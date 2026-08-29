@@ -61,7 +61,7 @@
 .keep-grid article > span { color: #687e99; font: 650 9px ui-monospace, monospace; letter-spacing: .11em; }
 .keep-grid h3 { margin: 52px 0 12px; font-size: 23px; letter-spacing: -.035em; }
 .keep-grid p { margin: 0; color: #60748d; font-size: 12px; line-height: 1.55; }
-.keep-grid .accent-card { background: #175cd3; color: #fff; border-color: #175cd3; box-shadow: inset 0 5px 0 #ffd24a; }
+.keep-grid .accent-card { background: #175cd3; color: #fff; border-color: #175cd3; }
 .keep-grid .accent-card span, .keep-grid .accent-card p { color: #dbe8ff; }
 .integration-section { display: grid; grid-template-columns: .82fr 1.18fr; gap: 80px; align-items: center; padding: 100px 68px; border-radius: 30px; background: #dbe9ff; }
 .integration-copy a { display: inline-flex; gap: 8px; margin-top: 14px; color: #175cd3; text-decoration: none; font-size: 13px; font-weight: 750; }
@@ -83,7 +83,7 @@
 .example-card h3 { margin: 95px 0 14px; font-size: 30px; letter-spacing: -.045em; }
 .example-card p { min-height: 62px; margin: 0; color: #60748d; font-size: 13px; line-height: 1.6; }
 .example-card > strong { margin-top: auto; color: #175cd3; font-size: 12px; }
-.open-source-section { display: flex; justify-content: space-between; align-items: end; gap: 60px; padding: 78px; border-radius: 30px; background: #0b2b5c; color: #fff; box-shadow: inset 0 6px 0 #ffd24a; }
+.open-source-section { display: flex; justify-content: space-between; align-items: end; gap: 60px; padding: 78px; border-radius: 30px; background: #0b2b5c; color: #fff; }
 .open-source-section > div:first-child { max-width: 760px; }
 .open-source-section h2 { margin-bottom: 16px; }
 .open-source-section p { max-width: 690px; margin: 0; color: #c7d7ed; font-size: 15px; line-height: 1.65; }

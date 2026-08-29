@@ -34,6 +34,11 @@ try {
   await expect(sourceButton).toBeVisible()
   expect(await sourceButton.evaluate((element) => getComputedStyle(element).color)).toBe('rgb(11, 43, 92)')
   expect(await page.getByRole('link', { name: 'Try two-client demo' }).evaluate((element) => getComputedStyle(element).backgroundColor)).toBe('rgb(23, 92, 211)')
+  expect(await page.locator('.keep-grid .accent-card').evaluate((element) => getComputedStyle(element).boxShadow)).toBe('none')
+  expect(await page.locator('.open-source-section').evaluate((element) => getComputedStyle(element).boxShadow)).toBe('none')
+  await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', '/collabhub-mark.svg')
+  const favicon = await fetch(`${origin}/collabhub-mark.svg`)
+  if (!favicon.ok || !(await favicon.text()).includes('#175cd3')) throw new Error('deployed favicon is not the blue CollabHub mark')
   await page.getByRole('button', { name: '中文' }).click()
   await expect(page.getByRole('heading', { name: '无需重写 React 应用，也能多人协作。' })).toBeVisible()
   expect(await page.locator('html').getAttribute('lang')).toBe('zh-CN')
@@ -83,6 +88,7 @@ try {
     landingVerified: true,
     bilingualLandingVerified: true,
     blueThemeVerified: true,
+    faviconVerified: true,
     clients: ['alice', 'bob'],
     canonicalVersion: 4,
     nodeCount: 5,
