@@ -12,9 +12,12 @@ docker run --rm --network host \
   -e COLLABHUB_DOMAIN_PACK_CONFIG=/config/domain-pack.json \
   -e COLLABHUB_ROLE=gateway \
   -e DATABASE_URL=... -e REDIS_URL=... -e INTERNAL_TOKEN=... \
-  -e JWT_JWKS_URL=... -e JWT_ISSUER=... -e JWT_AUDIENCE=... \
+  -v "$PWD/secrets:/run/secrets:ro" \
+  -e JWT_SHARED_SECRET_FILE=/run/secrets/jwt-shared-secret -e JWT_ISSUER=my-app -e JWT_AUDIENCE=collabhub \
   ghcr.io/superche/collabhub:0.2.0
 ```
+
+This simple path expects the existing application backend to sign short-lived HS256 tokens. Use `JWT_JWKS_URL` instead of `JWT_SHARED_SECRET_FILE` when the application already has a managed identity provider.
 
 The file controls:
 

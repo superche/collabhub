@@ -24,6 +24,14 @@ export interface JwtGatewayAuthOptions {
   documentsClaim?: string
 }
 
+export interface SharedSecretJwtGatewayAuthOptions {
+  secret: string
+  issuer: string
+  audience: string
+  tenantClaim?: string
+  documentsClaim?: string
+}
+
 /** Verifies JWTs and derives tenant/actor identity from signed claims. */
 export class JwtGatewayAuthAdapter implements GatewayAuthAdapter {
   private readonly keySet
@@ -38,18 +46,46 @@ export class JwtGatewayAuthAdapter implements GatewayAuthAdapter {
       issuer: this.options.issuer,
       audience: this.options.audience,
     })
-    const tenantId = claimString(payload, this.options.tenantClaim ?? 'tenant_id')
-    const actorId = claimString(payload, 'sub')
-    if (tenantId !== request.requested.tenantId) throw new Error('token does not grant the requested tenant')
-    const allowedDocuments = payload[this.options.documentsClaim ?? 'collabhub_documents']
-    if (!Array.isArray(allowedDocuments) || !allowedDocuments.every((value) => typeof value === 'string')) {
-      throw new Error('token must include a collabhub_documents claim')
-    }
-    if (!allowedDocuments.includes('*') && !allowedDocuments.includes(request.requested.documentId)) {
-      throw new Error('token does not grant the requested document')
-    }
-    return { ...request.requested, tenantId, actorId }
+    return identityFromPayload(payload, request, this.options)
   }
+}
+
+/** KISS production option: your existing backend signs short-lived HS256 tokens; React never sees this secret. */
+export class SharedSecretJwtGatewayAuthAdapter implements GatewayAuthAdapter {
+  private readonly key: Uint8Array
+
+  constructor(private readonly options: SharedSecretJwtGatewayAuthOptions) {
+    if (new TextEncoder().encode(options.secret).byteLength < 32) throw new Error('JWT shared secret must be at least 32 bytes')
+    this.key = new TextEncoder().encode(options.secret)
+  }
+
+  async authenticate(request: GatewayAuthRequest): Promise<ConnectionContext> {
+    if (!request.token) throw new Error('bearer token is required')
+    const { payload } = await jwtVerify(request.token, this.key, {
+      issuer: this.options.issuer,
+      audience: this.options.audience,
+      algorithms: ['HS256'],
+    })
+    return identityFromPayload(payload, request, this.options)
+  }
+}
+
+function identityFromPayload(
+  payload: JWTPayload,
+  request: GatewayAuthRequest,
+  options: Pick<JwtGatewayAuthOptions, 'tenantClaim' | 'documentsClaim'>,
+): ConnectionContext {
+  const tenantId = claimString(payload, options.tenantClaim ?? 'tenant_id')
+  const actorId = claimString(payload, 'sub')
+  if (tenantId !== request.requested.tenantId) throw new Error('token does not grant the requested tenant')
+  const allowedDocuments = payload[options.documentsClaim ?? 'collabhub_documents']
+  if (!Array.isArray(allowedDocuments) || !allowedDocuments.every((value) => typeof value === 'string')) {
+    throw new Error('token must include a collabhub_documents claim')
+  }
+  if (!allowedDocuments.includes('*') && !allowedDocuments.includes(request.requested.documentId)) {
+    throw new Error('token does not grant the requested document')
+  }
+  return { ...request.requested, tenantId, actorId }
 }
 
 function claimString(payload: JWTPayload, key: string): string {

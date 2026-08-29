@@ -89,6 +89,12 @@ resource "random_password" "internal" {
   special = false
 }
 
+resource "random_password" "jwt" {
+  count   = var.jwt_jwks_url == null ? 1 : 0
+  length  = 48
+  special = false
+}
+
 resource "alicloud_kms_secret" "database" {
   secret_name                   = "${var.name}-database-password"
   secret_data                   = random_password.database.result
@@ -119,6 +125,17 @@ resource "alicloud_kms_secret" "internal" {
   tags                          = local.tags
 }
 
+resource "alicloud_kms_secret" "jwt" {
+  count                         = var.jwt_jwks_url == null ? 1 : 0
+  secret_name                   = "${var.name}-jwt-shared-secret"
+  secret_data                   = random_password.jwt[0].result
+  version_id                    = "v1"
+  description                   = "Backend-only JWT signing secret for the simple integration path"
+  force_delete_without_recovery = false
+  recovery_window_in_days       = 7
+  tags                          = local.tags
+}
+
 resource "alicloud_ram_role" "vm" {
   role_name   = "${var.name}-vm"
   description = "CollabHub ECS runtime identity"
@@ -135,13 +152,16 @@ resource "alicloud_ram_role" "vm" {
 
 resource "alicloud_ram_policy" "runtime_secrets" {
   policy_name = "${var.name}-read-runtime-secrets"
-  description = "Read only the three CollabHub runtime secrets"
+  description = "Read only the CollabHub runtime secrets"
   policy_document = jsonencode({
     Version = "1"
     Statement = [{
-      Effect   = "Allow"
-      Action   = ["kms:GetSecretValue"]
-      Resource = [alicloud_kms_secret.database.arn, alicloud_kms_secret.redis.arn, alicloud_kms_secret.internal.arn]
+      Effect = "Allow"
+      Action = ["kms:GetSecretValue"]
+      Resource = concat(
+        [alicloud_kms_secret.database.arn, alicloud_kms_secret.redis.arn, alicloud_kms_secret.internal.arn],
+        var.jwt_jwks_url == null ? [alicloud_kms_secret.jwt[0].arn] : [],
+      )
     }]
   })
   force = true
@@ -239,13 +259,14 @@ resource "alicloud_instance" "node" {
     redis_host                = alicloud_kvstore_instance.redis.connection_domain
     redis_secret_name         = alicloud_kms_secret.redis.secret_name
     internal_secret_name      = alicloud_kms_secret.internal.secret_name
+    jwt_secret_name           = var.jwt_jwks_url == null ? alicloud_kms_secret.jwt[0].secret_name : ""
     ram_role_name             = alicloud_ram_role.vm.role_name
     region                    = var.region
     domain_pack_source_base64 = base64encode(local.domain_pack_source)
     domain_pack_file_name     = local.domain_pack_file_name
     domain_pack_environment   = local.domain_pack_environment
     allowed_origin            = var.allowed_origin
-    jwt_jwks_url              = var.jwt_jwks_url
+    jwt_auth_environment      = var.jwt_jwks_url == null ? "JWT_SHARED_SECRET_FILE=/run/secrets/jwt-shared-secret" : "JWT_JWKS_URL=${var.jwt_jwks_url}"
     jwt_issuer                = var.jwt_issuer
     jwt_audience              = var.jwt_audience
   })

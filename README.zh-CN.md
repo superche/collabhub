@@ -5,7 +5,7 @@
 <p align="center">保留组件、Store、业务命令和 REST 兜底；只增加一个共享规则文件、一个 React SDK 和一个可部署服务。</p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.2.0-1f6f4a">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.2.0-2563eb">
   <a href="https://github.com/superche/collabhub/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/superche/collabhub/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://www.npmjs.com/package/@collabhub/client-core"><img alt="npm" src="https://img.shields.io/npm/v/@collabhub/client-core?logo=npm"></a>
   <img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-4c566a">
@@ -92,6 +92,12 @@ export const collabModel = defineCollaborationModel<AppDocument, AppCommand>({
 })
 ```
 
+生产环境里，业务后端给当前用户和文档返回一个短期 token；CollabHub 可以只用一条服务端共享密钥验签。项目已经使用 Clerk、Auth0、Supabase 等能提供 JWKS 的登录服务时，直接让 CollabHub 复用它，不必再写 token 接口。
+
+```ts
+const { token } = await fetch(`/api/collabhub-token?documentId=${documentId}`).then(r => r.json())
+```
+
 只在应用启动、选择 Store/API 实现的位置创建协同运行时：
 
 ```tsx
@@ -100,7 +106,7 @@ const runtime = collaborationEnabled
       url: 'wss://collab.example.com/collab',
       documentId,
       actorId: currentUser.id,
-      authToken: currentUser.collabToken,
+      authToken: token,
       model: collabModel,
       initialState: collabModel.initialState(documentId),
     })

@@ -1,0 +1,8 @@
+bucket              = "YOUR_PRIVATE_VERSIONED_OSS_BUCKET"
+key                 = "collabhub/production.tfstate"
+region              = "cn-hangzhou"
+encrypt             = true
+acl                 = "private"
+tablestore_endpoint = "https://YOUR_OTS_INSTANCE.cn-hangzhou.ots.aliyuncs.com"
+tablestore_table    = "terraform_state_locks"
+profile             = "collabhub-certification"

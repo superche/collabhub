@@ -2,7 +2,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { environmentWithDevelopmentFallback, requiredEnvironment } from './bootstrap.js'
+import { environmentWithDevelopmentFallback, optionalEnvironment, requiredEnvironment } from './bootstrap.js'
 
 const touched = new Set<string>()
 const directories: string[] = []
@@ -33,6 +33,15 @@ describe('file-backed runtime secrets', () => {
     environment('TEST_SECRET', 'direct')
     environment('TEST_SECRET_FILE', '/not/read')
     expect(() => requiredEnvironment('TEST_SECRET')).toThrow(/cannot both be set/)
+  })
+
+  it('loads an optional file-backed JWT secret', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'collabhub-jwt-secret-'))
+    directories.push(directory)
+    const path = join(directory, 'jwt-secret')
+    await writeFile(path, 'shared-secret-from-file\n', { mode: 0o600 })
+    environment('JWT_SHARED_SECRET_FILE', path)
+    expect(optionalEnvironment('JWT_SHARED_SECRET')).toBe('shared-secret-from-file')
   })
 
   it('does not silently supply a production secret', () => {

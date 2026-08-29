@@ -8,7 +8,7 @@ done
 docker compose version >/dev/null
 test -f .env || { echo "Copy .env.example to .env and fill in your values." >&2; exit 1; }
 test -f domain-pack.json || { echo "Copy ../domain-pack/domain-pack.example.json to domain-pack.json, then edit your rules." >&2; exit 1; }
-for secret in secrets/database-url secrets/redis-url secrets/internal-token; do
+for secret in secrets/database-url secrets/redis-url secrets/internal-token secrets/jwt-shared-secret; do
   test -s "$secret" || { echo "$secret is missing or empty." >&2; exit 1; }
   chmod 0600 "$secret"
 done

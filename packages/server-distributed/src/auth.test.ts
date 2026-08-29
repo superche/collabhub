@@ -2,7 +2,7 @@ import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { afterEach, describe, expect, it } from 'vitest'
 import { exportJWK, generateKeyPair, SignJWT } from 'jose'
-import { JwtGatewayAuthAdapter, bearerToken } from './auth.js'
+import { JwtGatewayAuthAdapter, SharedSecretJwtGatewayAuthAdapter, bearerToken } from './auth.js'
 
 describe('gateway authentication', () => {
   const servers: ReturnType<typeof createServer>[] = []
@@ -38,5 +38,22 @@ describe('gateway authentication', () => {
     const base = { transport: 'websocket' as const, token, requested: { tenantId: 'tenant-a', documentId: 'document-a', actorId: 'spoofed', clientId: 'browser' } }
     await expect(auth.authenticate(base)).resolves.toEqual({ tenantId: 'tenant-a', documentId: 'document-a', actorId: 'verified-user', clientId: 'browser' })
     await expect(auth.authenticate({ ...base, requested: { ...base.requested, documentId: 'document-b' } })).rejects.toThrow(/does not grant/)
+  })
+
+  it('supports a backend-owned shared secret without weakening claim checks', async () => {
+    const secret = 'a-production-secret-that-is-at-least-32-bytes'
+    const token = await new SignJWT({ tenant_id: 'tenant-a', collabhub_documents: ['document-a'] })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setSubject('verified-user')
+      .setIssuer('my-app')
+      .setAudience('collabhub')
+      .setExpirationTime('5m')
+      .sign(new TextEncoder().encode(secret))
+    const auth = new SharedSecretJwtGatewayAuthAdapter({ secret, issuer: 'my-app', audience: 'collabhub' })
+    const base = { transport: 'websocket' as const, token, requested: { tenantId: 'tenant-a', documentId: 'document-a', actorId: 'spoofed', clientId: 'browser' } }
+
+    await expect(auth.authenticate(base)).resolves.toEqual({ tenantId: 'tenant-a', documentId: 'document-a', actorId: 'verified-user', clientId: 'browser' })
+    await expect(auth.authenticate({ ...base, requested: { ...base.requested, documentId: 'document-b' } })).rejects.toThrow(/does not grant/)
+    expect(() => new SharedSecretJwtGatewayAuthAdapter({ secret: 'too-short', issuer: 'my-app', audience: 'collabhub' })).toThrow(/32 bytes/)
   })
 })

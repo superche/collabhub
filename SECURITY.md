@@ -18,4 +18,4 @@ Never include production credentials or personal data. Maintainers will acknowle
 
 The examples use query-string identities and local development tokens. They are not authentication implementations. Production adopters must provide authentication, authorization, tenant isolation, rate limits, TLS, and secret management as documented in [integration readiness](docs/integration/readiness.md).
 
-The distributed runtime supports JWT/JWKS identity binding, Origin filtering, cluster-wide Redis rate limits, bounded payloads, file-backed secrets, private authenticated metrics, and graceful drain. The full deployment and recovery checklist is in [production hardening](docs/production-hardening.md).
+The distributed runtime supports shared-secret or JWKS JWT identity binding, Origin filtering, cluster-wide Redis rate limits, bounded payloads, file-backed secrets, private authenticated metrics, and graceful drain. The full deployment and recovery checklist is in [production hardening](docs/production-hardening.md).

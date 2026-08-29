@@ -10,8 +10,9 @@ x-runtime: &runtime
     DATABASE_URL_FILE: /run/secrets/database_url
     REDIS_URL_FILE: /run/secrets/redis_url
     INTERNAL_TOKEN_FILE: /run/secrets/internal_token
+    JWT_SHARED_SECRET_FILE: /run/secrets/jwt_shared_secret
     COLLABHUB_DOMAIN_PACK_CONFIG: /config/domain-pack.json
-  secrets: [database_url, redis_url, internal_token]
+  secrets: [database_url, redis_url, internal_token, jwt_shared_secret]
   volumes:
     - ./domain-pack.json:/config/domain-pack.json:ro
   stop_grace_period: 45s
@@ -24,6 +25,7 @@ services:
       DATABASE_URL_FILE: /run/secrets/database_url
       REDIS_URL_FILE: /run/secrets/redis_url
       INTERNAL_TOKEN_FILE: /run/secrets/internal_token
+      JWT_SHARED_SECRET_FILE: /run/secrets/jwt_shared_secret
       COLLABHUB_DOMAIN_PACK_CONFIG: /config/domain-pack.json
       COLLABHUB_ROLE: worker
       INSTANCE_ID: ${NODE_NAME:-collabhub-node}-worker
@@ -43,6 +45,7 @@ services:
       DATABASE_URL_FILE: /run/secrets/database_url
       REDIS_URL_FILE: /run/secrets/redis_url
       INTERNAL_TOKEN_FILE: /run/secrets/internal_token
+      JWT_SHARED_SECRET_FILE: /run/secrets/jwt_shared_secret
       COLLABHUB_DOMAIN_PACK_CONFIG: /config/domain-pack.json
       COLLABHUB_ROLE: gateway
       INSTANCE_ID: ${NODE_NAME:-collabhub-node}-gateway
@@ -61,3 +64,5 @@ secrets:
     file: ${REDIS_URL_FILE_PATH:-./secrets/redis-url}
   internal_token:
     file: ${INTERNAL_TOKEN_FILE_PATH:-./secrets/internal-token}
+  jwt_shared_secret:
+    file: ${JWT_SHARED_SECRET_FILE_PATH:-./secrets/jwt-shared-secret}

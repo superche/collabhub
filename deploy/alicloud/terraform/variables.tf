@@ -44,10 +44,12 @@ variable "certificate_id" {
 }
 
 variable "jwt_jwks_url" {
-  description = "HTTPS JWKS endpoint used to authenticate clients."
+  description = "Optional HTTPS JWKS endpoint. Null uses the generated backend-only HS256 secret."
   type        = string
+  default     = null
+  nullable    = true
   validation {
-    condition     = startswith(var.jwt_jwks_url, "https://")
+    condition     = var.jwt_jwks_url == null ? true : startswith(var.jwt_jwks_url, "https://")
     error_message = "jwt_jwks_url must use HTTPS."
   }
 }
@@ -55,6 +57,7 @@ variable "jwt_jwks_url" {
 variable "jwt_issuer" {
   description = "Expected JWT issuer."
   type        = string
+  default     = "my-app"
 }
 
 variable "jwt_audience" {

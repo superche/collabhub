@@ -18,4 +18,5 @@ artifacts/
 *.tfstate
 *.tfstate.*
 terraform.tfvars
+backend.hcl
 *.tfplan

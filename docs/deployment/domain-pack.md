@@ -12,9 +12,12 @@ docker run --rm --network host \
   -e COLLABHUB_DOMAIN_PACK_CONFIG=/config/domain-pack.json \
   -e COLLABHUB_ROLE=gateway \
   -e DATABASE_URL=... -e REDIS_URL=... -e INTERNAL_TOKEN=... \
-  -e JWT_JWKS_URL=... -e JWT_ISSUER=... -e JWT_AUDIENCE=... \
+  -v "$PWD/secrets:/run/secrets:ro" \
+  -e JWT_SHARED_SECRET_FILE=/run/secrets/jwt-shared-secret -e JWT_ISSUER=my-app -e JWT_AUDIENCE=collabhub \
   ghcr.io/superche/collabhub:0.2.0
 ```
+
+简单路径由业务已有后端使用 HS256 签发短期 token。业务已经接入托管身份服务时，用 `JWT_JWKS_URL` 替代 `JWT_SHARED_SECRET_FILE`。
 
 JSON 文件可以配置：
 

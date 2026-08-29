@@ -5,7 +5,7 @@
 <p align="center">Keep your components, store, commands, and REST fallback. Add one shared rules file, one React SDK, and one deployable service.</p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.2.0-1f6f4a">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.2.0-2563eb">
   <a href="https://github.com/superche/collabhub/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/superche/collabhub/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://www.npmjs.com/package/@collabhub/client-core"><img alt="npm" src="https://img.shields.io/npm/v/@collabhub/client-core?logo=npm"></a>
   <img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-4c566a">
@@ -93,6 +93,12 @@ export const collabModel = defineCollaborationModel<AppDocument, AppCommand>({
 })
 ```
 
+In production, your existing backend returns a short-lived token for the current user and document. CollabHub can verify it with one shared server secret; if Clerk, Auth0, Supabase, or another login provider already exposes JWKS, point CollabHub at that instead.
+
+```ts
+const { token } = await fetch(`/api/collabhub-token?documentId=${documentId}`).then(r => r.json())
+```
+
 Create the collaboration runtime once, where your app currently chooses its store/API implementation:
 
 ```tsx
@@ -103,7 +109,7 @@ const runtime = collaborationEnabled
       url: 'wss://collab.example.com/collab',
       documentId,
       actorId: currentUser.id,
-      authToken: currentUser.collabToken,
+      authToken: token,
       model: collabModel,
       initialState: collabModel.initialState(documentId),
     })

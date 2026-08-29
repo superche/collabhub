@@ -42,11 +42,12 @@ Every VM runs one Gateway and one Worker. Both stacks enforce HTTPS/JWT inputs a
 
 The published 2C4G numbers are conservative scheduling inputs—not production SLOs. Capacity must be retested with the real Domain Pack, snapshot size, and managed database. A successful Terraform validation is not a managed-cloud soak test.
 
-Production Gateways require JWT/JWKS configuration:
+Production Gateways require verified JWT configuration. Choose one signing-key source:
 
 | Variable | Purpose |
 |---|---|
-| `JWT_JWKS_URL` | Trusted signing keys |
+| `JWT_SHARED_SECRET_FILE` | Simplest path; backend-only HS256 key, never exposed to React |
+| `JWT_JWKS_URL` | Managed identity provider signing keys; mutually exclusive with the shared secret |
 | `JWT_ISSUER` / `JWT_AUDIENCE` | Token verification |
 | `ALLOWED_ORIGINS` | Comma-separated WebSocket origins |
 | `MAX_GATEWAY_CONNECTIONS` / `MAX_CONNECTIONS_PER_IP` | Connection caps |

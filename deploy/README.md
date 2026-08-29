@@ -22,6 +22,6 @@ Choose one path:
 
 The distributed image starts either a Gateway or Worker according to `COLLABHUB_ROLE`. Every process in one deployment must load the same Domain Pack and schema version.
 
-Never use the local Compose credentials or insecure identity setting in production. Cloud stacks require HTTPS, JWT/JWKS, managed databases, and at least two VM nodes.
+Never use the local Compose credentials or insecure identity setting in production. Cloud stacks require HTTPS, verified JWTs (shared-secret or JWKS), managed databases, and at least two VM nodes.
 
 Render remains the real public demo deployment. It validates internet-facing TLS/WSS and collaboration behavior, while the VM/cloud paths add persistent storage, multi-node failover, backups, and secret management. See [production hardening](../docs/production-hardening.md).

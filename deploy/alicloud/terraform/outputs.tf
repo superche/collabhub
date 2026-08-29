@@ -15,6 +15,11 @@ output "redis_endpoint" {
   value = alicloud_kvstore_instance.redis.connection_domain
 }
 
+output "jwt_secret_name" {
+  description = "KMS secret your existing backend reads for the simple auth mode. Null when jwt_jwks_url is configured."
+  value       = var.jwt_jwks_url == null ? alicloud_kms_secret.jwt[0].secret_name : null
+}
+
 output "runtime_shape" {
   value = "${var.instance_count} x ${var.instance_type}; one Gateway and one Worker per VM"
 }

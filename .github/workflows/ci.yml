@@ -92,6 +92,7 @@ jobs:
           DATABASE_URL_FILE_PATH: ../domain-pack/domain-pack.example.json
           REDIS_URL_FILE_PATH: ../domain-pack/domain-pack.example.json
           INTERNAL_TOKEN_FILE_PATH: ../domain-pack/domain-pack.example.json
+          JWT_SHARED_SECRET_FILE_PATH: ../domain-pack/domain-pack.example.json
       - run: kubectl kustomize deploy/kubernetes/base > /dev/null
       - run: terraform fmt -check -recursive deploy/aws/terraform
       - run: terraform -chdir=deploy/aws/terraform init -backend=false

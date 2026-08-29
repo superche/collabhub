@@ -97,7 +97,8 @@ CPU HPA 只是兜底。生产应接入 Prometheus Adapter/KEDA，以 Gateway con
 | `IDLE_ROOM_MS` / `ROOM_CACHE_SCAN_INTERVAL_MS` |  | ✓ | `60000` / `3000` |
 | `SNAPSHOT_INTERVAL` |  | ✓ | `100` |
 | `RSS_LIMIT_BYTES` | ✓ | ✓ | 3 GiB |
-| `JWT_JWKS_URL` / `JWT_ISSUER` / `JWT_AUDIENCE` | ✓ |  | 生产必填 |
+| `JWT_SHARED_SECRET_FILE` 或 `JWT_JWKS_URL` | ✓ |  | 生产二选一 |
+| `JWT_ISSUER` / `JWT_AUDIENCE` | ✓ |  | 生产必填 |
 | `ALLOWED_ORIGINS` | ✓ |  | 逗号分隔的可信 origin |
 | `MAX_GATEWAY_CONNECTIONS` / `MAX_CONNECTIONS_PER_IP` | ✓ |  | `10000` / `50` |
 | `OPERATION_RATE_PER_SECOND` / `OPERATION_BURST` | ✓ |  | `30` / `60` |
@@ -119,7 +120,7 @@ Standalone Server Core 与分布式 Worker 共用 `RoomCachePolicy`：保护排�
 
 ## 生产接入条件
 
-- Gateway 使用内置 JWT/JWKS AuthAdapter 或可信服务网关鉴权，并把 identity 与 document grant 绑定到 `ConnectionContext`；只有显式设置 `ALLOW_INSECURE_IDENTITY=true` 才能启用本地开发身份。
+- Gateway 使用内置共享密钥/JWKS JWT AuthAdapter 或可信服务网关鉴权，并把 identity 与 document grant 绑定到 `ConnectionContext`；只有显式设置 `ALLOW_INSECURE_IDENTITY=true` 才能启用本地开发身份。
 - REST 写入必须调用 Gateway operation API，不能直接更新业务库形成双 writer。
 - 按 tenant 做 rate limit、payload schema 校验、数据库行级隔离/独立库策略。
 - 为 PostgreSQL 配置 PITR、跨可用区高可用、PgBouncer；Redis 只承担可重建临时状态。

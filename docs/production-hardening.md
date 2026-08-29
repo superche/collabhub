@@ -1,6 +1,6 @@
 # Production hardening
 
-Render is the public demo: it proves HTTPS/WSS, Origin filtering, shareable rooms, reconnects, and room cleanup on the public internet. It intentionally uses memory storage. The production reference is the same runtime with PostgreSQL, Redis, JWT/JWKS, private networking, and backups.
+Render is the public demo: it proves HTTPS/WSS, Origin filtering, shareable rooms, reconnects, and room cleanup on the public internet. It intentionally uses memory storage. The production reference is the same runtime with PostgreSQL, Redis, verified JWTs, private networking, and backups.
 
 ## Smallest useful production shape
 
@@ -8,7 +8,7 @@ Render is the public demo: it proves HTTPS/WSS, Origin filtering, shareable room
 - One private PostgreSQL 16 database. This is the durable source of snapshots, operations, idempotency receipts, and outbox events.
 - One private Redis 7 service. This holds leases, routing, presence, pub/sub, and cluster-wide rate-limit buckets; it is rebuildable.
 - One HTTPS/WSS load balancer forwarding public traffic only to Gateway port `7000`. Worker port `7100`, PostgreSQL, Redis, and metrics stay private.
-- Your existing identity service issues JWTs. CollabHub validates the JWKS, issuer, audience, tenant, actor, and document grants.
+- Your existing backend issues short-lived JWTs. The simplest path uses one backend-only HS256 secret; Clerk/Auth0/Supabase-style setups can use JWKS. CollabHub validates issuer, audience, tenant, actor, and document grants in both modes.
 
 Use [the generic VM Compose path](../deploy/vm/README.md) on any provider, or [the Alibaba Cloud Terraform reference](../deploy/alicloud/README.md). Kubernetes and AWS remain optional adapters, not runtime requirements.
 
@@ -56,6 +56,7 @@ Back up PostgreSQL daily with point-in-time logs for at least seven days. Once p
 ## Security and operations
 
 - Put credentials in files and set `DATABASE_URL_FILE`, `REDIS_URL_FILE`, and `INTERNAL_TOKEN_FILE`. Docker, Kubernetes, AWS, and Alibaba Cloud references use this path.
+- For the simple auth path, also set `JWT_SHARED_SECRET_FILE`; only the application backend and CollabHub receive it. React fetches a short-lived token from the application backend. Use `JWT_JWKS_URL` instead when an identity provider already publishes signing keys.
 - `NODE_ENV=production` removes all development connection-string/token fallbacks and requires an internal token of at least 32 characters.
 - Use TLS at the public load balancer and TLS connections to managed PostgreSQL/Redis. Security groups allow `7000` from the load balancer and `7100` only from CollabHub VMs.
 - The Alibaba Cloud stack retrieves KMS secrets through a least-privilege ECS RAM role; no permanent AccessKey or runtime secret is embedded in cloud-init.

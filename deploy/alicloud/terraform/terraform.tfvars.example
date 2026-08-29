@@ -3,9 +3,10 @@ name            = "collabhub"
 allowed_origin  = "https://app.example.com"
 public_hostname = "collab.example.com"
 certificate_id  = "REPLACE_WITH_ALIBABA_CLOUD_CERTIFICATE_ID"
-jwt_jwks_url    = "https://YOUR_IDP/.well-known/jwks.json"
-jwt_issuer      = "https://YOUR_IDP/"
+jwt_issuer      = "my-app"
 jwt_audience    = "collabhub"
+# Existing Clerk/Auth0/Supabase-style identity provider instead of the generated shared secret:
+# jwt_jwks_url = "https://YOUR_IDP/.well-known/jwks.json"
 
 # Each VM runs one Gateway and one Worker. ecs.c7.large is a 2C4G baseline.
 instance_type  = "ecs.c7.large"

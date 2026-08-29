@@ -1,6 +1,9 @@
 terraform {
   required_version = ">= 1.7.0"
 
+  # Account-specific values live in the ignored backend.hcl file.
+  backend "oss" {}
+
   required_providers {
     alicloud = {
       source  = "aliyun/alicloud"

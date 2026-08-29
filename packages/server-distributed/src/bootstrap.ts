@@ -7,7 +7,7 @@ import { PostgresCommitStore } from './postgres-store.js'
 import { RedisOwnershipCoordinator } from './redis-coordinator.js'
 import { HttpWorkerRouter } from './router.js'
 import { DistributedRoomWorker } from './worker.js'
-import { InsecureDevelopmentAuthAdapter, JwtGatewayAuthAdapter, type GatewayAuthAdapter } from './auth.js'
+import { InsecureDevelopmentAuthAdapter, JwtGatewayAuthAdapter, SharedSecretJwtGatewayAuthAdapter, type GatewayAuthAdapter } from './auth.js'
 
 export interface DistributedNodeHandle {
   role: 'gateway' | 'worker'
@@ -17,12 +17,17 @@ export interface DistributedNodeHandle {
 }
 
 export function requiredEnvironment(name: string, fallback?: string): string {
+  const value = optionalEnvironment(name) ?? fallback
+  if (!value) throw new Error(`${name} is required`)
+  return value
+}
+
+export function optionalEnvironment(name: string): string | undefined {
   const direct = process.env[name]
   const file = process.env[`${name}_FILE`]
   if (direct !== undefined && file !== undefined) throw new Error(`${name} and ${name}_FILE cannot both be set`)
-  const value = file ? readFileSync(file, 'utf8').replace(/\r?\n$/, '') : direct ?? fallback
-  if (!value) throw new Error(`${name} is required`)
-  return value
+  const value = file ? readFileSync(file, 'utf8').replace(/\r?\n$/, '') : direct
+  return value || undefined
 }
 
 export function environmentWithDevelopmentFallback(name: string, developmentFallback: string): string {
@@ -51,17 +56,23 @@ function boolean(name: string, fallback = false): boolean {
 
 function gatewayAuth(): GatewayAuthAdapter {
   const jwksUrl = process.env.JWT_JWKS_URL
-  if (jwksUrl) {
-    return new JwtGatewayAuthAdapter({
-      jwksUrl,
+  const sharedSecret = optionalEnvironment('JWT_SHARED_SECRET')
+  if (jwksUrl && sharedSecret) throw new Error('configure either JWT_JWKS_URL or JWT_SHARED_SECRET, not both')
+  if (jwksUrl || sharedSecret) {
+    const common = {
       issuer: requiredEnvironment('JWT_ISSUER'),
       audience: requiredEnvironment('JWT_AUDIENCE'),
       tenantClaim: process.env.JWT_TENANT_CLAIM,
       documentsClaim: process.env.JWT_DOCUMENTS_CLAIM,
+    }
+    if (sharedSecret) return new SharedSecretJwtGatewayAuthAdapter({ secret: sharedSecret, ...common })
+    return new JwtGatewayAuthAdapter({
+      jwksUrl: jwksUrl!,
+      ...common,
     })
   }
   if (boolean('ALLOW_INSECURE_IDENTITY')) return new InsecureDevelopmentAuthAdapter()
-  throw new Error('gateway requires JWT_JWKS_URL or explicit ALLOW_INSECURE_IDENTITY=true for local development')
+  throw new Error('gateway requires JWT_JWKS_URL, JWT_SHARED_SECRET, or explicit ALLOW_INSECURE_IDENTITY=true for local development')
 }
 
 export async function startDistributedNodeFromEnvironment<TState extends JsonObject>(domainPack: DomainPack<TState>): Promise<DistributedNodeHandle> {

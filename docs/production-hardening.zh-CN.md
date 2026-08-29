@@ -1,6 +1,6 @@
 # 生产硬化
 
-Render 是公网 Demo：它证明 HTTPS/WSS、Origin 限制、Room 分享、断线恢复和 Room 回收可以在真实公网运行；它故意使用内存存储。生产参考仍使用同一个运行时，只是换成 PostgreSQL、Redis、JWT/JWKS、私网和备份。
+Render 是公网 Demo：它证明 HTTPS/WSS、Origin 限制、Room 分享、断线恢复和 Room 回收可以在真实公网运行；它故意使用内存存储。生产参考仍使用同一个运行时，只是换成 PostgreSQL、Redis、受验证 JWT、私网和备份。
 
 ## 最小生产结构
 
@@ -8,7 +8,7 @@ Render 是公网 Demo：它证明 HTTPS/WSS、Origin 限制、Room 分享、断�
 - 一个私网 PostgreSQL 16，保存 snapshot、operation、幂等回执和 outbox，是数据来源。
 - 一个私网 Redis 7，保存租约、路由、Presence、广播和全局限流；丢失后可以重建。
 - 一个 HTTPS/WSS 负载均衡，只把公网流量转发到 Gateway `7000`。Worker `7100`、数据库、Redis 和 metrics 只走私网。
-- 继续使用业务已有的登录服务签发 JWT；CollabHub 校验 JWKS、issuer、audience、tenant、actor 和文档权限。
+- 继续由业务已有后端签发短期 JWT。最简单的路径只需一条后端专用 HS256 密钥；已有 Clerk/Auth0/Supabase 一类身份服务时可改用 JWKS。两种模式都会校验 issuer、audience、tenant、actor 和文档权限。
 
 云厂商不限。已有 VM 直接用[通用 VM 部署](../deploy/vm/README.md)，阿里云认证环境使用[阿里云 Terraform](../deploy/alicloud/README.zh-CN.md)。Kubernetes 和 AWS 只是可选外壳。
 
@@ -46,6 +46,7 @@ Worker 会先重放旧 WAL，再运行无 I/O、结果固定的迁移函数；�
 ## 安全与运维
 
 - 凭证写入文件，使用 `DATABASE_URL_FILE`、`REDIS_URL_FILE`、`INTERNAL_TOKEN_FILE`。Docker、Kubernetes、AWS 和阿里云参考配置都走这条路径。
+- 简单鉴权再设置 `JWT_SHARED_SECRET_FILE`，只有业务后端和 CollabHub 能拿到；React 只向业务后端获取短期 token。已有身份服务时改用 `JWT_JWKS_URL`。
 - `NODE_ENV=production` 会关闭所有开发用连接串和 token 回退，并要求内部 token 至少 32 个字符。
 - 公网 TLS 在负载均衡终止；数据库和 Redis 也使用 TLS。安全组只允许负载均衡访问 `7000`，CollabHub VM 之间访问 `7100`。
 - 阿里云 ECS 通过最小权限 RAM Role 从 KMS 读取 secret；cloud-init 不包含永久 AccessKey 和运行时密码。

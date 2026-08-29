@@ -4,12 +4,13 @@
 
 The source still reports `0.2.0`: no `v1.0.0` tag or v1 npm package has been published. Current owner-approval evidence:
 
-- `pnpm release:check`: 24 Vitest files / 87 tests; ten package artifact audits; 1,000-section patch p95 0.007 ms against a 4 ms budget.
+- `pnpm release:check`: 24 Vitest files / 89 tests; ten package artifact audits; 1,000-section patch p95 0.006 ms against a 4 ms budget.
+- Production authentication accepts either managed JWKS or a backend-only 32+ byte HS256 secret. Real signed-token tests prove issuer, audience, tenant, document grant, and subject enforcement; file-backed secret loading is also covered. React never receives the signing secret.
 - `pnpm test:e2e`: five real-browser TODO List, BlockNote, and React Flow cases.
 - `pnpm smoke:todo-cluster`: two independent Gateways and Workers; cross-Gateway convergence, real writer termination/takeover, offline replay, and fresh-browser snapshot recovery; PostgreSQL ended at canonical v5 / owner epoch 2.
 - `pnpm smoke:postgres-hardening`: idempotent database migrations 1/2; transactional business schema `1.0 -> 2.0`; compaction removed 3 WAL, 5 receipts, 5 delivered outbox rows, and 2 snapshots; recovery returned v5; two independent Redis clients observed one shared bucket as `[true,true,false]`.
 - `pnpm smoke:demo`: two-client v2 convergence, Origin rejection, connection capacity, active-room protection, expired-room deletion, blue theme, favicon, and GitHub Star link.
-- Local builds passed for distributed, demo, and standalone images. Alibaba Cloud/AWS provider validation, Kustomize rendering, and generic VM Compose parsing passed.
+- Local builds passed for distributed, demo, and standalone images. Alibaba Cloud/AWS provider validation, Kustomize rendering, and generic VM Compose parsing passed. Alibaba Cloud planning now refuses local state and requires encrypted OSS state plus Tablestore locking.
 - `pnpm publish:dry-run` found all ten `0.2.0` packages already published and did not publish a new version.
 
 Render remains the real public HTTPS/WSS demo. Alibaba Cloud multi-node persistence certification still requires identity review, a Terraform plan, explicit apply approval, failure/recovery drills, and a short soak; local evidence does not replace that gate.

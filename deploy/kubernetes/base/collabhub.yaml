@@ -13,8 +13,8 @@ stringData:
   DATABASE_URL: postgres://USER:PASSWORD@MANAGED_POSTGRES:5432/collabhub
   REDIS_URL: rediss://MANAGED_REDIS:6379
   INTERNAL_TOKEN: REPLACE_WITH_A_RANDOM_SECRET
-  JWT_JWKS_URL: https://YOUR_IDP/.well-known/jwks.json
-  JWT_ISSUER: https://YOUR_IDP/
+  JWT_SHARED_SECRET: REPLACE_WITH_ANOTHER_RANDOM_32_BYTE_SECRET
+  JWT_ISSUER: my-app
   JWT_AUDIENCE: collabhub
 ---
 apiVersion: v1
@@ -89,6 +89,7 @@ spec:
             - { name: DATABASE_URL_FILE, value: /run/secrets/collabhub/DATABASE_URL }
             - { name: REDIS_URL_FILE, value: /run/secrets/collabhub/REDIS_URL }
             - { name: INTERNAL_TOKEN_FILE, value: /run/secrets/collabhub/INTERNAL_TOKEN }
+            - { name: JWT_SHARED_SECRET_FILE, value: /run/secrets/collabhub/JWT_SHARED_SECRET }
             - { name: PG_POOL_MAX, value: "10" }
             - { name: MAX_WARM_ROOMS, value: "1000" }
             - { name: IDLE_ROOM_MS, value: "60000" }
@@ -145,7 +146,7 @@ spec:
             - { name: DATABASE_URL_FILE, value: /run/secrets/collabhub/DATABASE_URL }
             - { name: REDIS_URL_FILE, value: /run/secrets/collabhub/REDIS_URL }
             - { name: INTERNAL_TOKEN_FILE, value: /run/secrets/collabhub/INTERNAL_TOKEN }
-            - { name: JWT_JWKS_URL, valueFrom: { secretKeyRef: { name: collabhub-runtime, key: JWT_JWKS_URL } } }
+            - { name: JWT_SHARED_SECRET_FILE, value: /run/secrets/collabhub/JWT_SHARED_SECRET }
             - { name: JWT_ISSUER, valueFrom: { secretKeyRef: { name: collabhub-runtime, key: JWT_ISSUER } } }
             - { name: JWT_AUDIENCE, valueFrom: { secretKeyRef: { name: collabhub-runtime, key: JWT_AUDIENCE } } }
             - { name: ALLOWED_ORIGINS, value: "https://YOUR_APP" }
