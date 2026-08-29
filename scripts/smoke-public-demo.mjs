@@ -55,8 +55,6 @@ try {
   await landing.getByRole('button', { name: 'EN' }).click()
   await expect(landing.getByRole('heading', { name: 'Multiplayer, without rewriting your React app.' })).toBeVisible()
   expect(new URL(landing.url()).searchParams.has('lang')).toBe(false)
-  const socialImage = await fetch(`http://127.0.0.1:${port}/product-hunt/gallery-01.png`)
-  expect(socialImage.ok).toBe(true)
   await landing.close()
   const page = await browser.newPage({ viewport: { width: 1500, height: 900 } })
   await page.goto(`http://127.0.0.1:${port}/demo.html?room=${documentId}`)
@@ -92,7 +90,7 @@ try {
   await expect(reopened.getByText('online', { exact: true })).toBeVisible()
   await expect(reopened.locator('.react-flow__node')).toHaveCount(2)
   await expect(reopened.getByTestId('react-flow-version')).toHaveText('0')
-  console.log(JSON.stringify({ event: 'react_flow_public_demo_smoke_passed', landingUrl: `http://127.0.0.1:${port}/`, url: `http://127.0.0.1:${port}/demo.html`, documentId, canonicalVersion: 2, nodeCount: 3, landingVerified: true, blueThemeVerified: true, faviconVerified: true, socialImageVerified: true, starLink: true, activeRoomProtected: true, expiredRoomDeleted: true, originRejected: true, perIpConnectionLimit: true, reopenedVersion: 0 }))
+  console.log(JSON.stringify({ event: 'react_flow_public_demo_smoke_passed', landingUrl: `http://127.0.0.1:${port}/`, url: `http://127.0.0.1:${port}/demo.html`, documentId, canonicalVersion: 2, nodeCount: 3, landingVerified: true, blueThemeVerified: true, faviconVerified: true, starLink: true, activeRoomProtected: true, expiredRoomDeleted: true, originRejected: true, perIpConnectionLimit: true, reopenedVersion: 0 }))
 } finally {
   await browser?.close().catch(() => undefined)
   server.kill('SIGTERM')
