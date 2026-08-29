@@ -51,7 +51,7 @@ https://github.com/user-attachments/assets/6a90ca9d-ef9b-4d1b-a105-2e542c80b189
 
 A controlled React Flow canvas backed by the app's own `GraphDocument`. Demonstrates incremental node/edge changes, drag coalescing, offline replay, and linked-edge deletion. [Live demo](https://collabhub-demo.onrender.com/demo.html) · [Code](examples/react-flow-app) · [Guide](docs/integration/react-flow.en.md)
 
-https://github.com/user-attachments/assets/40594baa-6181-4e9f-a227-4d650c8eac35
+https://github.com/user-attachments/assets/cc5117cb-3bff-49fd-82f9-bb1f8ece80bb
 
 ### 4. CollabHub + Yjs
 

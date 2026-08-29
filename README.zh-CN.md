@@ -50,7 +50,7 @@ https://github.com/user-attachments/assets/6a90ca9d-ef9b-4d1b-a105-2e542c80b189
 
 React Flow 只是受控画布，业务仍保留自己的 `GraphDocument`。演示节点/边增量更新、拖拽合并、离线重放和关联边删除。[在线演示](https://collabhub-demo.onrender.com/demo.html) · [代码](examples/react-flow-app) · [接入说明](docs/integration/react-flow.md)
 
-https://github.com/user-attachments/assets/40594baa-6181-4e9f-a227-4d650c8eac35
+https://github.com/user-attachments/assets/cc5117cb-3bff-49fd-82f9-bb1f8ece80bb
 
 ### 4. CollabHub + Yjs
 
