@@ -3,6 +3,14 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 describe('React Flow example boundaries', () => {
+  it('serves the repository llms.txt unchanged from the public landing page', async () => {
+    const repositoryCopy = await readFile(fileURLToPath(new URL('../../../llms.txt', import.meta.url)), 'utf8')
+    const publicCopy = await readFile(fileURLToPath(new URL('../public/llms.txt', import.meta.url)), 'utf8')
+    expect(publicCopy).toBe(repositoryCopy)
+    expect(publicCopy).toMatch(/^# CollabHub\n\n>/)
+    expect(publicCopy).toContain('https://github.com/superche/collabhub')
+  })
+
   it('keeps components, application, and domain independent from CollabHub packages', async () => {
     const files: string[] = []
     const pattern = `${fileURLToPath(new URL('../src', import.meta.url))}/{components,application,domain}/**/*.{ts,tsx}`

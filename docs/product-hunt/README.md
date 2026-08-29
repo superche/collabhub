@@ -7,20 +7,22 @@ This directory contains the listing copy, launch assets, and launch-day checklis
 | Field | Copy |
 |---|---|
 | Name | CollabHub |
-| Tagline | Add multiplayer collaboration to any React app |
+| Tagline | Add multiplayer to the React app you already have |
 | URL | https://collabhub-demo.onrender.com/ |
 | Status | Free and open source · stable structured-collaboration APIs |
 | Topics | Open Source · Developer Tools · Collaboration |
 
 **Description**
 
-CollabHub adds real-time multiplayer to an existing React app without moving your data model into a collaboration library. Keep your components, store, commands, and REST fallback. Add one client integration boundary and deploy one open-source service. Includes reconnect and recovery, linked updates, custom conflict rules, diagnostics, Docker, Kubernetes, AWS, and Alibaba Cloud baselines.
+CollabHub adds real-time multiplayer to an existing React app without moving its data model into a collaboration library. Keep the components, store, commands, and REST fallback. Add one client boundary and deploy one open-source service. Start with a persistent AWS Lightsail VM from $12/month; move to managed PostgreSQL, Redis, and Kubernetes when multi-node failover is needed.
 
 **Maker comment**
 
 Hi Product Hunt — I built CollabHub after seeing the same trade-off in React projects: teams wanted multiplayer features, but adopting them often meant reshaping the app around a collaboration library.
 
 CollabHub takes a smaller-integration approach. Your components and business data stay yours. You add a client boundary for commands and deploy an open-source service that orders changes, runs your rules, and sends small updates back to connected clients. The repo includes TODO List, BlockNote, and React Flow examples, plus a real two-client demo with offline recovery.
+
+For independent developers, the default AWS deployment is one persistent Lightsail VM from $12/month. It runs the service, PostgreSQL, Redis, TLS, and local backups without requiring a managed-cloud architecture on day one.
 
 `v1.0.0` stabilizes the structured-data integration path. It is not a character-level editor engine or a managed-service SLA. I would especially value feedback on the existing-project setup: where does the first integration still feel harder than it should?
 

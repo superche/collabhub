@@ -54,7 +54,7 @@ Wrap the generated CollabHub store in the same interface as the current REST sto
 
 ```ts
 const runtime = flags.collaboration
-  ? createCollabRuntime(documentId, currentUser.id)
+  ? createAppCollaboration(documentId, currentUser.id)
   : createRestRuntime(documentId)
 ```
 

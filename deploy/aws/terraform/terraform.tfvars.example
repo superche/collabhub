@@ -1,19 +1,27 @@
-region          = "us-east-1"
-name            = "collabhub"
-allowed_origin  = "https://app.example.com"
-public_hostname = "collab.example.com"
-certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/REPLACE_ME"
-jwt_jwks_url    = "https://YOUR_IDP/.well-known/jwks.json"
-jwt_issuer      = "https://YOUR_IDP/"
-jwt_audience    = "collabhub"
+region            = "us-east-1"
+availability_zone = "us-east-1a"
+name              = "collabhub"
 
-# Each VM runs one Gateway and one Worker. The default is a 2C4G baseline.
-instance_type = "t3.medium"
-min_instances = 2
-max_instances = 6
+# The browser Origin that owns the React app. This is not the CollabHub hostname.
+allowed_origin = "https://app.example.com"
+jwt_issuer     = "my-app"
+jwt_audience   = "collabhub"
 
-# The published image can load either JSON or the self-contained ESM module below.
+# Default: Lightsail 2 vCPU / 2 GB / 60 GB SSD, advertised at $12/month in
+# us-east-1 before tax or transfer overage. Use medium_3_0 for 4 GB at $24/month.
+bundle_id = "small_3_0"
+
+# Optional: direct SSH in addition to Lightsail browser SSH.
+# admin_cidr    = "203.0.113.8/32"
+# key_pair_name = "my-lightsail-key"
+
+# Null uses <static-ip>.sslip.io and automatic HTTPS. Keep this default unless
+# a custom hostname already points at a pre-reserved/imported static IP; the
+# post-deploy custom-domain migration is documented in deploy/aws/README.md.
+# public_hostname = "collab.example.com"
+
 container_image = "ghcr.io/superche/collabhub:1.0.0"
+release_ref      = "v1.0.0"
 
-# For trusted executable business rules, uncomment and review the source first:
-# domain_pack_module_source = file("../../domain-pack/domain-pack.example.mjs")
+# Optional declarative business rules:
+# domain_pack_config_json = file("../../domain-pack/domain-pack.example.json")

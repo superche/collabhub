@@ -10,9 +10,9 @@ const copy = {
     systemLabel: 'Your React app connects to CollabHub through a small SDK boundary', path: 'COLLABORATION PATH', online: 'ONLINE', clientAlice: 'CLIENT / ALICE', clientBob: 'CLIENT / BOB', yourApp: 'Your React app', operations: 'operations', patches: 'patches', infrastructure: 'YOUR INFRASTRUCTURE', service: 'CollabHub service', serviceDetails: 'order · validate · recover',
     proofExamples: 'real examples', proofTests: 'automated tests', proofDependencies: 'npm dependencies to start', proofLicense: 'free and open source',
     keepIndex: '01 / KEEP YOUR APP', keepTitle: 'Collaboration stays at the edge of your codebase.', keepBody: 'Your normal React code still reads business state and sends business commands. WebSocket details, reconnects, and recovery remain inside one integration area.', youKeep: 'YOU KEEP', components: 'Components', componentsBody: 'No collaboration imports in your UI.', domain: 'Domain model', domainBody: 'No migration into a library-owned document type.', rest: 'REST fallback', restBody: 'Turn collaboration off and use the existing path.', adds: 'COLLABHUB ADDS', sync: 'Sync + recovery', syncBody: 'Incremental changes, pending replay, snapshots, and diagnostics.',
-    integrationIndex: '02 / TWO THINGS TO ADD', integrationTitle: 'One SDK boundary. One deployable service.', integrationBody: 'Put custom validation, linked-field updates, and conflict decisions in your server model—not across every component.', guide: 'Read the integration guide', client: 'CLIENT', server: 'SERVER',
+    integrationIndex: '02 / TWO THINGS TO ADD', integrationTitle: 'One SDK boundary. One deployable service.', integrationBody: 'Keep validation, linked updates, and conflict choices in one shared model. CollabHub runs it again on the server.', guide: 'Read the integration guide', client: 'CLIENT', server: 'SERVER',
     adaptersIndex: '03 / REAL ADAPTERS', adaptersTitle: 'Typical React collaboration, proven end to end.', todoBody: 'Business commands, linked counters, ordering, REST fallback, and double-write prevention.', blocknoteBody: 'Incremental block updates, coalescing, offline replay, and snapshot recovery.', flowBody: 'Incremental graph edits, one commit per drag, and atomic linked-edge deletion.', live: 'LIVE', openWorkspace: 'Open workspace', viewExample: 'View example',
-    sourceIndex: '04 / OPEN SOURCE', sourceTitle: 'Run it where your data already lives.', sourceBody: 'Start with Docker. Scale with PostgreSQL and Redis. AWS, Alibaba Cloud, and Kubernetes baselines are included.', viewSource: 'View source', openDemo: 'Open live demo', footer: 'Open-source multiplayer infrastructure for existing React applications.',
+    sourceIndex: '04 / OPEN SOURCE', sourceTitle: 'Run it where your data already lives.', sourceBody: 'Deploy one persistent AWS VM from $12/month. Bring managed PostgreSQL and Redis when you need multi-node failover.', viewSource: 'View source', openDemo: 'Open live demo', footer: 'Open-source multiplayer infrastructure for existing React applications.',
   },
   zh: {
     pageTitle: 'CollabHub · 为现有 React 应用添加多人协作', navLabel: '主导航', homeLabel: 'CollabHub 首页', how: '工作原理', examples: '案例', docs: '文档', github: 'GitHub', languageLabel: '语言',
@@ -20,9 +20,9 @@ const copy = {
     systemLabel: '你的 React 应用通过一个轻量 SDK 边界连接 CollabHub', path: '协同链路', online: '在线', clientAlice: '客户端 / ALICE', clientBob: '客户端 / BOB', yourApp: '你的 React 应用', operations: '操作', patches: '变更', infrastructure: '你的基础设施', service: 'CollabHub 服务', serviceDetails: '排序 · 校验 · 恢复',
     proofExamples: '个真实案例', proofTests: '项自动化测试', proofDependencies: '个 npm 依赖即可开始', proofLicense: '免费开源',
     keepIndex: '01 / 保留你的应用', keepTitle: '协同逻辑只放在代码边缘。', keepBody: '普通 React 代码继续读取业务状态、发送业务命令。WebSocket、重连和恢复逻辑集中在一个接入目录里。', youKeep: '你继续使用', components: '现有组件', componentsBody: 'UI 组件无需引入 CollabHub。', domain: '业务模型', domainBody: '无需迁移到框架规定的数据类型。', rest: 'REST 单人模式', restBody: '关闭协同后继续走原来的接口。', adds: 'COLLABHUB 提供', sync: '同步与恢复', syncBody: '增量变更、离线重放、快照和诊断。',
-    integrationIndex: '02 / 只需增加两部分', integrationTitle: '一个 SDK 接入层，一个可部署服务。', integrationBody: '自定义校验、字段联动和冲突处理都写在服务端模型中，不要分散到每个组件里。', guide: '阅读接入指南', client: '客户端', server: '服务端',
+    integrationIndex: '02 / 只需增加两部分', integrationTitle: '一个 SDK 接入层，一个可部署服务。', integrationBody: '校验、字段联动和冲突处理集中写在一个共享模型里，CollabHub 会在服务端再次执行。', guide: '阅读接入指南', client: '客户端', server: '服务端',
     adaptersIndex: '03 / 真实接入案例', adaptersTitle: '典型 React 协同场景，均已端到端验证。', todoBody: '业务命令、字段联动、排序、REST 切换与双写保护。', blocknoteBody: '增量块更新、合并提交、离线重放与快照恢复。', flowBody: '增量图编辑、每次拖拽只提交一次，以及联动删除边。', live: '在线', openWorkspace: '打开工作区', viewExample: '查看案例',
-    sourceIndex: '04 / 开源部署', sourceTitle: '让数据留在你的基础设施里。', sourceBody: 'Docker 起步，PostgreSQL 与 Redis 横向扩容。内置 AWS、阿里云和 Kubernetes 部署基线。', viewSource: '查看源码', openDemo: '打开在线 Demo', footer: '为现有 React 应用提供的开源多人协作基础设施。',
+    sourceIndex: '04 / 开源部署', sourceTitle: '让数据留在你的基础设施里。', sourceBody: 'AWS 持久化单机版 $12/月起；需要多节点故障切换时再接入托管 PostgreSQL 与 Redis。', viewSource: '查看源码', openDemo: '打开在线 Demo', footer: '为现有 React 应用提供的开源多人协作基础设施。',
   },
 } as const
 
@@ -74,7 +74,7 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section className="proof-strip" aria-label="Project proof"><div><strong>3</strong><span>{t.proofExamples}</span></div><div><strong>90</strong><span>{t.proofTests}</span></div><div><strong>2</strong><span>{t.proofDependencies}</span></div><div><strong>Apache-2.0</strong><span>{t.proofLicense}</span></div></section>
+      <section className="proof-strip" aria-label="Project proof"><div><strong>3</strong><span>{t.proofExamples}</span></div><div><strong>91</strong><span>{t.proofTests}</span></div><div><strong>2</strong><span>{t.proofDependencies}</span></div><div><strong>Apache-2.0</strong><span>{t.proofLicense}</span></div></section>
 
       <section className="keep-section" id="how-it-works">
         <div className="section-heading"><span className="section-index">{t.keepIndex}</span><h2>{t.keepTitle}</h2><p>{t.keepBody}</p></div>
@@ -84,8 +84,8 @@ export function LandingPage() {
       <section className="integration-section" id="integration">
         <div className="integration-copy"><span className="section-index">{t.integrationIndex}</span><h2>{t.integrationTitle}</h2><p>{t.integrationBody}</p><a href={docsUrl}>{t.guide} <span aria-hidden="true">→</span></a></div>
         <div className="code-stack" aria-label="CollabHub integration example">
-          <div className="code-card"><header><span>src/collab/create-runtime.ts</span><b>{t.client}</b></header><pre><code><em>const</em> runtime = createCollabRuntime({'{'}{`\n  `}wsUrl, documentId,{`\n  `}store, commands{`\n`}{'}'})</code></pre></div>
-          <div className="code-card service-code"><header><span>your infrastructure</span><b>{t.server}</b></header><pre><code>docker run -p 8080:8080 \<br />  ghcr.io/superche/collabhub:1.0.0</code></pre></div>
+          <div className="code-card"><header><span>src/collab/collabhub.ts</span><b>{t.client}</b></header><pre><code><em>const</em> runtime = createAppCollaboration({`\n  `}documentId, currentUser.id{`\n`})</code></pre></div>
+          <div className="code-card service-code"><header><span>deploy/aws</span><b>{t.server}</b></header><pre><code>terraform apply<br /><span className="code-comment"># Lightsail · from $12/month</span></code></pre></div>
         </div>
       </section>
 

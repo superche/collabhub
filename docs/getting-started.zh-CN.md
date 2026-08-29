@@ -52,7 +52,7 @@ export const collabModel = defineCollaborationModel<Project, ProjectCommand>({
 
 ```ts
 const runtime = flags.collaboration
-  ? createCollabRuntime(documentId, currentUser.id)
+  ? createAppCollaboration(documentId, currentUser.id)
   : createRestRuntime(documentId)
 ```
 

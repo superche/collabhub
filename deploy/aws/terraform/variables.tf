@@ -1,11 +1,17 @@
 variable "region" {
-  description = "AWS region with at least two available Availability Zones."
+  description = "AWS region for the Lightsail instance. The documented USD price uses us-east-1."
   type        = string
   default     = "us-east-1"
 }
 
+variable "availability_zone" {
+  description = "Lightsail Availability Zone in the selected region."
+  type        = string
+  default     = "us-east-1a"
+}
+
 variable "name" {
-  description = "Prefix for CollabHub resources."
+  description = "Name of the CollabHub Lightsail instance and static IP."
   type        = string
   default     = "collabhub"
   validation {
@@ -24,93 +30,79 @@ variable "allowed_origin" {
 }
 
 variable "public_hostname" {
-  description = "DNS hostname covered by certificate_arn and pointed at the ALB."
+  description = "Optional custom hostname already pointed at the static IP. Null uses <ip>.sslip.io with automatic HTTPS."
   type        = string
+  default     = null
+  nullable    = true
   validation {
-    condition     = can(regex("^[A-Za-z0-9.-]+$", var.public_hostname)) && !startswith(var.public_hostname, "http")
+    condition     = var.public_hostname == null ? true : can(regex("^[A-Za-z0-9.-]+$", var.public_hostname))
     error_message = "public_hostname must be a DNS hostname without a URL scheme."
   }
 }
 
-variable "certificate_arn" {
-  description = "ACM certificate ARN for the public ALB HTTPS listener."
+variable "admin_cidr" {
+  description = "Optional administrator CIDR for direct SSH. Browser SSH remains available through Lightsail."
   type        = string
+  default     = null
+  nullable    = true
   validation {
-    condition     = startswith(var.certificate_arn, "arn:aws:acm:")
-    error_message = "certificate_arn must be an ACM certificate ARN."
+    condition     = var.admin_cidr == null ? true : can(cidrnetmask(var.admin_cidr))
+    error_message = "admin_cidr must be a valid IPv4 CIDR."
   }
 }
 
-variable "jwt_jwks_url" {
-  description = "HTTPS JWKS endpoint used to authenticate clients."
+variable "key_pair_name" {
+  description = "Optional existing Lightsail key pair for direct SSH."
   type        = string
-  validation {
-    condition     = startswith(var.jwt_jwks_url, "https://")
-    error_message = "jwt_jwks_url must use HTTPS."
-  }
+  default     = null
+  nullable    = true
 }
 
-variable "jwt_issuer" {
-  description = "Expected JWT issuer."
+variable "blueprint_id" {
+  description = "Lightsail OS blueprint."
   type        = string
+  default     = "ubuntu_24_04"
 }
 
-variable "jwt_audience" {
-  description = "Expected JWT audience."
+variable "bundle_id" {
+  description = "Lightsail bundle. small_3_0 is 2 vCPU / 2 GB at $12/month in us-east-1; medium_3_0 is 4 GB at $24/month."
   type        = string
-  default     = "collabhub"
-}
-
-variable "instance_type" {
-  description = "2C4G VM baseline. t3.medium is burstable; choose a fixed-performance family for measured production SLOs."
-  type        = string
-  default     = "t3.medium"
-}
-
-variable "min_instances" {
-  description = "Minimum VM count. Each VM runs one Gateway and one Worker."
-  type        = number
-  default     = 2
-  validation {
-    condition     = var.min_instances >= 2
-    error_message = "At least two instances are required for writer failover."
-  }
-}
-
-variable "max_instances" {
-  description = "Maximum VM count for the Auto Scaling Group."
-  type        = number
-  default     = 6
+  default     = "small_3_0"
 }
 
 variable "container_image" {
-  description = "Published or application-owned distributed CollabHub image."
+  description = "Immutable CollabHub distributed runtime image."
   type        = string
   default     = "ghcr.io/superche/collabhub:1.0.0"
 }
 
+variable "release_ref" {
+  description = "Git tag used to install the matching single-VM Compose profile."
+  type        = string
+  default     = "v1.0.0"
+}
+
+variable "repository_url" {
+  description = "Repository containing deploy/indie."
+  type        = string
+  default     = "https://github.com/superche/collabhub.git"
+}
+
 variable "domain_pack_config_json" {
-  description = "Declarative JSON Domain Pack. Null uses the repository example."
+  description = "Optional declarative JSON Domain Pack. Null uses the repository example."
   type        = string
   default     = null
   nullable    = true
 }
 
-variable "domain_pack_module_source" {
-  description = "Trusted ESM Domain Pack source. When set, it replaces domain_pack_config_json."
+variable "jwt_issuer" {
+  description = "Expected issuer for document-scoped JWTs created by the application backend."
   type        = string
-  default     = null
-  nullable    = true
+  default     = "my-app"
 }
 
-variable "ingress_cidrs" {
-  description = "CIDRs allowed to reach the HTTPS load balancer."
-  type        = list(string)
-  default     = ["0.0.0.0/0"]
-}
-
-variable "deletion_protection" {
-  description = "Protect the ALB and RDS instance from accidental deletion."
-  type        = bool
-  default     = true
+variable "jwt_audience" {
+  description = "Expected audience for document-scoped JWTs."
+  type        = string
+  default     = "collabhub"
 }

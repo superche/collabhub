@@ -17,7 +17,8 @@
   <a href="https://collabhub-demo.onrender.com/demo.html">Live React Flow demo</a> ·
   <a href="docs/getting-started.md">5-minute guide</a> ·
   <a href="docs/ai-coding-guide.md">AI Coding guide</a> ·
-  <a href="deploy/README.md">Deploy</a>
+  <a href="deploy/README.md">Deploy</a> ·
+  <a href="llms.txt">llms.txt</a>
 </p>
 
 > **v1.0:** stable APIs for structured React collaboration. Your application still owns login, document permissions, business rules, and its database.
@@ -30,7 +31,7 @@
 - **Better concurrent editing:** late commands re-run on current data by default; choose reject or reload per command.
 - **Recovery:** reconnect, snapshot recovery, idempotent retries, backpressure, and an IndexedDB pending queue.
 - **Typical UI patterns:** property changes, entity create/delete, list ordering, React Flow, and block editors.
-- **Deployable service:** standalone Docker for evaluation; PostgreSQL + Redis runtime, Kubernetes, AWS, and Alibaba Cloud for production.
+- **Deployable service:** standalone Docker for evaluation; persistent AWS single-VM from **$12/month**; PostgreSQL + Redis and Kubernetes for multi-node production.
 - **Diagnostics:** connection, pending work, document version, rejects, reconnects, and resyncs.
 
 ## Examples
@@ -148,7 +149,7 @@ docker run -p 4100:4100 -v collabhub-data:/data \
   ghcr.io/superche/collabhub-standalone:1.0.0
 ```
 
-Standalone is for evaluation and small single-node installs. Use the [existing-VM path](deploy/vm) with PostgreSQL + Redis for a cloud-neutral production setup. Provider adapters: [Kubernetes](deploy/kubernetes), [AWS](deploy/aws), [Alibaba Cloud](deploy/alicloud). The [Render deployment](render.yaml) is a real public demo, but its memory storage is intentionally not a durability reference.
+Standalone is for evaluation and small single-node installs. The [AWS path](deploy/aws) deploys the persistent indie stack on Lightsail from **$12/month**. Use the [existing-VM path](deploy/vm) with PostgreSQL + Redis or [Kubernetes](deploy/kubernetes) for multi-node failover. [Alibaba Cloud](deploy/alicloud) remains the certified cloud reference. The [Render deployment](render.yaml) is a real public demo, but its memory storage is intentionally not a durability reference.
 
 ### CollabHub or Yjs?
 

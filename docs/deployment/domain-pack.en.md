@@ -44,4 +44,4 @@ The module exports a Domain Pack object or a factory. The runtime injects `jsonS
 
 An ESM module is trusted server code, not a sandbox. Review and sign it, mount it read-only, and deploy the same immutable content to every Gateway and Worker. Set only one of `COLLABHUB_DOMAIN_PACK_CONFIG` and `COLLABHUB_DOMAIN_PACK_MODULE`.
 
-The AWS and Alibaba Cloud Terraform stacks accept either `domain_pack_config_json` or `domain_pack_module_source` and distribute the selected file to every VM. The standalone image also exposes `/config`; mount the same file there when testing locally.
+The AWS single-VM Terraform stack accepts `domain_pack_config_json` and writes it to the VM before startup. The Alibaba Cloud HA stack accepts either `domain_pack_config_json` or `domain_pack_module_source` and distributes the selected file to every VM. The standalone image also exposes `/config`; mount the same file there when testing locally.

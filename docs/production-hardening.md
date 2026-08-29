@@ -2,7 +2,11 @@
 
 Render is the public demo: it proves HTTPS/WSS, Origin filtering, shareable rooms, reconnects, and room cleanup on the public internet. It intentionally uses memory storage. The production reference is the same runtime with PostgreSQL, Redis, verified JWTs, private networking, and backups.
 
-## Smallest useful production shape
+## Start small, scale when needed
+
+For an independent app, the smallest persistent shape is one VM running Gateway, Worker, PostgreSQL, Redis, TLS, and local backups. The [AWS Lightsail reference](../deploy/aws/README.md) starts at $12/month; the [Alibaba Cloud Indie profile](../deploy/indie/README.md) is the same shape and has passed the real-cloud acceptance recorded in this repository. A single VM survives ordinary process and container restarts, but it does not provide failover.
+
+Use the following multi-node shape when downtime, rolling upgrades, or a database SLA matter:
 
 - Two Linux VMs, each 2 vCPU / 4 GiB, each running one Gateway and one Room Worker.
 - One private PostgreSQL 16 database. This is the durable source of snapshots, operations, idempotency receipts, and outbox events.
@@ -10,7 +14,7 @@ Render is the public demo: it proves HTTPS/WSS, Origin filtering, shareable room
 - One HTTPS/WSS load balancer forwarding public traffic only to Gateway port `7000`. Worker port `7100`, PostgreSQL, Redis, and metrics stay private.
 - Your existing backend issues short-lived JWTs. The simplest path uses one backend-only HS256 secret; Clerk/Auth0/Supabase-style setups can use JWKS. CollabHub validates issuer, audience, tenant, actor, and document grants in both modes.
 
-Use [the generic VM Compose path](../deploy/vm/README.md) on any provider, or [the Alibaba Cloud Terraform reference](../deploy/alicloud/README.md). Kubernetes and AWS remain optional adapters, not runtime requirements.
+Use [the generic VM Compose path](../deploy/vm/README.md) on any provider, [Kubernetes](../deploy/kubernetes/README.md), or the [Alibaba Cloud HA Terraform reference](../deploy/alicloud/README.md). These are deployment choices, not runtime requirements.
 
 ## Data upgrades
 

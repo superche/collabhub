@@ -17,7 +17,8 @@
   <a href="https://collabhub-demo.onrender.com/demo.html">React Flow 在线演示</a> ·
   <a href="docs/getting-started.zh-CN.md">5 分钟接入</a> ·
   <a href="docs/ai-coding-guide.md">AI Coding 指南</a> ·
-  <a href="deploy/README.md">部署</a>
+  <a href="deploy/README.md">部署</a> ·
+  <a href="llms.txt">llms.txt</a>
 </p>
 
 > **v1.0：** 面向结构化 React 协同的稳定 API。登录、文档权限、业务规则和业务数据库仍由你的应用管理。
@@ -30,7 +31,7 @@
 - **并发体验更好：** 旧命令默认在最新数据上重跑；也能按命令选择拒绝或重新加载。
 - **自动恢复：** 重连、快照恢复、幂等重试、背压，以及 IndexedDB 待提交队列。
 - **典型场景：** 字段修改、实体增删、列表排序、React Flow 和块编辑器。
-- **可部署：** 单机 Docker 用于试用；PostgreSQL + Redis、多节点、Kubernetes、AWS、阿里云用于生产基线。
+- **可部署：** 单机 Docker 用于试用；AWS 持久化单机版 **$12/月起**；PostgreSQL + Redis 与 Kubernetes 用于多节点生产。
 
 ## 案例
 
@@ -145,7 +146,7 @@ docker run -p 4100:4100 -v collabhub-data:/data \
   ghcr.io/superche/collabhub-standalone:1.0.0
 ```
 
-单机版用于试用和小规模部署。生产环境可以直接使用云无关的[已有 VM 部署](deploy/vm)，外接 PostgreSQL 和 Redis。云平台适配：[Kubernetes](deploy/kubernetes)、[AWS](deploy/aws)、[阿里云](deploy/alicloud)。[Render](render.yaml) 是真实公网 Demo，但内存存储不作为持久化参考。
+单机版用于试用和小规模部署。[AWS 方案](deploy/aws)使用 Lightsail 部署持久化独立开发者栈，**$12/月起**。需要多节点故障切换时，使用云无关的[已有 VM 部署](deploy/vm)或 [Kubernetes](deploy/kubernetes)，外接 PostgreSQL 和 Redis。[阿里云](deploy/alicloud)保留为已认证的云环境。[Render](render.yaml) 是真实公网 Demo，但内存存储不作为持久化参考。
 
 ### CollabHub 还是 Yjs？
 

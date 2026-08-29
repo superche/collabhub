@@ -2,7 +2,11 @@
 
 Render 是公网 Demo：它证明 HTTPS/WSS、Origin 限制、Room 分享、断线恢复和 Room 回收可以在真实公网运行；它故意使用内存存储。生产参考仍使用同一个运行时，只是换成 PostgreSQL、Redis、受验证 JWT、私网和备份。
 
-## 最小生产结构
+## 从单机开始，按需扩容
+
+独立应用最小的持久化形态是一台 VM：同时运行 Gateway、Worker、PostgreSQL、Redis、TLS 和本地备份。[AWS Lightsail 参考配置](../deploy/aws/README.zh-CN.md)从 12 美元/月起；[阿里云独立开发者版](../deploy/indie/README.md)采用同一形态，并已完成仓库所记录的真实云上验收。单机能承受普通进程和容器重启，但不提供故障切换。
+
+当业务需要故障切换、滚动升级或数据库 SLA 时，再升级到下面的多节点形态：
 
 - 两台 Linux VM，每台 2C4G，各运行一个 Gateway 和 Worker。
 - 一个私网 PostgreSQL 16，保存 snapshot、operation、幂等回执和 outbox，是数据来源。
@@ -10,7 +14,7 @@ Render 是公网 Demo：它证明 HTTPS/WSS、Origin 限制、Room 分享、断�
 - 一个 HTTPS/WSS 负载均衡，只把公网流量转发到 Gateway `7000`。Worker `7100`、数据库、Redis 和 metrics 只走私网。
 - 继续由业务已有后端签发短期 JWT。最简单的路径只需一条后端专用 HS256 密钥；已有 Clerk/Auth0/Supabase 一类身份服务时可改用 JWKS。两种模式都会校验 issuer、audience、tenant、actor 和文档权限。
 
-云厂商不限。已有 VM 直接用[通用 VM 部署](../deploy/vm/README.md)，阿里云认证环境使用[阿里云 Terraform](../deploy/alicloud/README.zh-CN.md)。Kubernetes 和 AWS 只是可选外壳。
+云厂商不限。已有 VM 直接用[通用 VM 部署](../deploy/vm/README.md)，也可以使用 [Kubernetes](../deploy/kubernetes/README.md) 或[阿里云高可用 Terraform](../deploy/alicloud/README.zh-CN.md)。这些只是部署选择，不是运行时前提。
 
 ## 数据升级
 

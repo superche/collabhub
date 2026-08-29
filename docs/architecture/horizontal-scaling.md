@@ -73,14 +73,14 @@ kubectl apply -k deploy/kubernetes/base
 不使用 Kubernetes 时，可以直接部署 VM + 托管数据库：
 
 ```bash
-# AWS：ALB + Auto Scaling 2C4G VM + Multi-AZ RDS + ElastiCache
+# AWS 独立开发者版：一台持久化 Lightsail，$12/月起
 cd deploy/aws/terraform && terraform init && terraform apply
 
 # 阿里云：ALB + 2C4G ECS + 高可用 RDS + Tair/Redis
 cd deploy/alicloud/terraform && terraform init && terraform apply
 ```
 
-每台 VM 同时运行一个 Gateway 和一个 Worker。两套配置都会要求 HTTPS/JWT 参数，并将所选 JSON 或 ESM Domain Pack 分发到全部进程。详见[部署目录](../../deploy/README.md)和[外挂 Domain Pack](../deployment/domain-pack.md)。Terraform 校验通过不等于完成云上长稳压测，上线前仍需使用真实业务规则和数据规模验收。
+AWS 配置运行单节点 indie profile，不宣称故障切换；阿里云配置仍是托管高可用参考。在 AWS 上做高可用时，使用通用 VM 或 Kubernetes 路径，外接托管 PostgreSQL 与 Redis。详见[部署目录](../../deploy/README.md)和[外挂 Domain Pack](../deployment/domain-pack.md)。Terraform 校验通过不等于完成云上长稳压测，上线前仍需使用真实业务规则和数据规模验收。
 
 CPU HPA 只是兜底。生产应接入 Prometheus Adapter/KEDA，以 Gateway connection/egress 和 Worker mailbox/commit latency 作为主扩容指标。
 

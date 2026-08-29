@@ -24,7 +24,7 @@ The source and all ten public packages report `1.0.0`. Stable `v1.0.0` was publi
 - `backup.sh` created a private custom-format dump; `verify-backup.sh` restored it into a temporary database and verified all seven public tables.
 - A 600.3-second public HTTPS/WSS soak accepted and broadcast 961/961 incremental graph operations with zero retries, 19 successful readiness samples, and p50/p95/p99 latency of 344.10/386.35/430.69 ms from the developer machine. PostgreSQL ended at canonical v961 / snapshot v900 / 961 WAL / 961 receipts. Final container memory was 83 MiB Gateway, 122 MiB Worker, 61 MiB PostgreSQL, 59 MiB Caddy, and 25 MiB Redis; host swap remained unused.
 
-This certifies the budget single-VM KISS profile and its public WSS, persistence, backup, and restart path. Render remains the public demo and intentionally uses ephemeral storage. The AWS/Alibaba Cloud multi-node templates are provider-validated deployment baselines, not a managed-service SLA or a completed regional failover certification.
+This certifies the budget single-VM KISS profile and its public WSS, persistence, backup, and restart path. Render remains the public demo and intentionally uses ephemeral storage. The AWS single-VM and Alibaba Cloud HA templates are provider-validated deployment baselines; neither validation is a managed-service SLA or a completed regional failover certification.
 
 CollabHub `0.2.0` is a technical preview, not a production SLO. The 2026-08-28 local release gate produced this evidence:
 
@@ -84,6 +84,6 @@ The scheduled live smoke checks the deployed `/healthz`, requires the Origin all
 
 CI builds the demo, standalone, and PostgreSQL/Redis distributed images. The local cluster acceptance starts two Gateways and two Room Workers as independent processes, kills the current writer, and verifies fenced takeover, linked updates, pending replay, and snapshot recovery.
 
-The deploy-configuration gate renders Docker Compose and the 11-resource Kustomize base, then initializes and validates the AWS and Alibaba Cloud Terraform stacks against their real provider schemas. Both cloud-init templates were also rendered locally with complete inputs. Those multi-node Terraform stacks were not applied; the separate real Indie Alibaba Cloud VM and its bounded soak are documented above.
+The deploy-configuration gate renders Docker Compose and the 11-resource Kustomize base, then initializes and validates the AWS single-VM and Alibaba Cloud HA Terraform stacks against their real provider schemas. Both cloud-init templates were also rendered locally with complete inputs. Those Terraform stacks were not applied; the separate real Indie Alibaba Cloud VM and its bounded soak are documented above.
 
 Detailed traces, payload sizes, process IDs, performance samples, and historical recordings remain in the [full Chinese acceptance log](acceptance.md). Read [known limitations](known-limitations.en.md) before adoption.

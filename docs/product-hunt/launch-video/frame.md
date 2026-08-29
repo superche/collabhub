@@ -39,6 +39,8 @@ Professional, calm developer tooling. The visual language should feel like a pre
 ## Do
 
 - Show real CollabHub UI and real integration code
+- Keep every displayed API call type-checkable against v1.0.0
+- Show AWS pricing in USD and distinguish the single-VM path from multi-node production
 - Keep one strong blue focal point per scene
 - Use the yellow signal only for a small call to action or status accent
 - Keep all text readable without sound

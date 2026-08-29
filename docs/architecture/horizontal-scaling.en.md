@@ -28,17 +28,17 @@ The smoke connects Alice and Bob through different Gateways, kills the current w
 
 ## Cloud baseline
 
-The OCI image targets Node.js 22, PostgreSQL 15/16, Redis 7.2+, and Kubernetes 1.29+. The Kustomize base is portable to EKS, GKE, AKS, and ACK. Two VM-oriented Terraform stacks are also included:
+The OCI image targets Node.js 22, PostgreSQL 15/16, Redis 7.2+, and Kubernetes 1.29+. The Kustomize base is portable to EKS, GKE, AKS, and ACK. Cloud entry points are deliberately separated by operating model:
 
 ```bash
-# AWS: ALB + Auto Scaling 2C4G VMs + Multi-AZ RDS + ElastiCache
+# AWS indie: one persistent Lightsail VM, from $12/month
 cd deploy/aws/terraform && terraform init && terraform apply
 
 # Alibaba Cloud: ALB + 2C4G ECS + HA RDS + Tair/Redis
 cd deploy/alicloud/terraform && terraform init && terraform apply
 ```
 
-Every VM runs one Gateway and one Worker. Both stacks enforce HTTPS/JWT inputs and distribute the selected JSON or ESM Domain Pack to every process. See [deployment layout](../../deploy/README.md) and [external Domain Packs](../deployment/domain-pack.en.md).
+The AWS stack runs the single-node indie profile and does not claim failover. The Alibaba Cloud stack is the managed HA reference. For AWS HA, run the same distributed image through the generic VM or Kubernetes path with managed PostgreSQL and Redis. See [deployment layout](../../deploy/README.md) and [external Domain Packs](../deployment/domain-pack.en.md).
 
 The published 2C4G numbers are conservative scheduling inputs—not production SLOs. Capacity must be retested with the real Domain Pack, snapshot size, and managed database. A successful Terraform validation is not a managed-cloud soak test.
 

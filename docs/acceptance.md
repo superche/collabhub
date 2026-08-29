@@ -24,7 +24,7 @@
 - `backup.sh` 生成私有 custom-format 备份；`verify-backup.sh` 将其真实恢复到临时数据库并验证 7 张公开表。
 - 600.3 秒公网 HTTPS/WSS soak 共接受并广播 961/961 条增量图操作，0 retry，19 次 readiness 全部成功；开发机到香港的 p50/p95/p99 为 344.10/386.35/430.69 ms。PostgreSQL 最终 canonical v961 / snapshot v900 / 961 WAL / 961 receipt。结束时 Gateway 83 MiB、Worker 122 MiB、PostgreSQL 61 MiB、Caddy 59 MiB、Redis 25 MiB，主机 Swap 未使用。
 
-以上认证覆盖低成本单 VM KISS 方案的公网 WSS、持久化、备份和重启恢复。Render 仍是公开 Demo，且故意使用临时存储。AWS/阿里云多节点模板只承诺 provider 校验通过，不等同托管 SLA 或已完成跨可用区故障认证。
+以上认证覆盖低成本单 VM KISS 方案的公网 WSS、持久化、备份和重启恢复。Render 仍是公开 Demo，且故意使用临时存储。AWS 单机模板与阿里云高可用模板只承诺 provider 校验通过，不等同托管 SLA 或已完成跨可用区故障认证。
 
 日期：2026-08-29（Asia/Shanghai）
 环境：macOS arm64、Node.js v24.18.0、pnpm 10.11.0、Playwright Chromium 151.0.7922.34。
@@ -66,7 +66,7 @@
 
 分布式 runtime、Demo 与 `deploy/docker/standalone.Dockerfile` 均纳入 CI 构建。JSON 与 ESM 外挂分别真实启动 standalone，日志确认加载 `app.json` 与 `app.linked-fields`，`/healthz` 均返回成功。三张重构后镜像已在本机真实构建。
 
-部署配置门禁完成 Docker Compose 解析、Kustomize 11 个资源渲染，以及 AWS provider `6.62.0`、阿里云 provider `1.290.0` 的 `init + validate`。两份 cloud-init 也使用完整占位输入实际渲染。这里证明的是配置与 provider schema 有效；未创建付费云资源，也不宣称完成云上长稳压测。
+部署配置门禁完成 Docker Compose 解析、Kustomize 11 个资源渲染，以及 AWS 单机 provider `6.62.0`、阿里云高可用 provider `1.290.0` 的 `init + validate`。两份 cloud-init 也使用完整占位输入实际渲染。这里证明的是配置与 provider schema 有效；未创建付费云资源，也不宣称完成云上长稳压测。
 
 Render 服务已把 Dockerfile Path 更新为 `./deploy/docker/demo.Dockerfile`，Source `b909337` 部署成功。线上 `/healthz` 返回 `0.1.3`；`pnpm smoke:live-demo` 验证可信 WebSocket 握手成功、非法 Origin 返回 HTTP 403。
 

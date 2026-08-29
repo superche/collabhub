@@ -44,4 +44,4 @@ docker run --rm --network host \
 
 ESM 文件是受信任的服务端代码，不是安全沙盒。必须经过代码审查、只读挂载，并确保所有 Gateway 和 Worker 使用完全相同的不可变文件。`COLLABHUB_DOMAIN_PACK_CONFIG` 与 `COLLABHUB_DOMAIN_PACK_MODULE` 只能设置一个。
 
-AWS 和阿里云 Terraform 都支持 `domain_pack_config_json` 或 `domain_pack_module_source`，并把选定文件分发到每台 VM。单机镜像也暴露 `/config`，本地验证时可直接挂载同一份文件。
+AWS 单机 Terraform 支持 `domain_pack_config_json`，启动前会把 JSON 写入 VM；阿里云高可用 Terraform 同时支持 `domain_pack_config_json` 与 `domain_pack_module_source`，并把选定文件分发到每台 VM。单机镜像也暴露 `/config`，本地验证时可直接挂载同一份文件。
