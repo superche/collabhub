@@ -12,6 +12,9 @@ jwt_audience    = "collabhub"
 instance_type  = "ecs.c7.large"
 instance_count = 2
 
+# CollabHub keeps durable room state in PostgreSQL; Redis only coordinates nodes.
+redis_instance_class = "redis.master.small.default"
+
 # The published image can load either JSON or the self-contained ESM module below.
 container_image = "ghcr.io/superche/collabhub:0.2.0"
 

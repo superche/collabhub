@@ -9,40 +9,36 @@ install -d -m 0700 /etc/collabhub /etc/collabhub/secrets /opt/collabhub/config
 aliyun configure set --profile collabhub --mode EcsRamRole --ram-role-name '${ram_role_name}' --region '${region}'
 
 get_secret() {
-  local secret_name="$1"
-  local attempt result
+  local object_key="$1"
+  local output_file="$2"
+  local attempt
   for attempt in $(seq 1 60); do
-    if result=$(aliyun kms GetSecretValue --profile collabhub --region '${region}' --SecretName "$secret_name" 2>/dev/null); then
-      printf '%s' "$result" | jq -er .SecretData
+    if aliyun oss cp "oss://${secret_bucket}/$object_key" "$output_file" --force --profile collabhub --region '${region}' --endpoint-type vpc >/dev/null 2>&1; then
       return
     fi
     sleep 5
   done
-  echo "Unable to retrieve KMS secret $secret_name" >&2
+  echo "Unable to retrieve runtime secret $object_key" >&2
   return 1
 }
 
 INSTANCE_ID=$(hostname)
 PRIVATE_IP=$(hostname -I | awk '{print $1}')
-DB_PASSWORD=$(get_secret '${database_secret_name}')
-REDIS_PASSWORD=$(get_secret '${redis_secret_name}')
-INTERNAL_TOKEN=$(get_secret '${internal_secret_name}')
-%{ if jwt_secret_name != "" ~}
-JWT_SHARED_SECRET=$(get_secret '${jwt_secret_name}')
+get_secret '${database_secret_key}' /etc/collabhub/secrets/database-password
+get_secret '${redis_secret_key}' /etc/collabhub/secrets/redis-password
+get_secret '${internal_secret_key}' /etc/collabhub/secrets/internal-token
+%{ if jwt_secret_key != "" ~}
+get_secret '${jwt_secret_key}' /etc/collabhub/secrets/jwt-shared-secret
 %{ endif ~}
+DB_PASSWORD=$(cat /etc/collabhub/secrets/database-password)
+REDIS_PASSWORD=$(cat /etc/collabhub/secrets/redis-password)
 DB_PASSWORD_URI=$(jq -nr --arg value "$DB_PASSWORD" '$value|@uri')
 REDIS_PASSWORD_URI=$(jq -nr --arg value "$REDIS_PASSWORD" '$value|@uri')
 printf '%s' "postgresql://collabhub:$DB_PASSWORD_URI@${database_host}:5432/collabhub?sslmode=require" > /etc/collabhub/secrets/database-url
 printf '%s' "rediss://default:$REDIS_PASSWORD_URI@${redis_host}:6379" > /etc/collabhub/secrets/redis-url
-printf '%s' "$INTERNAL_TOKEN" > /etc/collabhub/secrets/internal-token
-%{ if jwt_secret_name != "" ~}
-printf '%s' "$JWT_SHARED_SECRET" > /etc/collabhub/secrets/jwt-shared-secret
-%{ endif ~}
 chmod 0400 /etc/collabhub/secrets/*
-unset DB_PASSWORD REDIS_PASSWORD INTERNAL_TOKEN DB_PASSWORD_URI REDIS_PASSWORD_URI
-%{ if jwt_secret_name != "" ~}
-unset JWT_SHARED_SECRET
-%{ endif ~}
+rm -f /etc/collabhub/secrets/database-password /etc/collabhub/secrets/redis-password
+unset DB_PASSWORD REDIS_PASSWORD DB_PASSWORD_URI REDIS_PASSWORD_URI
 printf '%s' '${domain_pack_source_base64}' | base64 -d > /opt/collabhub/config/${domain_pack_file_name}
 chmod 0400 /opt/collabhub/config/${domain_pack_file_name}
 

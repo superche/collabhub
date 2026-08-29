@@ -100,3 +100,6 @@ jobs:
       - run: terraform fmt -check -recursive deploy/alicloud/terraform
       - run: terraform -chdir=deploy/alicloud/terraform init -backend=false
       - run: terraform -chdir=deploy/alicloud/terraform validate
+      - run: terraform fmt -check -recursive deploy/alicloud/state-bootstrap
+      - run: terraform -chdir=deploy/alicloud/state-bootstrap init -backend=false
+      - run: terraform -chdir=deploy/alicloud/state-bootstrap validate

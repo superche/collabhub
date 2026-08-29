@@ -15,9 +15,9 @@ output "redis_endpoint" {
   value = alicloud_kvstore_instance.redis.connection_domain
 }
 
-output "jwt_secret_name" {
-  description = "KMS secret your existing backend reads for the simple auth mode. Null when jwt_jwks_url is configured."
-  value       = var.jwt_jwks_url == null ? alicloud_kms_secret.jwt[0].secret_name : null
+output "jwt_secret_object_uri" {
+  description = "Private OSS object your existing backend may read for the simple auth mode. Null when jwt_jwks_url is configured."
+  value       = var.jwt_jwks_url == null ? "oss://${alicloud_oss_bucket.runtime_secrets.bucket}/${local.secret_object_keys.jwt}" : null
 }
 
 output "runtime_shape" {

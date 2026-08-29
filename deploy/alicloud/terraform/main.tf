@@ -6,12 +6,21 @@ data "alicloud_images" "linux" {
   name_regex  = "^aliyun_3_x64_20G_alibase_.*"
 }
 
+data "alicloud_caller_identity" "current" {}
+
 locals {
   zones                   = slice(data.alicloud_alb_zones.available.zones, 0, 2)
   domain_pack_source      = var.domain_pack_module_source != null ? var.domain_pack_module_source : coalesce(var.domain_pack_config_json, file("${path.module}/../../domain-pack/domain-pack.example.json"))
   domain_pack_file_name   = var.domain_pack_module_source != null ? "domain-pack.mjs" : "domain-pack.json"
   domain_pack_environment = var.domain_pack_module_source != null ? "COLLABHUB_DOMAIN_PACK_MODULE" : "COLLABHUB_DOMAIN_PACK_CONFIG"
-  tags                    = { Project = var.name, ManagedBy = "Terraform", Service = "collabhub" }
+  secret_bucket_name      = "${substr(var.name, 0, 12)}-secrets-${data.alicloud_caller_identity.current.account_id}-${var.region}"
+  secret_object_keys = {
+    database = "database-url-password"
+    redis    = "redis-password"
+    internal = "internal-token"
+    jwt      = "jwt-shared-secret"
+  }
+  tags = { Project = var.name, ManagedBy = "Terraform", Service = "collabhub" }
 }
 
 resource "alicloud_vpc" "this" {
@@ -95,45 +104,63 @@ resource "random_password" "jwt" {
   special = false
 }
 
-resource "alicloud_kms_secret" "database" {
-  secret_name                   = "${var.name}-database-password"
-  secret_data                   = random_password.database.result
-  version_id                    = "v1"
-  description                   = "CollabHub PostgreSQL password"
-  force_delete_without_recovery = false
-  recovery_window_in_days       = 7
-  tags                          = local.tags
+resource "alicloud_oss_bucket" "runtime_secrets" {
+  bucket          = local.secret_bucket_name
+  force_destroy   = false
+  storage_class   = "Standard"
+  redundancy_type = "LRS"
+  tags            = local.tags
+
+  versioning {
+    status = "Enabled"
+  }
+
+  server_side_encryption_rule {
+    sse_algorithm = "AES256"
+  }
 }
 
-resource "alicloud_kms_secret" "redis" {
-  secret_name                   = "${var.name}-redis-password"
-  secret_data                   = random_password.redis.result
-  version_id                    = "v1"
-  description                   = "CollabHub Redis password"
-  force_delete_without_recovery = false
-  recovery_window_in_days       = 7
-  tags                          = local.tags
+resource "alicloud_oss_bucket_acl" "runtime_secrets" {
+  bucket = alicloud_oss_bucket.runtime_secrets.bucket
+  acl    = "private"
 }
 
-resource "alicloud_kms_secret" "internal" {
-  secret_name                   = "${var.name}-internal-token"
-  secret_data                   = random_password.internal.result
-  version_id                    = "v1"
-  description                   = "CollabHub Gateway to Worker token"
-  force_delete_without_recovery = false
-  recovery_window_in_days       = 7
-  tags                          = local.tags
+resource "alicloud_oss_bucket_public_access_block" "runtime_secrets" {
+  bucket              = alicloud_oss_bucket.runtime_secrets.bucket
+  block_public_access = true
 }
 
-resource "alicloud_kms_secret" "jwt" {
-  count                         = var.jwt_jwks_url == null ? 1 : 0
-  secret_name                   = "${var.name}-jwt-shared-secret"
-  secret_data                   = random_password.jwt[0].result
-  version_id                    = "v1"
-  description                   = "Backend-only JWT signing secret for the simple integration path"
-  force_delete_without_recovery = false
-  recovery_window_in_days       = 7
-  tags                          = local.tags
+resource "alicloud_oss_bucket_object" "database" {
+  bucket                 = alicloud_oss_bucket.runtime_secrets.bucket
+  key                    = local.secret_object_keys.database
+  content                = random_password.database.result
+  acl                    = "private"
+  server_side_encryption = "AES256"
+}
+
+resource "alicloud_oss_bucket_object" "redis" {
+  bucket                 = alicloud_oss_bucket.runtime_secrets.bucket
+  key                    = local.secret_object_keys.redis
+  content                = random_password.redis.result
+  acl                    = "private"
+  server_side_encryption = "AES256"
+}
+
+resource "alicloud_oss_bucket_object" "internal" {
+  bucket                 = alicloud_oss_bucket.runtime_secrets.bucket
+  key                    = local.secret_object_keys.internal
+  content                = random_password.internal.result
+  acl                    = "private"
+  server_side_encryption = "AES256"
+}
+
+resource "alicloud_oss_bucket_object" "jwt" {
+  count                  = var.jwt_jwks_url == null ? 1 : 0
+  bucket                 = alicloud_oss_bucket.runtime_secrets.bucket
+  key                    = local.secret_object_keys.jwt
+  content                = random_password.jwt[0].result
+  acl                    = "private"
+  server_side_encryption = "AES256"
 }
 
 resource "alicloud_ram_role" "vm" {
@@ -157,10 +184,14 @@ resource "alicloud_ram_policy" "runtime_secrets" {
     Version = "1"
     Statement = [{
       Effect = "Allow"
-      Action = ["kms:GetSecretValue"]
+      Action = ["oss:GetObject"]
       Resource = concat(
-        [alicloud_kms_secret.database.arn, alicloud_kms_secret.redis.arn, alicloud_kms_secret.internal.arn],
-        var.jwt_jwks_url == null ? [alicloud_kms_secret.jwt[0].arn] : [],
+        [
+          "acs:oss:*:*:${alicloud_oss_bucket.runtime_secrets.bucket}/${local.secret_object_keys.database}",
+          "acs:oss:*:*:${alicloud_oss_bucket.runtime_secrets.bucket}/${local.secret_object_keys.redis}",
+          "acs:oss:*:*:${alicloud_oss_bucket.runtime_secrets.bucket}/${local.secret_object_keys.internal}",
+        ],
+        var.jwt_jwks_url == null ? ["acs:oss:*:*:${alicloud_oss_bucket.runtime_secrets.bucket}/${local.secret_object_keys.jwt}"] : [],
       )
     }]
   })
@@ -225,7 +256,7 @@ resource "alicloud_db_backup_policy" "postgres" {
 
 resource "alicloud_kvstore_instance" "redis" {
   db_instance_name  = "${var.name}-redis"
-  instance_class    = "redis.master.stand.default"
+  instance_class    = var.redis_instance_class
   instance_type     = "Redis"
   engine_version    = "7.0"
   payment_type      = "PostPaid"
@@ -255,11 +286,12 @@ resource "alicloud_instance" "node" {
   user_data = templatefile("${path.module}/user-data.sh.tftpl", {
     container_image           = var.container_image
     database_host             = alicloud_db_instance.postgres.connection_string
-    database_secret_name      = alicloud_kms_secret.database.secret_name
+    secret_bucket             = alicloud_oss_bucket.runtime_secrets.bucket
+    database_secret_key       = local.secret_object_keys.database
     redis_host                = alicloud_kvstore_instance.redis.connection_domain
-    redis_secret_name         = alicloud_kms_secret.redis.secret_name
-    internal_secret_name      = alicloud_kms_secret.internal.secret_name
-    jwt_secret_name           = var.jwt_jwks_url == null ? alicloud_kms_secret.jwt[0].secret_name : ""
+    redis_secret_key          = local.secret_object_keys.redis
+    internal_secret_key       = local.secret_object_keys.internal
+    jwt_secret_key            = var.jwt_jwks_url == null ? local.secret_object_keys.jwt : ""
     ram_role_name             = alicloud_ram_role.vm.role_name
     region                    = var.region
     domain_pack_source_base64 = base64encode(local.domain_pack_source)
@@ -276,6 +308,10 @@ resource "alicloud_instance" "node" {
     alicloud_db_account_privilege.collabhub,
     alicloud_kvstore_instance.redis,
     alicloud_ram_role_policy_attachment.runtime_secrets,
+    alicloud_oss_bucket_object.database,
+    alicloud_oss_bucket_object.redis,
+    alicloud_oss_bucket_object.internal,
+    alicloud_oss_bucket_object.jwt,
   ]
 }
 

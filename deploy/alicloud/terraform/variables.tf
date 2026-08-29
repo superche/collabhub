@@ -109,6 +109,12 @@ variable "rds_instance_type" {
   nullable    = true
 }
 
+variable "redis_instance_class" {
+  description = "Tair/Redis class for ephemeral coordination data. The default is the smallest practical 1 GB master-replica class."
+  type        = string
+  default     = "redis.master.small.default"
+}
+
 variable "deletion_protection" {
   description = "Protect ALB and RDS resources from accidental deletion."
   type        = bool

@@ -49,7 +49,7 @@ Worker 会先重放旧 WAL，再运行无 I/O、结果固定的迁移函数；�
 - 简单鉴权再设置 `JWT_SHARED_SECRET_FILE`，只有业务后端和 CollabHub 能拿到；React 只向业务后端获取短期 token。已有身份服务时改用 `JWT_JWKS_URL`。
 - `NODE_ENV=production` 会关闭所有开发用连接串和 token 回退，并要求内部 token 至少 32 个字符。
 - 公网 TLS 在负载均衡终止；数据库和 Redis 也使用 TLS。安全组只允许负载均衡访问 `7000`，CollabHub VM 之间访问 `7100`。
-- 阿里云 ECS 通过最小权限 RAM Role 从 KMS 读取 secret；cloud-init 不包含永久 AccessKey 和运行时密码。
+- 阿里云 KISS 栈让 ECS 通过最小权限 RAM Role 从加密私有 OSS 读取精确 secret 对象；cloud-init 不包含永久 AccessKey 和运行时密码。已有 secret manager 的团队可替换这层存储。
 - HTTP/WebSocket 默认最大 128 KiB；JSON 深度、节点数和集合宽度都有上限。
 - 连接数是单 Gateway 限制；HTTP 和 operation 限流写入 Redis，增加 Gateway 不会把总额度放大；Redis 故障时默认拒绝请求。
 - `/healthz` 只检查进程；`/readyz` 检查 PostgreSQL/Redis，优雅停机时返回 `503`；`/metrics` 必须带内部 token，并且只允许私网采集。

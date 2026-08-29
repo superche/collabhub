@@ -59,7 +59,7 @@ Back up PostgreSQL daily with point-in-time logs for at least seven days. Once p
 - For the simple auth path, also set `JWT_SHARED_SECRET_FILE`; only the application backend and CollabHub receive it. React fetches a short-lived token from the application backend. Use `JWT_JWKS_URL` instead when an identity provider already publishes signing keys.
 - `NODE_ENV=production` removes all development connection-string/token fallbacks and requires an internal token of at least 32 characters.
 - Use TLS at the public load balancer and TLS connections to managed PostgreSQL/Redis. Security groups allow `7000` from the load balancer and `7100` only from CollabHub VMs.
-- The Alibaba Cloud stack retrieves KMS secrets through a least-privilege ECS RAM role; no permanent AccessKey or runtime secret is embedded in cloud-init.
+- The Alibaba Cloud KISS stack retrieves exact objects from an encrypted private OSS bucket through a least-privilege ECS RAM role; no permanent AccessKey or runtime secret is embedded in cloud-init. Teams with an existing secret manager can replace this storage boundary.
 - HTTP and WebSocket messages default to 128 KiB. JSON depth, node count, and collection width are bounded.
 - Connection limits are local to a Gateway. Operation and HTTP token buckets use Redis, so adding Gateways does not multiply the public rate limit. Redis errors fail the request closed by default.
 - `/healthz` is a process liveness check. `/readyz` checks PostgreSQL/Redis and returns `503` while draining. `/metrics` requires the internal token header and must remain private.
