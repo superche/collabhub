@@ -15,12 +15,21 @@ set -a
 source .env
 set +a
 : "${COLLABHUB_HOST:?COLLABHUB_HOST is required}"
-: "${ACME_EMAIL:?ACME_EMAIL is required}"
 : "${ALLOWED_ORIGINS:?ALLOWED_ORIGINS is required}"
 : "${JWT_ISSUER:?JWT_ISSUER is required}"
 
-mkdir -p secrets backups
+mkdir -p secrets backups certbot/config certbot/work certbot/logs
 chmod 0700 secrets backups
+
+if [[ "${COLLABHUB_CADDYFILE:-./Caddyfile}" == "./Caddyfile.ip" ]]; then
+  docker run --rm --entrypoint test \
+    -v "$PWD/certbot/config:/etc/letsencrypt:ro" \
+    certbot/certbot:v5.4.0 \
+    -s /etc/letsencrypt/live/collabhub-ip/fullchain.pem || {
+    echo "Run ./issue-ip-certificate.sh before installing the IP-address profile." >&2
+    exit 1
+  }
+fi
 
 generate_secret() {
   local path="$1"

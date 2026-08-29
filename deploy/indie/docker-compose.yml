@@ -141,13 +141,13 @@ services:
       gateway: { condition: service_healthy }
     environment:
       COLLABHUB_HOST: ${COLLABHUB_HOST:?Set COLLABHUB_HOST in .env}
-      ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL in .env}
     mem_limit: 128m
     ports:
       - 80:80
       - 443:443
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${COLLABHUB_CADDYFILE:-./Caddyfile}:/etc/caddy/Caddyfile:ro
+      - ./certbot/config:/etc/letsencrypt:ro
       - caddy-data:/data
       - caddy-config:/config
     networks: [edge, internal]

@@ -9,7 +9,7 @@ This run certifies the one-VM Indie deployment path against a real Alibaba Cloud
 | Account | Verified before purchase; account identifier intentionally not published |
 | Region | Hong Kong (`cn-hongkong`) |
 | Instance | `collabhub-indie-cert` |
-| Public endpoint | `https://47-82-72-49.traefik.me` / `wss://47-82-72-49.traefik.me/collab` |
+| Public endpoint | `https://47.82.72.49` / `wss://47.82.72.49/collab` |
 | VM | 2 vCPU, 2 GiB RAM, 40 GB ESSD, Ubuntu 24.04 |
 | Purchase | CNY 39 for one month; `ManualRenewal` |
 | Expiry | 2026-09-29 16:00 UTC |
@@ -25,13 +25,14 @@ The preferred 2 vCPU / 4 GiB plan was unavailable in Hong Kong at purchase time.
 - Gateway diagnostics bind to `127.0.0.1:17000`; Caddy is the only public application entry point.
 - Browser Origin allowlist: `https://collabhub-demo.onrender.com`.
 - JWTs are document-scoped and signed from a server-side file secret. Acceptance tokens expired after ten minutes.
-- Publicly trusted certificate: CN/SAN `47-82-72-49.traefik.me`; Caddy manages automatic renewal through redundant ACME issuers.
+- Publicly trusted six-day Let's Encrypt certificate with IP SAN `47.82.72.49`.
+- A systemd timer checks the certificate twice daily and renews it with Certbot when fewer than three days remain.
 
 ## Evidence
 
 ### Public service
 
-`GET /readyz` returned HTTP/2 200 through the public IP and valid TLS certificate:
+`GET /readyz` returned HTTP/2 200 through the public IP and valid TLS certificate. This check used the literal IP address with no DNS or browser resolver override:
 
 ```json
 {"ready":true,"rooms":0}
@@ -94,16 +95,18 @@ Install from a clean Ubuntu VM:
 ```bash
 cd deploy/indie
 cp .env.example .env
-# Set COLLABHUB_HOST, ACME_EMAIL, ALLOWED_ORIGINS, and JWT_ISSUER.
+# Set COLLABHUB_HOST, ALLOWED_ORIGINS, and JWT_ISSUER.
+# For a bare IP, also set COLLABHUB_CADDYFILE=./Caddyfile.ip.
+./issue-ip-certificate.sh # bare IP only
 ./install.sh
+sudo ./install-ip-renewal-timer.sh # bare IP only
 ```
 
 Run the public protocol smoke from a checkout. `COLLABHUB_CONNECT_IP` is optional for diagnostics, but the final user-path acceptance must run without it.
 
 ```bash
-COLLABHUB_HTTP_ORIGIN=https://collabhub.example.com \
-COLLABHUB_WS_URL=wss://collabhub.example.com/collab \
-COLLABHUB_CONNECT_IP=203.0.113.10 \
+COLLABHUB_HTTP_ORIGIN=https://203.0.113.10 \
+COLLABHUB_WS_URL=wss://203.0.113.10/collab \
 COLLABHUB_ALLOWED_ORIGIN=https://app.example.com \
 COLLABHUB_ALICE_TOKEN='<short-lived-token>' \
 COLLABHUB_BOB_TOKEN='<short-lived-token>' \

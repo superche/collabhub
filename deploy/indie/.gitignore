@@ -1,4 +1,5 @@
 .env
 backups/
+certbot/
 domain-pack.json
 secrets/

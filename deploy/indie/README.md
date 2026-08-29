@@ -9,10 +9,26 @@ Only ports `80` and `443` are public. Restrict SSH to an administrator IP. Postg
 ```bash
 cd deploy/indie
 cp .env.example .env
-# Set the public host, ACME email, browser Origin, JWT issuer, audience, and an immutable image.
+# Set the public host, browser Origin, JWT issuer, audience, and an immutable image.
 ./install.sh
 ./smoke.sh
 ```
+
+If the VM has only a public IPv4 address, CollabHub can use a publicly trusted
+Let's Encrypt IP certificate without a domain or dynamic-DNS service:
+
+```bash
+# .env
+COLLABHUB_HOST=203.0.113.10
+COLLABHUB_CADDYFILE=./Caddyfile.ip
+
+./issue-ip-certificate.sh
+./install.sh
+sudo ./install-ip-renewal-timer.sh
+```
+
+IP certificates are short-lived. The timer checks twice daily and renews when
+fewer than three days remain. Port `80` must remain reachable for renewal.
 
 Do not silently fall back to an old image. The example pins the production-hardening certification image used by this repository; replace it with the next immutable release or digest after that release passes the same acceptance.
 
