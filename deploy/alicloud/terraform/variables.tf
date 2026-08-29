@@ -4,6 +4,12 @@ variable "region" {
   default     = "cn-hangzhou"
 }
 
+variable "credential_profile" {
+  description = "Alibaba Cloud CLI profile used by Terraform when no higher-priority environment credentials are present."
+  type        = string
+  default     = "collabhub-certification"
+}
+
 variable "name" {
   description = "Prefix for CollabHub resources."
   type        = string
@@ -104,4 +110,14 @@ variable "deletion_protection" {
   description = "Protect ALB and RDS resources from accidental deletion."
   type        = bool
   default     = true
+}
+
+variable "backup_retention_days" {
+  description = "RDS full and log backup retention. Restore drills should use the same value."
+  type        = number
+  default     = 7
+  validation {
+    condition     = var.backup_retention_days >= 7 && var.backup_retention_days <= 730
+    error_message = "backup_retention_days must be between 7 and 730."
+  }
 }

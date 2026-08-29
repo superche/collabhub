@@ -11,6 +11,7 @@ pnpm test:e2e
 pnpm smoke:demo
 pnpm smoke:live-demo
 pnpm smoke:todo-cluster
+pnpm smoke:postgres-hardening
 ```
 
 CI also builds distributed, standalone, and demo Dockerfiles. Package audit verifies compiled ESM, declarations, metadata, rewritten workspace dependencies, and exclusion of package source/tests. The fresh-project smoke generates an app outside the repository, installs only the two top-level integration packages, builds it, and verifies two Chromium clients. The scheduled live smoke verifies the deployed Origin allowlist.
@@ -37,7 +38,7 @@ Never reuse or overwrite a published version. Follow a failed release with a new
 
 ## Approval boundary for 1.0
 
-Only after explicit owner approval:
+Only after the production-hardening gates, Alibaba Cloud certification, and explicit owner approval:
 
 1. update every package and root version together;
 2. finalize changelog and compatibility statement;

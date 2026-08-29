@@ -3,7 +3,7 @@ set -euo pipefail
 
 dnf install -y docker jq
 systemctl enable --now docker
-install -d -m 0700 /etc/collabhub /opt/collabhub/config
+install -d -m 0700 /etc/collabhub /etc/collabhub/secrets /opt/collabhub/config
 
 TOKEN=$(curl -fsS -X PUT -H 'X-aws-ec2-metadata-token-ttl-seconds: 21600' http://169.254.169.254/latest/api/token)
 INSTANCE_ID=$(curl -fsS -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id)
@@ -16,20 +16,32 @@ DB_PASSWORD_URI=$(jq -nr --arg value "$DB_PASSWORD" '$value|@uri')
 REDIS_TOKEN=$(aws secretsmanager get-secret-value --region '${region}' --secret-id '${redis_secret_arn}' --query SecretString --output text)
 REDIS_TOKEN_URI=$(jq -nr --arg value "$REDIS_TOKEN" '$value|@uri')
 INTERNAL_TOKEN=$(aws secretsmanager get-secret-value --region '${region}' --secret-id '${internal_secret_arn}' --query SecretString --output text)
+printf '%s' "postgresql://$DB_USER:$DB_PASSWORD_URI@${database_host}:5432/collabhub?sslmode=require" > /etc/collabhub/secrets/database-url
+printf '%s' "rediss://default:$REDIS_TOKEN_URI@${redis_host}:6379" > /etc/collabhub/secrets/redis-url
+printf '%s' "$INTERNAL_TOKEN" > /etc/collabhub/secrets/internal-token
+chmod 0400 /etc/collabhub/secrets/*
+unset DB_SECRET DB_USER DB_PASSWORD DB_PASSWORD_URI REDIS_TOKEN REDIS_TOKEN_URI INTERNAL_TOKEN
 
 printf '%s' '${domain_pack_source_base64}' | base64 -d > /opt/collabhub/config/${domain_pack_file_name}
 chmod 0400 /opt/collabhub/config/${domain_pack_file_name}
 
 cat > /etc/collabhub/common.env <<EOF
-DATABASE_URL=postgresql://$DB_USER:$DB_PASSWORD_URI@${database_host}:5432/collabhub?sslmode=require
-REDIS_URL=rediss://default:$REDIS_TOKEN_URI@${redis_host}:6379
-INTERNAL_TOKEN=$INTERNAL_TOKEN
+NODE_ENV=production
+DATABASE_URL_FILE=/run/secrets/database-url
+REDIS_URL_FILE=/run/secrets/redis-url
+INTERNAL_TOKEN_FILE=/run/secrets/internal-token
 ${domain_pack_environment}=/config/${domain_pack_file_name}
 PG_POOL_MAX=10
 OWNER_LEASE_SECONDS=10
 MAX_WARM_ROOMS=1000
 IDLE_ROOM_MS=60000
 ROOM_CACHE_SCAN_INTERVAL_MS=3000
+WAL_RETENTION_VERSIONS=1000
+RECEIPT_TTL_MS=604800000
+DELIVERED_OUTBOX_TTL_MS=86400000
+SNAPSHOTS_PER_DOCUMENT=3
+COMPACTION_INTERVAL_MS=600000
+MAX_PAYLOAD_BYTES=131072
 RSS_LIMIT_BYTES=3221225472
 NODE_OPTIONS=--max-old-space-size=896
 EOF
@@ -72,7 +84,7 @@ Requires=docker.service
 Restart=always
 RestartSec=5
 ExecStartPre=-/usr/bin/docker rm -f collabhub-gateway
-ExecStart=/usr/bin/docker run --name collabhub-gateway --network host --env-file /etc/collabhub/common.env --env-file /etc/collabhub/gateway.env --mount type=bind,src=/opt/collabhub/config,dst=/config,readonly ${container_image}
+ExecStart=/usr/bin/docker run --name collabhub-gateway --network host --env-file /etc/collabhub/common.env --env-file /etc/collabhub/gateway.env --mount type=bind,src=/opt/collabhub/config,dst=/config,readonly --mount type=bind,src=/etc/collabhub/secrets,dst=/run/secrets,readonly ${container_image}
 ExecStop=/usr/bin/docker stop -t 30 collabhub-gateway
 
 [Install]
@@ -89,7 +101,7 @@ Requires=docker.service
 Restart=always
 RestartSec=5
 ExecStartPre=-/usr/bin/docker rm -f collabhub-worker
-ExecStart=/usr/bin/docker run --name collabhub-worker --network host --env-file /etc/collabhub/common.env --env-file /etc/collabhub/worker.env --mount type=bind,src=/opt/collabhub/config,dst=/config,readonly ${container_image}
+ExecStart=/usr/bin/docker run --name collabhub-worker --network host --env-file /etc/collabhub/common.env --env-file /etc/collabhub/worker.env --mount type=bind,src=/opt/collabhub/config,dst=/config,readonly --mount type=bind,src=/etc/collabhub/secrets,dst=/run/secrets,readonly ${container_image}
 ExecStop=/usr/bin/docker stop -t 30 collabhub-worker
 
 [Install]

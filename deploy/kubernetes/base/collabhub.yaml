@@ -71,7 +71,7 @@ spec:
     metadata:
       labels: { app: collabhub-worker }
     spec:
-      terminationGracePeriodSeconds: 30
+      terminationGracePeriodSeconds: 45
       securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
       containers:
         - name: collabhub
@@ -79,22 +79,30 @@ spec:
           imagePullPolicy: IfNotPresent
           ports: [{ name: internal, containerPort: 7100 }]
           env:
+            - { name: NODE_ENV, value: production }
             - { name: COLLABHUB_ROLE, value: worker }
             - { name: PORT, value: "7100" }
             - { name: POD_NAME, valueFrom: { fieldRef: { fieldPath: metadata.name } } }
             - { name: INSTANCE_ID, value: "$(POD_NAME)" }
             - { name: INTERNAL_URL, value: "http://$(POD_NAME).collabhub-worker-headless.collabhub.svc.cluster.local:7100" }
             - { name: COLLABHUB_DOMAIN_PACK_CONFIG, value: /config/domain-pack.json }
-            - { name: DATABASE_URL, valueFrom: { secretKeyRef: { name: collabhub-runtime, key: DATABASE_URL } } }
-            - { name: REDIS_URL, valueFrom: { secretKeyRef: { name: collabhub-runtime, key: REDIS_URL } } }
-            - { name: INTERNAL_TOKEN, valueFrom: { secretKeyRef: { name: collabhub-runtime, key: INTERNAL_TOKEN } } }
+            - { name: DATABASE_URL_FILE, value: /run/secrets/collabhub/DATABASE_URL }
+            - { name: REDIS_URL_FILE, value: /run/secrets/collabhub/REDIS_URL }
+            - { name: INTERNAL_TOKEN_FILE, value: /run/secrets/collabhub/INTERNAL_TOKEN }
             - { name: PG_POOL_MAX, value: "10" }
             - { name: MAX_WARM_ROOMS, value: "1000" }
             - { name: IDLE_ROOM_MS, value: "60000" }
             - { name: ROOM_CACHE_SCAN_INTERVAL_MS, value: "3000" }
+            - { name: WAL_RETENTION_VERSIONS, value: "1000" }
+            - { name: RECEIPT_TTL_MS, value: "604800000" }
+            - { name: DELIVERED_OUTBOX_TTL_MS, value: "86400000" }
+            - { name: SNAPSHOTS_PER_DOCUMENT, value: "3" }
+            - { name: COMPACTION_INTERVAL_MS, value: "600000" }
+            - { name: MAX_PAYLOAD_BYTES, value: "131072" }
             - { name: NODE_OPTIONS, value: --max-old-space-size=896 }
           volumeMounts:
             - { name: domain-pack, mountPath: /config, readOnly: true }
+            - { name: runtime-secrets, mountPath: /run/secrets/collabhub, readOnly: true }
           resources:
             requests: { cpu: "1", memory: 2Gi }
             limits: { cpu: "2", memory: 4Gi }
@@ -104,6 +112,8 @@ spec:
       volumes:
         - name: domain-pack
           configMap: { name: collabhub-domain-pack }
+        - name: runtime-secrets
+          secret: { secretName: collabhub-runtime, defaultMode: 0400 }
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -118,7 +128,7 @@ spec:
     metadata:
       labels: { app: collabhub-gateway }
     spec:
-      terminationGracePeriodSeconds: 30
+      terminationGracePeriodSeconds: 45
       securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
       containers:
         - name: collabhub
@@ -126,14 +136,15 @@ spec:
           imagePullPolicy: IfNotPresent
           ports: [{ name: http, containerPort: 7000 }]
           env:
+            - { name: NODE_ENV, value: production }
             - { name: COLLABHUB_ROLE, value: gateway }
             - { name: PORT, value: "7000" }
             - { name: POD_NAME, valueFrom: { fieldRef: { fieldPath: metadata.name } } }
             - { name: INSTANCE_ID, value: "$(POD_NAME)" }
             - { name: COLLABHUB_DOMAIN_PACK_CONFIG, value: /config/domain-pack.json }
-            - { name: DATABASE_URL, valueFrom: { secretKeyRef: { name: collabhub-runtime, key: DATABASE_URL } } }
-            - { name: REDIS_URL, valueFrom: { secretKeyRef: { name: collabhub-runtime, key: REDIS_URL } } }
-            - { name: INTERNAL_TOKEN, valueFrom: { secretKeyRef: { name: collabhub-runtime, key: INTERNAL_TOKEN } } }
+            - { name: DATABASE_URL_FILE, value: /run/secrets/collabhub/DATABASE_URL }
+            - { name: REDIS_URL_FILE, value: /run/secrets/collabhub/REDIS_URL }
+            - { name: INTERNAL_TOKEN_FILE, value: /run/secrets/collabhub/INTERNAL_TOKEN }
             - { name: JWT_JWKS_URL, valueFrom: { secretKeyRef: { name: collabhub-runtime, key: JWT_JWKS_URL } } }
             - { name: JWT_ISSUER, valueFrom: { secretKeyRef: { name: collabhub-runtime, key: JWT_ISSUER } } }
             - { name: JWT_AUDIENCE, valueFrom: { secretKeyRef: { name: collabhub-runtime, key: JWT_AUDIENCE } } }
@@ -144,9 +155,11 @@ spec:
             - { name: MAX_CONNECTIONS_PER_IP, value: "50" }
             - { name: OPERATION_RATE_PER_SECOND, value: "30" }
             - { name: OPERATION_BURST, value: "60" }
+            - { name: MAX_PAYLOAD_BYTES, value: "131072" }
             - { name: NODE_OPTIONS, value: --max-old-space-size=896 }
           volumeMounts:
             - { name: domain-pack, mountPath: /config, readOnly: true }
+            - { name: runtime-secrets, mountPath: /run/secrets/collabhub, readOnly: true }
           resources:
             requests: { cpu: "1", memory: 2Gi }
             limits: { cpu: "2", memory: 4Gi }
@@ -156,6 +169,8 @@ spec:
       volumes:
         - name: domain-pack
           configMap: { name: collabhub-domain-pack }
+        - name: runtime-secrets
+          secret: { secretName: collabhub-runtime, defaultMode: 0400 }
 ---
 apiVersion: v1
 kind: Service

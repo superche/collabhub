@@ -14,5 +14,6 @@ terraform {
 }
 
 provider "alicloud" {
-  region = var.region
+  region  = var.region
+  profile = var.credential_profile
 }

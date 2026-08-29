@@ -89,6 +89,70 @@ resource "random_password" "internal" {
   special = false
 }
 
+resource "alicloud_kms_secret" "database" {
+  secret_name                   = "${var.name}-database-password"
+  secret_data                   = random_password.database.result
+  version_id                    = "v1"
+  description                   = "CollabHub PostgreSQL password"
+  force_delete_without_recovery = false
+  recovery_window_in_days       = 7
+  tags                          = local.tags
+}
+
+resource "alicloud_kms_secret" "redis" {
+  secret_name                   = "${var.name}-redis-password"
+  secret_data                   = random_password.redis.result
+  version_id                    = "v1"
+  description                   = "CollabHub Redis password"
+  force_delete_without_recovery = false
+  recovery_window_in_days       = 7
+  tags                          = local.tags
+}
+
+resource "alicloud_kms_secret" "internal" {
+  secret_name                   = "${var.name}-internal-token"
+  secret_data                   = random_password.internal.result
+  version_id                    = "v1"
+  description                   = "CollabHub Gateway to Worker token"
+  force_delete_without_recovery = false
+  recovery_window_in_days       = 7
+  tags                          = local.tags
+}
+
+resource "alicloud_ram_role" "vm" {
+  role_name   = "${var.name}-vm"
+  description = "CollabHub ECS runtime identity"
+  assume_role_policy_document = jsonencode({
+    Version = "1"
+    Statement = [{
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
+      Principal = { Service = ["ecs.aliyuncs.com"] }
+    }]
+  })
+  force = true
+}
+
+resource "alicloud_ram_policy" "runtime_secrets" {
+  policy_name = "${var.name}-read-runtime-secrets"
+  description = "Read only the three CollabHub runtime secrets"
+  policy_document = jsonencode({
+    Version = "1"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["kms:GetSecretValue"]
+      Resource = [alicloud_kms_secret.database.arn, alicloud_kms_secret.redis.arn, alicloud_kms_secret.internal.arn]
+    }]
+  })
+  force = true
+}
+
+resource "alicloud_ram_role_policy_attachment" "runtime_secrets" {
+  role_name   = alicloud_ram_role.vm.role_name
+  policy_name = alicloud_ram_policy.runtime_secrets.policy_name
+  policy_type = alicloud_ram_policy.runtime_secrets.type
+}
+
 resource "alicloud_db_instance" "postgres" {
   engine                   = "PostgreSQL"
   engine_version           = "16.0"
@@ -130,6 +194,15 @@ resource "alicloud_db_account_privilege" "collabhub" {
   db_names     = [alicloud_db_database.collabhub.data_base_name]
 }
 
+resource "alicloud_db_backup_policy" "postgres" {
+  instance_id                 = alicloud_db_instance.postgres.id
+  preferred_backup_period     = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+  preferred_backup_time       = "18:00Z-19:00Z"
+  backup_retention_period     = var.backup_retention_days
+  enable_backup_log           = true
+  log_backup_retention_period = var.backup_retention_days
+}
+
 resource "alicloud_kvstore_instance" "redis" {
   db_instance_name  = "${var.name}-redis"
   instance_class    = "redis.master.stand.default"
@@ -162,10 +235,12 @@ resource "alicloud_instance" "node" {
   user_data = templatefile("${path.module}/user-data.sh.tftpl", {
     container_image           = var.container_image
     database_host             = alicloud_db_instance.postgres.connection_string
-    database_password         = random_password.database.result
+    database_secret_name      = alicloud_kms_secret.database.secret_name
     redis_host                = alicloud_kvstore_instance.redis.connection_domain
-    redis_password            = random_password.redis.result
-    internal_token            = random_password.internal.result
+    redis_secret_name         = alicloud_kms_secret.redis.secret_name
+    internal_secret_name      = alicloud_kms_secret.internal.secret_name
+    ram_role_name             = alicloud_ram_role.vm.role_name
+    region                    = var.region
     domain_pack_source_base64 = base64encode(local.domain_pack_source)
     domain_pack_file_name     = local.domain_pack_file_name
     domain_pack_environment   = local.domain_pack_environment
@@ -179,7 +254,14 @@ resource "alicloud_instance" "node" {
   depends_on = [
     alicloud_db_account_privilege.collabhub,
     alicloud_kvstore_instance.redis,
+    alicloud_ram_role_policy_attachment.runtime_secrets,
   ]
+}
+
+resource "alicloud_ecs_ram_role_attachment" "node" {
+  count         = var.instance_count
+  ram_role_name = alicloud_ram_role.vm.role_name
+  instance_id   = alicloud_instance.node[count.index].id
 }
 
 resource "alicloud_alb_load_balancer" "this" {

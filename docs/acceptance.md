@@ -1,4 +1,18 @@
-# v0.2 / v0.1 验收记录
+# v1.0 候选 / v0.2 / v0.1 验收记录
+
+## v1.0 生产硬化候选（2026-08-29）
+
+当前代码仍保持 `0.2.0`，没有创建 `v1.0.0` tag，也没有发布 v1 npm；以下是等待项目所有者批准前的候选证据。
+
+- `pnpm release:check`：24 个 Vitest 文件、87 个测试通过；10 个 npm 包产物审计通过；1,000 section patch p95 0.007 ms，预算 4 ms。
+- `pnpm test:e2e`：5 个真实浏览器用例通过，覆盖 TODO List、BlockNote、React Flow。
+- `pnpm smoke:todo-cluster`：2 Gateway + 2 Worker 独立进程；跨 Gateway 收敛、真实 writer 退出与接管、离线重放、新浏览器 snapshot recovery 均通过，PostgreSQL 最终 canonical v5 / owner epoch 2。
+- `pnpm smoke:postgres-hardening`：数据库迁移 1/2 幂等执行；业务 schema `1.0 -> 2.0` 事务迁移；压缩删除 3 WAL、5 receipt、5 delivered outbox、2 snapshot；压缩后恢复到 v5；两个独立 Redis 客户端共享限流结果 `[true,true,false]`。
+- `pnpm smoke:demo`：双客户端 v2、Origin 拒绝、连接上限、活跃 Room 保护、过期 Room 删除、蓝色主题、favicon 与 GitHub Star 链接通过。
+- 三张 Docker 镜像（distributed、demo、standalone）本地真实构建通过；AWS/阿里云 Terraform provider validate、Kustomize 渲染、通用 VM Compose 解析通过。
+- `pnpm publish:dry-run`：10 个 `0.2.0` 包均识别为已发布；没有执行新版本发布。
+
+公网 Render 继续作为真实 HTTPS/WSS Demo；阿里云多节点持久化认证仍需完成账号核对、Terraform plan、用户批准 apply、故障/恢复演练和短时 soak，不能用上述本地证据替代。
 
 日期：2026-08-28（Asia/Shanghai）
 环境：macOS arm64、Node.js v24.18.0、pnpm 10.11.0、Playwright Chromium 151.0.7922.34。

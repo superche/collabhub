@@ -135,7 +135,7 @@ docker run -p 4100:4100 -v collabhub-data:/data \
   ghcr.io/superche/collabhub-standalone:0.2.0
 ```
 
-Standalone is for evaluation and small single-node installs. Use the [PostgreSQL + Redis image](deploy/docker/distributed.Dockerfile) for multiple VMs. Deployment baselines: [Kubernetes](deploy/kubernetes), [AWS](deploy/aws), [Alibaba Cloud](deploy/alicloud), [Render demo](render.yaml).
+Standalone is for evaluation and small single-node installs. Use the [existing-VM path](deploy/vm) with PostgreSQL + Redis for a cloud-neutral production setup. Provider adapters: [Kubernetes](deploy/kubernetes), [AWS](deploy/aws), [Alibaba Cloud](deploy/alicloud). The [Render deployment](render.yaml) is a real public demo, but its memory storage is intentionally not a durability reference.
 
 ### CollabHub or Yjs?
 
@@ -146,7 +146,7 @@ Choose CollabHub when you already have structured React data, business commands,
 ```text
 packages/       protocol, client SDK, shared model, server runtimes, strategies, testkit
 examples/       TODO List, BlockNote, React Flow, CollabHub + Yjs
-deploy/         Docker, Kubernetes, AWS, Alibaba Cloud
+deploy/         Docker, existing VM, Kubernetes, AWS, Alibaba Cloud
 docs/           integration, architecture, operations, acceptance
 scripts/        smoke tests, benchmarks, release checks
 ```
@@ -167,6 +167,7 @@ pnpm dev:react-flow
 - [AI Coding integration guide](docs/ai-coding-guide.md)
 - [Capabilities](docs/capabilities.md)
 - [Deployment](deploy/README.md)
+- [Production hardening](docs/production-hardening.md)
 - [Horizontal scaling](docs/architecture/horizontal-scaling.md)
 - [Known limitations](docs/known-limitations.en.md)
 - [v0.2 release notes](docs/release-notes-0.2.0.md)

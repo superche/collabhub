@@ -132,7 +132,7 @@ docker run -p 4100:4100 -v collabhub-data:/data \
   ghcr.io/superche/collabhub-standalone:0.2.0
 ```
 
-单机版用于试用和小规模部署。多 VM 使用 [PostgreSQL + Redis 镜像](deploy/docker/distributed.Dockerfile)。部署基线：[Kubernetes](deploy/kubernetes)、[AWS](deploy/aws)、[阿里云](deploy/alicloud)、[Render Demo](render.yaml)。
+单机版用于试用和小规模部署。生产环境可以直接使用云无关的[已有 VM 部署](deploy/vm)，外接 PostgreSQL 和 Redis。云平台适配：[Kubernetes](deploy/kubernetes)、[AWS](deploy/aws)、[阿里云](deploy/alicloud)。[Render](render.yaml) 是真实公网 Demo，但内存存储不作为持久化参考。
 
 ### CollabHub 还是 Yjs？
 
@@ -143,7 +143,7 @@ docker run -p 4100:4100 -v collabhub-data:/data \
 ```text
 packages/       协议、客户端 SDK、共享模型、服务端、策略、测试工具
 examples/       TODO List、BlockNote、React Flow、CollabHub + Yjs
-deploy/         Docker、Kubernetes、AWS、阿里云
+deploy/         Docker、已有 VM、Kubernetes、AWS、阿里云
 docs/           接入、架构、运维、验收
 scripts/        冒烟、性能基线、发布检查
 ```
@@ -164,6 +164,7 @@ pnpm dev:react-flow
 - [AI Coding 接入指南](docs/ai-coding-guide.md)
 - [能力边界](docs/capabilities.md)
 - [部署](deploy/README.md)
+- [生产硬化](docs/production-hardening.zh-CN.md)
 - [水平扩容](docs/architecture/horizontal-scaling.md)
 - [已知限制](docs/known-limitations.md)
 - [v0.2 发布说明](docs/release-notes-0.2.0.md)
