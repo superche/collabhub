@@ -77,6 +77,57 @@ describe('authoritative document session', () => {
     expect(recovered.canonicalState.title).toBe('three')
   })
 
+  it('uses the same forward-only Domain Pack migration path in standalone mode', async () => {
+    const storage = new InMemoryStorageAdapter<JsonObject>()
+    await storage.saveSnapshot({
+      tenantId: 't', documentId: 'd', version: 4, schemaVersion: '1.0',
+      state: { title: 'Legacy' }, snapshotRef: 'memory://legacy',
+    })
+    const upgradedPack = defineDomainPack<JsonObject>({
+      ...pack,
+      schemaVersion: '2.0',
+      migrations: [{ fromVersion: '1.0', toVersion: '2.0', migrate: (state) => ({ ...state, status: 'migrated' }) }],
+    })
+    const session = new AuthoritativeDocumentSession({ tenantId: 't', documentId: 'd', domainPack: upgradedPack, storage })
+
+    await session.initialize()
+
+    expect(session.canonicalVersion).toBe(4)
+    expect(session.canonicalState).toEqual({ title: 'Legacy', status: 'migrated' })
+    expect(await storage.loadSnapshot('t', 'd')).toMatchObject({ version: 4, schemaVersion: '2.0' })
+  })
+
+  it('fails standalone activation closed when a persisted schema has no migration path', async () => {
+    const storage = new InMemoryStorageAdapter<JsonObject>()
+    await storage.saveSnapshot({
+      tenantId: 't', documentId: 'd', version: 1, schemaVersion: 'legacy',
+      state: { title: 'Legacy' }, snapshotRef: 'memory://legacy',
+    })
+    const session = new AuthoritativeDocumentSession({ tenantId: 't', documentId: 'd', domainPack: pack, storage })
+    await expect(session.initialize()).rejects.toThrow(/no schema migration/)
+  })
+
+  it('migrates a legacy WAL even when no snapshot has been written yet', async () => {
+    const storage = new InMemoryStorageAdapter<JsonObject>()
+    await storage.appendWal({
+      tenantId: 't', documentId: 'wal-only', version: 1, committedAt: new Date().toISOString(),
+      operation: op({ operationId: 'legacy-wal', schemaVersion: '1.0' }),
+      patches: [{ op: 'set', path: '/title', value: 'From WAL' }],
+    })
+    const upgradedPack = defineDomainPack<JsonObject>({
+      ...pack,
+      schemaVersion: '2.0',
+      migrations: [{ fromVersion: '1.0', toVersion: '2.0', migrate: (state) => ({ ...state, migrated: true }) }],
+    })
+    const session = new AuthoritativeDocumentSession({ tenantId: 't', documentId: 'wal-only', domainPack: upgradedPack, storage })
+
+    await session.initialize()
+
+    expect(session.canonicalVersion).toBe(1)
+    expect(session.canonicalState).toMatchObject({ title: 'From WAL', migrated: true })
+    expect(await storage.loadSnapshot('t', 'wal-only')).toMatchObject({ version: 1, schemaVersion: '2.0' })
+  })
+
   it('requires snapshot resync when a client falls outside the configured recovery window', async () => {
     const session = new AuthoritativeDocumentSession({ tenantId: 't', documentId: 'd', domainPack: pack, storage: new InMemoryStorageAdapter(), maxRecoveryGap: 0 })
     await session.submit(op({ operationId: 'advance-gap', operationType: 'property.set', strategyId: 'json.property-lww', payload: { path: '/title', value: 'New' } }))

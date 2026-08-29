@@ -48,6 +48,13 @@ export interface PersistedPendingOperation {
 export interface PendingOperationStorage {
   load(key: string): Promise<readonly PersistedPendingOperation[]>
   save(key: string, operations: readonly PersistedPendingOperation[]): Promise<void>
+  /** Atomic cross-tab merge. Default IndexedDB storage implements this to prevent lost updates. */
+  mutate?(key: string, mutation: PendingStorageMutation): Promise<void>
+}
+
+export interface PendingStorageMutation {
+  upsert?: readonly PersistedPendingOperation[]
+  removeOperationIds?: readonly string[]
 }
 
 interface PendingOperation {
@@ -116,6 +123,7 @@ export class CollaborationClient<TState extends object> {
   get canonicalVersion(): number { return this.diagnosticsValue.canonicalVersion }
   get diagnostics(): Readonly<ClientDiagnostics> { return this.diagnosticsValue }
   whenReady(): Promise<void> { return this.readyPromise }
+  whenPendingPersisted(): Promise<void> { return this.persistenceChain }
 
   connect(): void {
     this.manuallyClosed = false
@@ -197,7 +205,7 @@ export class CollaborationClient<TState extends object> {
     }
     return new Promise((resolve) => {
       this.pending.push({ operation, optimisticPatches, bytes, submittedAt: performance.now(), sent: false, resolve })
-      this.persistPending()
+      this.persistMutation({ upsert: [{ operation, optimisticPatches }] })
       this.reproject()
       this.flush()
     })
@@ -262,7 +270,7 @@ export class CollaborationClient<TState extends object> {
       item.resolve(item.resyncResult ?? item.acceptedResult!)
       this.setDiagnostics({ lastAckLatencyMs: Math.round((performance.now() - item.submittedAt) * 100) / 100 })
     }
-    if (settled.length > 0) this.persistPending()
+    if (settled.length > 0) this.persistMutation({ removeOperationIds: settled.map((item) => item.operation.operationId) })
     this.reproject()
     if (!awaitingReady) this.flush()
   }
@@ -312,7 +320,7 @@ export class CollaborationClient<TState extends object> {
       item.resolve(result)
       this.setDiagnostics({ lastAckLatencyMs: Math.round((performance.now() - item.submittedAt) * 100) / 100 })
     }
-    if (item) this.persistPending()
+    if (item) this.persistMutation({ removeOperationIds: [item.operation.operationId] })
     if (result.kind === 'rejected') {
       this.setDiagnostics({ lastReject: { operationId: result.operationId, code: result.reason.code, message: result.reason.message } })
     }
@@ -377,12 +385,12 @@ export class CollaborationClient<TState extends object> {
     }
   }
 
-  private persistPending(): void {
+  private persistMutation(mutation: PendingStorageMutation): void {
     const storage = this.options.pendingStorage
     if (!storage) return
     const snapshot = this.pending.map(({ operation, optimisticPatches }) => ({ operation, optimisticPatches }))
     this.persistenceChain = this.persistenceChain
-      .then(() => storage.save(this.pendingKey(), snapshot))
+      .then(() => storage.mutate ? storage.mutate(this.pendingKey(), mutation) : storage.save(this.pendingKey(), snapshot))
       .then(() => this.setDiagnostics({ pendingPersistence: 'ready' }))
       .catch(() => this.setDiagnostics({ pendingPersistence: 'error' }))
   }
@@ -529,6 +537,20 @@ export function createIndexedDbPendingStorage(databaseName = 'collabhub'): Pendi
       const store = transaction.objectStore('pending')
       if (operations.length === 0) store.delete(key)
       else store.put([...operations], key)
+      await idbTransaction(transaction)
+    },
+    async mutate(key, mutation) {
+      const db = await database
+      const transaction = db.transaction('pending', 'readwrite')
+      const store = transaction.objectStore('pending')
+      const current = await idbRequest<readonly PersistedPendingOperation[] | undefined>(store.get(key)) ?? []
+      const remove = new Set(mutation.removeOperationIds ?? [])
+      const merged = new Map(current
+        .filter((entry) => !remove.has(entry.operation.operationId))
+        .map((entry) => [entry.operation.operationId, entry]))
+      for (const entry of mutation.upsert ?? []) merged.set(entry.operation.operationId, entry)
+      if (merged.size === 0) store.delete(key)
+      else store.put([...merged.values()], key)
       await idbTransaction(transaction)
     },
   }

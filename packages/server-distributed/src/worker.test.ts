@@ -7,6 +7,7 @@ import type {
   CommitOutcome,
   CommitRequest,
   CommitStore,
+  DocumentMigrationRequest,
   InternalRoomEvent,
   LoadedRoom,
   OwnerRecord,
@@ -18,6 +19,8 @@ import { DistributedRoomWorker } from './worker.js'
 
 class MemoryCommitStore implements CommitStore<JsonObject> {
   version = 0
+  schemaVersion = '1.0'
+  state: JsonObject = { title: 'Initial' }
   readonly wal: LoadedRoom['wal'] = []
   readonly receipts = new Map<string, StoredReceipt>()
   readonly snapshots: Array<{ room: RoomIdentity; version: number; schemaVersion: string; state: JsonObject }> = []
@@ -26,8 +29,8 @@ class MemoryCommitStore implements CommitStore<JsonObject> {
   async claimOwnership() { return 1 }
   async loadRoom(room: RoomIdentity): Promise<LoadedRoom<JsonObject>> {
     return {
-      ...room, schemaVersion: '1.0', version: this.version, ownerEpoch: 1, ownerInstanceId: 'worker',
-      snapshotVersion: 0, state: { title: 'Initial' }, wal: this.wal,
+      ...room, schemaVersion: this.schemaVersion, version: this.version, ownerEpoch: 1, ownerInstanceId: 'worker',
+      snapshotVersion: 0, state: this.state, wal: this.wal,
     }
   }
   async lookupReceipt(_room: RoomIdentity, operationId: string) { return this.receipts.get(operationId) }
@@ -50,6 +53,15 @@ class MemoryCommitStore implements CommitStore<JsonObject> {
     this.receipts.set(request.operation.operationId, { fingerprint: request.fingerprint, result })
     return { kind: 'committed', result, event }
   }
+  async migrateDocument(request: DocumentMigrationRequest<JsonObject>) {
+    if (request.ownerEpoch !== 1 || request.ownerInstanceId !== 'worker') return { kind: 'fenced' as const }
+    if (request.version !== this.version || request.fromSchemaVersion !== this.schemaVersion) {
+      return { kind: 'versionConflict' as const, canonicalVersion: this.version, schemaVersion: this.schemaVersion }
+    }
+    this.schemaVersion = request.toSchemaVersion
+    this.state = request.state
+    return { kind: 'migrated' as const }
+  }
   async saveSnapshot(room: RoomIdentity, version: number, schemaVersion: string, state: JsonObject) {
     this.snapshots.push({ room, version, schemaVersion, state })
   }
@@ -60,6 +72,7 @@ class MemoryCommitStore implements CommitStore<JsonObject> {
   async headVersion() { return this.version }
   async claimOutbox(): Promise<Array<{ id: string; event: InternalRoomEvent }>> { return [] }
   async markOutboxDelivered() {}
+  async compact() { return { acquired: true, walDeleted: 0, receiptsDeleted: 0, outboxDeleted: 0, snapshotsDeleted: 0 } }
   async ping() {}
   async close() {}
 }
@@ -154,5 +167,39 @@ describe('distributed worker semantic parity', () => {
     expect(worker.warmRoomCount).toBe(1)
     expect(store.snapshots[0]).toMatchObject({ room: { tenantId: 't', documentId: 'oldest' } })
     expect(coordinator.released).toEqual([{ tenantId: 't', documentId: 'oldest' }])
+  })
+
+  it('migrates a cold room state before accepting operations for a newer schema', async () => {
+    const domainPack = defineDomainPack<JsonObject>({
+      id: 'test.distributed-migration', schemaVersion: '2.0', strategies: jsonStrategies,
+      initialState: () => ({ title: 'Initial', migrated: true }),
+      migrations: [{ fromVersion: '1.0', toVersion: '2.0', migrate: (state) => ({ ...state, migrated: true }) }],
+    })
+    const store = new MemoryCommitStore()
+    const worker = new DistributedRoomWorker({
+      instanceId: 'worker', internalUrl: 'http://worker', port: 0, internalToken: 'test',
+      store, coordinator: new MemoryCoordinator(), domainPack,
+    })
+
+    const snapshot = await worker.snapshot({ tenantId: 't', documentId: 'migrated' })
+
+    expect(snapshot.schemaVersion).toBe('2.0')
+    expect(snapshot.snapshot).toEqual({ title: 'Initial', migrated: true })
+    expect(store.schemaVersion).toBe('2.0')
+    expect(store.state).toEqual({ title: 'Initial', migrated: true })
+  })
+
+  it('fails activation closed when no schema migration path exists', async () => {
+    const store = new MemoryCommitStore()
+    const worker = new DistributedRoomWorker({
+      instanceId: 'worker', internalUrl: 'http://worker', port: 0, internalToken: 'test', store,
+      coordinator: new MemoryCoordinator(),
+      domainPack: defineDomainPack<JsonObject>({
+        id: 'test.distributed-missing-migration', schemaVersion: '2.0', strategies: jsonStrategies,
+        initialState: () => ({ title: 'Initial' }),
+      }),
+    })
+
+    await expect(worker.activate({ tenantId: 't', documentId: 'blocked' })).rejects.toThrow(/no schema migration/)
   })
 })

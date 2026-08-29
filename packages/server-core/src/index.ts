@@ -9,6 +9,7 @@ import {
   type SnapshotMessage,
 } from '@collabhub/protocol'
 import {
+  migrateDomainState,
   StrategyRegistry,
   type CommittedOperation,
   type DomainPack,
@@ -314,17 +315,36 @@ export class AuthoritativeDocumentSession<TState extends JsonObject = JsonObject
     this.state = snapshot?.state ?? this.options.domainPack.initialState(this.options.documentId)
     this.version = snapshot?.version ?? 0
     const wal = await this.options.storage.loadWal(this.options.tenantId, this.options.documentId, -1)
+    const storedSchemaVersion = snapshot?.schemaVersion ?? wal[0]?.operation.schemaVersion ?? this.options.domainPack.schemaVersion
     for (const record of wal.sort((a, b) => a.version - b.version)) {
+      if (!snapshot && record.operation.schemaVersion !== storedSchemaVersion) {
+        throw new Error(`standalone WAL contains mixed schemas without a snapshot: ${storedSchemaVersion} and ${record.operation.schemaVersion}`)
+      }
       if (record.version > this.version) {
         this.state = applyCanonicalPatches(this.state, record.patches)
         this.version = record.version
       }
-      this.operations.push({ canonicalVersion: record.version, operation: record.operation })
+      if (record.operation.schemaVersion === this.options.domainPack.schemaVersion) {
+        this.operations.push({ canonicalVersion: record.version, operation: record.operation })
+      }
       this.results.set(record.operation.operationId, {
         kind: 'accepted',
         operationId: record.operation.operationId,
         canonicalVersion: record.version,
         patches: record.patches,
+      })
+    }
+    if (storedSchemaVersion !== this.options.domainPack.schemaVersion) {
+      const migrated = migrateDomainState(this.options.domainPack, storedSchemaVersion, this.state)
+      this.state = migrated.state
+      this.operations.length = 0
+      await this.options.storage.saveSnapshot({
+        tenantId: this.options.tenantId,
+        documentId: this.options.documentId,
+        version: this.version,
+        schemaVersion: migrated.schemaVersion,
+        state: this.state,
+        snapshotRef: this.snapshotRef(),
       })
     }
     this.initialized = true

@@ -49,6 +49,41 @@ export interface CommitRequest extends RoomIdentity {
   fingerprint: string
 }
 
+export interface DocumentMigrationRequest<TState extends JsonObject = JsonObject> extends RoomIdentity {
+  ownerEpoch: number
+  ownerInstanceId: string
+  version: number
+  fromSchemaVersion: string
+  toSchemaVersion: string
+  state: TState
+  applied: readonly { fromVersion: string; toVersion: string }[]
+}
+
+export type DocumentMigrationOutcome =
+  | { kind: 'migrated' }
+  | { kind: 'alreadyCurrent' }
+  | { kind: 'fenced' }
+  | { kind: 'versionConflict'; canonicalVersion: number; schemaVersion: string }
+
+export interface DurableRetentionPolicy {
+  /** Minimum number of most-recent canonical operations kept per document. */
+  walVersions: number
+  /** Idempotency receipts older than this window may be removed. */
+  receiptTtlMs: number
+  /** Delivered outbox rows older than this window may be removed. */
+  deliveredOutboxTtlMs: number
+  /** Number of newest snapshots kept; the active head snapshot is always protected as well. */
+  snapshotsPerDocument: number
+}
+
+export interface CompactionResult {
+  acquired: boolean
+  walDeleted: number
+  receiptsDeleted: number
+  outboxDeleted: number
+  snapshotsDeleted: number
+}
+
 export type CommitOutcome =
   | { kind: 'committed'; result: Extract<OperationResult, { kind: 'accepted' }>; event: CanonicalEvent }
   | { kind: 'duplicate'; result: OperationResult }
@@ -69,7 +104,9 @@ export interface CommitStore<TState extends JsonObject = JsonObject> {
   lookupReceipt(room: RoomIdentity, operationId: string): Promise<StoredReceipt | undefined>
   recordReceipt(room: RoomIdentity, owner: { epoch: number; instanceId: string }, fingerprint: string, result: OperationResult): Promise<'stored' | 'exists' | 'fenced'>
   commit(request: CommitRequest): Promise<CommitOutcome>
+  migrateDocument(request: DocumentMigrationRequest<TState>): Promise<DocumentMigrationOutcome>
   saveSnapshot(room: RoomIdentity, version: number, schemaVersion: string, state: TState): Promise<void>
+  compact(policy: DurableRetentionPolicy): Promise<CompactionResult>
   snapshot(room: RoomIdentity): Promise<SnapshotMessage<TState>>
   eventsAfter(room: RoomIdentity, afterVersion: number, limit?: number): Promise<CanonicalEvent[]>
   headVersion(room: RoomIdentity): Promise<number>
@@ -94,6 +131,8 @@ export interface OwnershipCoordinator {
   publishEvent(event: InternalRoomEvent): Promise<void>
   publishPresence(message: Record<string, unknown>): Promise<void>
   subscribe(onEvent: (event: InternalRoomEvent) => void, onPresence: (message: Record<string, unknown>) => void): Promise<() => Promise<void>>
+  /** Optional cluster-wide token bucket. Gateways fall back to a process-local limiter when absent. */
+  consumeRateLimit?(key: string, ratePerSecond: number, burst: number): Promise<boolean>
   ping(): Promise<void>
   close(): Promise<void>
 }

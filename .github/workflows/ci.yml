@@ -48,6 +48,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm smoke:todo-cluster
+      - run: pnpm smoke:postgres-hardening
 
   containers:
     runs-on: ubuntu-latest
@@ -85,6 +86,12 @@ jobs:
         with:
           version: v1.29.14
       - run: docker compose -f deploy/local/docker-compose.yml config --quiet
+      - run: docker compose --env-file deploy/vm/.env.example -f deploy/vm/docker-compose.yml config --quiet
+        env:
+          COLLABHUB_ENV_FILE: .env.example
+          DATABASE_URL_FILE_PATH: ../domain-pack/domain-pack.example.json
+          REDIS_URL_FILE_PATH: ../domain-pack/domain-pack.example.json
+          INTERNAL_TOKEN_FILE_PATH: ../domain-pack/domain-pack.example.json
       - run: kubectl kustomize deploy/kubernetes/base > /dev/null
       - run: terraform fmt -check -recursive deploy/aws/terraform
       - run: terraform -chdir=deploy/aws/terraform init -backend=false

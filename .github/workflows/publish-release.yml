@@ -42,6 +42,7 @@ jobs:
       - run: pnpm smoke:existing-react
       - run: pnpm test:e2e
       - run: pnpm smoke:demo
+      - run: pnpm smoke:postgres-hardening
       - run: pnpm pack:packages
       - name: Publish npm packages with provenance
         run: node scripts/publish-packages.mjs --input artifacts/packages --expected-version "${{ inputs.expected_version }}"

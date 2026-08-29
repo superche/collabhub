@@ -134,6 +134,36 @@ export function assertOperationEnvelope(value: unknown): asserts value is Collab
   const operation = value as Record<string, unknown>
   for (const key of ['tenantId', 'documentId', 'actorId', 'clientId', 'operationId', 'schemaVersion', 'operationType', 'strategyId', 'strategyVersion']) {
     if (typeof operation[key] !== 'string' || operation[key] === '') throw new Error(`${key} must be a non-empty string`)
+    if ((operation[key] as string).length > 256) throw new Error(`${key} must be at most 256 characters`)
   }
   if (!Number.isSafeInteger(operation.baseVersion) || (operation.baseVersion as number) < 0) throw new Error('baseVersion must be a non-negative integer')
+  if (!Object.hasOwn(operation, 'payload')) throw new Error('payload is required')
+  assertJsonComplexity(operation.payload)
+}
+
+export interface JsonComplexityLimits {
+  maxDepth?: number
+  maxNodes?: number
+  maxCollectionLength?: number
+}
+
+/** Bounds JSON shape independently of transport byte limits to avoid parser-safe CPU/memory amplification. */
+export function assertJsonComplexity(value: unknown, limits: JsonComplexityLimits = {}): void {
+  const maxDepth = limits.maxDepth ?? 32
+  const maxNodes = limits.maxNodes ?? 10_000
+  const maxCollectionLength = limits.maxCollectionLength ?? 1000
+  const pending: Array<{ value: unknown; depth: number }> = [{ value, depth: 0 }]
+  let nodes = 0
+  while (pending.length) {
+    const current = pending.pop()!
+    nodes++
+    if (nodes > maxNodes) throw new Error(`JSON value exceeds ${maxNodes} nodes`)
+    if (current.depth > maxDepth) throw new Error(`JSON value exceeds depth ${maxDepth}`)
+    if (current.value === null || ['string', 'boolean'].includes(typeof current.value)) continue
+    if (typeof current.value === 'number' && Number.isFinite(current.value)) continue
+    if (typeof current.value !== 'object') throw new Error('value must contain JSON-compatible data')
+    const children = Array.isArray(current.value) ? current.value : Object.values(current.value as Record<string, unknown>)
+    if (children.length > maxCollectionLength) throw new Error(`JSON collection exceeds ${maxCollectionLength} entries`)
+    for (const child of children) pending.push({ value: child, depth: current.depth + 1 })
+  }
 }

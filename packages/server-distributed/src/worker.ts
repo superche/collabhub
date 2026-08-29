@@ -10,9 +10,9 @@ import {
   type RoomCachePolicy,
   type RoomEvictionDecision,
 } from '@collabhub/server-core'
-import type { CommittedOperation, DomainPack } from '@collabhub/strategy-sdk'
+import { migrateDomainState, type CommittedOperation, type DomainPack } from '@collabhub/strategy-sdk'
 import { operationFingerprint } from './identity.js'
-import type { CommitStore, ConnectionContext, OwnerRecord, OwnershipCoordinator, RoomIdentity } from './types.js'
+import type { CommitStore, ConnectionContext, DurableRetentionPolicy, OwnerRecord, OwnershipCoordinator, RoomIdentity } from './types.js'
 
 interface WarmRoom<TState extends JsonObject> {
   room: RoomIdentity
@@ -44,6 +44,16 @@ export interface RoomWorkerOptions<TState extends JsonObject> {
   idleRoomMs?: number
   clock?: () => number
   hooks?: readonly OperationPipelineHook<TState>[]
+  retentionPolicy?: Partial<DurableRetentionPolicy> & { compactionIntervalMs?: number }
+  maxPayloadBytes?: number
+}
+
+const DEFAULT_RETENTION_POLICY: DurableRetentionPolicy & { compactionIntervalMs: number } = {
+  walVersions: 1000,
+  receiptTtlMs: 7 * 24 * 60 * 60 * 1000,
+  deliveredOutboxTtlMs: 24 * 60 * 60 * 1000,
+  snapshotsPerDocument: 3,
+  compactionIntervalMs: 10 * 60 * 1000,
 }
 
 export class DistributedRoomWorker<TState extends JsonObject> {
@@ -51,11 +61,25 @@ export class DistributedRoomWorker<TState extends JsonObject> {
   private readonly activating = new Map<string, Promise<WarmRoom<TState>>>()
   private readonly pipeline: AuthoritativeOperationPipeline<TState>
   private readonly cachePolicy: RoomCachePolicy
+  private readonly retentionPolicy: DurableRetentionPolicy & { compactionIntervalMs: number }
   private server?: Server
   private unregisterWorker?: () => Promise<void>
   private maintenanceTimer?: ReturnType<typeof setInterval>
   private outboxTimer?: ReturnType<typeof setInterval>
   private dispatching = false
+  private compacting = false
+  private draining = false
+  private lastCompactionAt = 0
+  private readonly metrics = {
+    schemaMigrations: 0,
+    schemaMigrationFailures: 0,
+    compactionRuns: 0,
+    compactionFailures: 0,
+    walDeleted: 0,
+    receiptsDeleted: 0,
+    outboxDeleted: 0,
+    snapshotsDeleted: 0,
+  }
 
   constructor(private readonly options: RoomWorkerOptions<TState>) {
     this.pipeline = new AuthoritativeOperationPipeline(options)
@@ -64,6 +88,14 @@ export class DistributedRoomWorker<TState extends JsonObject> {
       maxWarmRooms: options.roomCachePolicy?.maxWarmRooms ?? options.maxWarmRooms ?? 1000,
       scanIntervalMs: options.roomCachePolicy?.scanIntervalMs ?? 3000,
     })
+    this.retentionPolicy = {
+      ...DEFAULT_RETENTION_POLICY,
+      ...options.retentionPolicy,
+    }
+    for (const [name, value] of Object.entries(this.retentionPolicy)) {
+      if (!Number.isFinite(value) || value < 0) throw new Error(`${name} must be a non-negative finite number`)
+    }
+    if (this.retentionPolicy.snapshotsPerDocument < 1) throw new Error('snapshotsPerDocument must be at least 1')
   }
 
   get warmRoomCount(): number { return this.sessions.size }
@@ -72,14 +104,16 @@ export class DistributedRoomWorker<TState extends JsonObject> {
     await this.options.store.migrate()
     this.unregisterWorker = await this.options.coordinator.registerWorker(this.options.instanceId, this.options.internalUrl)
     const app = express()
-    app.use(express.json({ limit: '128kb' }))
+    app.use(express.json({ limit: this.options.maxPayloadBytes ?? 128 * 1024 }))
     app.use((request, response, next) => {
-      if (request.path === '/healthz' || request.path === '/readyz' || request.path === '/metrics') return next()
+      if (request.path === '/healthz' || request.path === '/readyz') return next()
+      if (this.draining) return response.status(503).json({ error: 'draining' })
       if (request.header('x-collabhub-internal-token') !== this.options.internalToken) return response.status(401).json({ error: 'unauthorized' })
       next()
     })
     app.get('/healthz', (_request, response) => response.json({ ok: true, role: 'worker', instanceId: this.options.instanceId }))
     app.get('/readyz', async (_request, response) => {
+      if (this.draining) return response.status(503).json({ ready: false, draining: true })
       try {
         await Promise.all([this.options.store.ping(), this.options.coordinator.ping()])
         response.json({ ready: true, warmRooms: this.sessions.size })
@@ -89,6 +123,14 @@ export class DistributedRoomWorker<TState extends JsonObject> {
       `collabhub_worker_warm_rooms ${this.sessions.size}`,
       `collabhub_worker_mailbox_depth ${[...this.sessions.values()].reduce((sum, session) => sum + session.queued, 0)}`,
       `collabhub_worker_process_rss_bytes ${process.memoryUsage().rss}`,
+      `collabhub_worker_schema_migrations_total ${this.metrics.schemaMigrations}`,
+      `collabhub_worker_schema_migration_failures_total ${this.metrics.schemaMigrationFailures}`,
+      `collabhub_worker_compaction_runs_total ${this.metrics.compactionRuns}`,
+      `collabhub_worker_compaction_failures_total ${this.metrics.compactionFailures}`,
+      `collabhub_worker_compaction_wal_deleted_total ${this.metrics.walDeleted}`,
+      `collabhub_worker_compaction_receipts_deleted_total ${this.metrics.receiptsDeleted}`,
+      `collabhub_worker_compaction_outbox_deleted_total ${this.metrics.outboxDeleted}`,
+      `collabhub_worker_compaction_snapshots_deleted_total ${this.metrics.snapshotsDeleted}`,
     ].join('\n') + '\n'))
     app.post('/internal/activate', async (request, response) => {
       try {
@@ -120,8 +162,15 @@ export class DistributedRoomWorker<TState extends JsonObject> {
   }
 
   async close(): Promise<void> {
+    this.draining = true
     if (this.maintenanceTimer) clearInterval(this.maintenanceTimer)
     if (this.outboxTimer) clearInterval(this.outboxTimer)
+    const serverClosed = this.server
+      ? new Promise<void>((resolve) => {
+          this.server!.close(() => resolve())
+          this.server!.closeIdleConnections?.()
+        })
+      : Promise.resolve()
     for (const session of this.sessions.values()) {
       await session.serial.catch(() => undefined)
       await this.options.store.saveSnapshot(session.room, session.version, session.schemaVersion, session.state).catch(() => undefined)
@@ -129,7 +178,7 @@ export class DistributedRoomWorker<TState extends JsonObject> {
     }
     this.sessions.clear()
     if (this.unregisterWorker) await this.unregisterWorker().catch(() => undefined)
-    if (this.server) await new Promise<void>((resolve) => this.server!.close(() => resolve()))
+    await serverClosed
   }
 
   async activate(room: RoomIdentity): Promise<WarmRoom<TState>> {
@@ -169,10 +218,38 @@ export class DistributedRoomWorker<TState extends JsonObject> {
     let state = loaded.state
     for (const entry of loaded.wal) state = applyCanonicalPatches(state, entry.patches)
     const owner: OwnerRecord = { instanceId: this.options.instanceId, internalUrl: this.options.internalUrl, epoch }
+    let schemaVersion = loaded.schemaVersion
+    let recentOperations = loaded.wal.slice(-500).map((entry) => ({ canonicalVersion: entry.version, operation: entry.operation }))
+    if (schemaVersion !== this.options.domainPack.schemaVersion) {
+      try {
+        const migrated = migrateDomainState(this.options.domainPack, schemaVersion, state)
+        const outcome = await this.options.store.migrateDocument({
+          ...room,
+          ownerEpoch: epoch,
+          ownerInstanceId: this.options.instanceId,
+          version: loaded.version,
+          fromSchemaVersion: schemaVersion,
+          toSchemaVersion: migrated.schemaVersion,
+          state: migrated.state,
+          applied: migrated.applied,
+        })
+        if (outcome.kind === 'fenced') throw new Error('room ownership changed during schema migration')
+        if (outcome.kind === 'versionConflict') {
+          throw new Error(`room changed during schema migration: version=${outcome.canonicalVersion} schema=${outcome.schemaVersion}`)
+        }
+        state = migrated.state
+        schemaVersion = migrated.schemaVersion
+        recentOperations = []
+        if (outcome.kind === 'migrated') this.metrics.schemaMigrations++
+      } catch (error) {
+        this.metrics.schemaMigrationFailures++
+        await this.options.coordinator.releaseOwner(room, owner).catch(() => undefined)
+        throw error
+      }
+    }
     const session: WarmRoom<TState> = {
       room: { tenantId: room.tenantId, documentId: room.documentId }, owner,
-      schemaVersion: loaded.schemaVersion, version: loaded.version, state,
-      recentOperations: loaded.wal.slice(-500).map((entry) => ({ canonicalVersion: entry.version, operation: entry.operation })),
+      schemaVersion, version: loaded.version, state, recentOperations,
       queued: 0, serial: Promise.resolve(), lastAccessAt: this.now(),
     }
     this.sessions.set(this.key(room), session)
@@ -267,6 +344,25 @@ export class DistributedRoomWorker<TState extends JsonObject> {
       const renewed = await this.options.coordinator.renewOwner(session.room, session.owner).catch(() => false)
       if (!renewed) this.sessions.delete(key)
     }
+    if (this.now() - this.lastCompactionAt >= this.retentionPolicy.compactionIntervalMs) void this.compactDurableData()
+  }
+
+  async compactDurableData(): Promise<void> {
+    if (this.compacting) return
+    this.compacting = true
+    this.lastCompactionAt = this.now()
+    try {
+      const result = await this.options.store.compact(this.retentionPolicy)
+      if (!result.acquired) return
+      this.metrics.compactionRuns++
+      this.metrics.walDeleted += result.walDeleted
+      this.metrics.receiptsDeleted += result.receiptsDeleted
+      this.metrics.outboxDeleted += result.outboxDeleted
+      this.metrics.snapshotsDeleted += result.snapshotsDeleted
+    } catch (error) {
+      this.metrics.compactionFailures++
+      console.error(JSON.stringify({ level: 'error', message: 'durable compaction failed', error: error instanceof Error ? error.message : String(error) }))
+    } finally { this.compacting = false }
   }
 
   async sweepRooms(now = this.now()): Promise<{ evicted: RoomEvictionDecision[]; warmRooms: number }> {

@@ -1,8 +1,10 @@
+import { createHash } from 'node:crypto'
 import { createServer, type IncomingMessage, type Server } from 'node:http'
 import express from 'express'
 import { WebSocketServer, WebSocket } from 'ws'
 import {
   PROTOCOL_VERSION,
+  assertJsonComplexity,
   type CanonicalEvent,
   type CapabilityHello,
   type ClientWireMessage,
@@ -50,6 +52,9 @@ export interface GatewayOptions<TState extends JsonObject> {
   allowedOrigins?: readonly string[]
   /** Trust only when the immediately upstream proxy removes client-supplied forwarding headers. */
   trustProxyHeaders?: boolean
+  maxPayloadBytes?: number
+  /** Local fallback is intended only for development; production stays fail closed. */
+  rateLimitFailOpen?: boolean
 }
 
 export class CollaborationGateway<TState extends JsonObject = JsonObject> {
@@ -58,6 +63,7 @@ export class CollaborationGateway<TState extends JsonObject = JsonObject> {
   private sockets?: WebSocketServer
   private unsubscribe?: () => Promise<void>
   private watermarkTimer?: ReturnType<typeof setInterval>
+  private draining = false
   private readonly connectionsByIp = new Map<string, number>()
   private readonly operationLimiter = new TokenBucketLimiter()
   private readonly httpLimiter = new TokenBucketLimiter()
@@ -72,21 +78,24 @@ export class CollaborationGateway<TState extends JsonObject = JsonObject> {
       (message) => this.onPresence(message),
     )
     const app = express()
-    app.use('/v1', (request, response, next) => {
+    app.use('/v1', async (request, response, next) => {
+      if (this.draining) return response.status(503).json({ error: 'draining' })
       const ip = requestIp(request, this.options.trustProxyHeaders ?? false)
-      if (this.httpLimiter.allow(ip, this.options.httpRatePerSecond ?? 20, this.options.httpBurst ?? 40)) return next()
+      if (await this.allowRate('http', ip, this.options.httpRatePerSecond ?? 20, this.options.httpBurst ?? 40)) return next()
       this.metrics.rateLimited++
       response.status(429).json({ error: 'rate limit exceeded' })
     })
-    app.use(express.json({ limit: '128kb' }))
+    app.use(express.json({ limit: this.options.maxPayloadBytes ?? 128 * 1024 }))
     app.get('/healthz', (_request, response) => response.json({ ok: true, role: 'gateway', instanceId: this.options.instanceId }))
     app.get('/readyz', async (_request, response) => {
+      if (this.draining) return response.status(503).json({ ready: false, draining: true })
       try {
         await Promise.all([this.options.store.ping(), this.options.coordinator.ping()])
         response.json({ ready: true, rooms: this.hubs.size })
       } catch (error) { response.status(503).json({ ready: false, error: String(error) }) }
     })
-    app.get('/metrics', (_request, response) => {
+    app.get('/metrics', (request, response) => {
+      if (request.header('x-collabhub-internal-token') !== this.options.internalToken) return response.status(401).json({ error: 'unauthorized' })
       response.type('text/plain').send([
         `collabhub_gateway_connections ${[...this.hubs.values()].reduce((sum, hub) => sum + hub.connections.size, 0)}`,
         ...Object.entries(this.metrics).map(([name, value]) => `collabhub_gateway_${name}_total ${value}`),
@@ -130,8 +139,9 @@ export class CollaborationGateway<TState extends JsonObject = JsonObject> {
     })
 
     this.server = createServer(app)
-    this.sockets = new WebSocketServer({ server: this.server, path: '/collab', maxPayload: 128 * 1024 })
+    this.sockets = new WebSocketServer({ server: this.server, path: '/collab', maxPayload: this.options.maxPayloadBytes ?? 128 * 1024 })
     this.sockets.on('connection', (socket, request) => {
+      if (this.draining) return socket.close(1012, 'gateway restarting')
       const ip = requestIp(request, this.options.trustProxyHeaders ?? false)
       const origin = request.headers.origin
       if (this.options.allowedOrigins?.length && (!origin || !this.options.allowedOrigins.includes(origin))) return socket.close(1008, 'origin not allowed')
@@ -149,6 +159,7 @@ export class CollaborationGateway<TState extends JsonObject = JsonObject> {
   }
 
   async close(): Promise<void> {
+    this.draining = true
     if (this.watermarkTimer) clearInterval(this.watermarkTimer)
     if (this.unsubscribe) await this.unsubscribe().catch(() => undefined)
     if (this.sockets) {
@@ -175,7 +186,7 @@ export class CollaborationGateway<TState extends JsonObject = JsonObject> {
     if (message.kind === 'hello') return this.hello(connection, message)
     if (!connection.context) return connection.socket.close(1008, 'hello required')
     if (message.kind === 'submit') {
-      if (!this.operationLimiter.allow(connection.ip, this.options.operationRatePerSecond ?? 30, this.options.operationBurst ?? 60)) {
+      if (!await this.allowRate('operation', connection.ip, this.options.operationRatePerSecond ?? 30, this.options.operationBurst ?? 60)) {
         this.metrics.rateLimited++
         this.send(connection, { kind: 'retryLater', operationId: message.operation.operationId, canonicalVersion: connection.lastSentVersion, retryAfterMs: 1000, reason: 'backpressure' })
         return
@@ -186,6 +197,7 @@ export class CollaborationGateway<TState extends JsonObject = JsonObject> {
     }
     if (message.kind === 'recover') return this.synchronize(connection)
     if (message.kind === 'presence') {
+      assertJsonComplexity(message.data, { maxDepth: 16, maxNodes: 1000, maxCollectionLength: 500 })
       const presence: PresenceMessage & { tenantId: string } = {
         kind: 'presence', tenantId: connection.context.tenantId, documentId: connection.context.documentId,
         actorId: connection.context.actorId, clientId: connection.context.clientId, data: message.data,
@@ -386,6 +398,19 @@ export class CollaborationGateway<TState extends JsonObject = JsonObject> {
   }
 
   private key(room: RoomIdentity): string { return `${room.tenantId}\u0000${room.documentId}` }
+
+  private async allowRate(scope: 'http' | 'operation', identity: string, ratePerSecond: number, burst: number): Promise<boolean> {
+    const key = `${scope}:${createHash('sha256').update(identity).digest('hex')}`
+    if (this.options.coordinator.consumeRateLimit) {
+      try { return await this.options.coordinator.consumeRateLimit(key, ratePerSecond, burst) }
+      catch {
+        if (!this.options.rateLimitFailOpen) return false
+        /* Explicit development fallback retains node-local protection. */
+      }
+    }
+    const limiter = scope === 'http' ? this.httpLimiter : this.operationLimiter
+    return limiter.allow(key, ratePerSecond, burst)
+  }
 }
 
 interface TokenBucket { tokens: number; updatedAt: number; lastSeenAt: number }

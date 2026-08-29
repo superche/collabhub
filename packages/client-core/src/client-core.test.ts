@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ClientWireMessage, JsonObject, ServerWireMessage } from '@collabhub/protocol'
-import { CollaborationClient, CollaborationStore, createCollaboration, json, type PendingOperationStorage, type PersistedPendingOperation, type SocketLike } from './index.js'
+import { CollaborationClient, CollaborationStore, createCollaboration, json, type PendingOperationStorage, type PendingStorageMutation, type PersistedPendingOperation, type SocketLike } from './index.js'
 
 class MemoryPendingStorage implements PendingOperationStorage {
   readonly values = new Map<string, readonly PersistedPendingOperation[]>()
@@ -8,6 +8,15 @@ class MemoryPendingStorage implements PendingOperationStorage {
   async save(key: string, operations: readonly PersistedPendingOperation[]) {
     if (operations.length === 0) this.values.delete(key)
     else this.values.set(key, structuredClone(operations))
+  }
+  async mutate(key: string, mutation: PendingStorageMutation) {
+    const remove = new Set(mutation.removeOperationIds ?? [])
+    const merged = new Map((this.values.get(key) ?? [])
+      .filter((entry) => !remove.has(entry.operation.operationId))
+      .map((entry) => [entry.operation.operationId, structuredClone(entry)]))
+    for (const entry of mutation.upsert ?? []) merged.set(entry.operation.operationId, structuredClone(entry))
+    if (merged.size === 0) this.values.delete(key)
+    else this.values.set(key, [...merged.values()])
   }
 }
 
@@ -214,5 +223,25 @@ describe('collaboration client recovery', () => {
     expect(restarted.diagnostics.pendingPersistence).toBe('ready')
     expect(storage.values.size).toBe(0)
     restarted.disconnect()
+  })
+
+  it('atomically merges pending operations submitted by two tabs for the same actor', async () => {
+    const storage = new MemoryPendingStorage()
+    const createOfflineTab = (clientId: string) => new CollaborationClient<JsonObject>({
+      url: 'fake://', tenantId: 't', documentId: 'd', actorId: 'same-user', clientId, schemaVersion: '1.0',
+      socketFactory: () => { throw new Error('offline tab must not connect') }, pendingStorage: storage,
+      applyPatches: (state) => state,
+    })
+    const first = createOfflineTab('tab-a')
+    const second = createOfflineTab('tab-b')
+    await Promise.all([first.whenReady(), second.whenReady()])
+
+    void first.submit({ operationId: 'from-tab-a', operationType: 'property.set', strategyId: 'json.property-lww', strategyVersion: '1.0', payload: { path: '/title', value: 'A' } })
+    void second.submit({ operationId: 'from-tab-b', operationType: 'property.set', strategyId: 'json.property-lww', strategyVersion: '1.0', payload: { path: '/title', value: 'B' } })
+    await Promise.all([first.whenPendingPersisted(), second.whenPendingPersisted()])
+
+    expect([...storage.values.values()][0]?.map((entry) => entry.operation.operationId).sort()).toEqual(['from-tab-a', 'from-tab-b'])
+    first.disconnect()
+    second.disconnect()
   })
 })

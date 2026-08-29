@@ -96,6 +96,27 @@ export class RedisOwnershipCoordinator implements OwnershipCoordinator {
     }
   }
 
+  async consumeRateLimit(key: string, ratePerSecond: number, burst: number): Promise<boolean> {
+    const result = await this.client.eval(
+      `local current = redis.call('hmget', KEYS[1], 'tokens', 'updated_at')
+       local redis_time = redis.call('time')
+       local now = tonumber(redis_time[1]) * 1000 + math.floor(tonumber(redis_time[2]) / 1000)
+       local tokens = tonumber(current[1]) or tonumber(ARGV[2])
+       local updated_at = tonumber(current[2]) or now
+       tokens = math.min(tonumber(ARGV[2]), tokens + ((now - updated_at) / 1000) * tonumber(ARGV[1]))
+       local allowed = 0
+       if tokens >= 1 then tokens = tokens - 1; allowed = 1 end
+       redis.call('hset', KEYS[1], 'tokens', tokens, 'updated_at', now)
+       redis.call('pexpire', KEYS[1], tonumber(ARGV[3]))
+       return allowed`,
+      {
+        keys: [`collabhub:rate:${key}`],
+        arguments: [String(ratePerSecond), String(burst), String(Math.ceil((burst / ratePerSecond) * 2000 + 60_000))],
+      },
+    )
+    return Number(result) === 1
+  }
+
   async ping(): Promise<void> { await this.client.ping() }
 
   async close(): Promise<void> {

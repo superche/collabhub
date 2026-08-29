@@ -6,6 +6,10 @@ import type {
   CommitOutcome,
   CommitRequest,
   CommitStore,
+  CompactionResult,
+  DocumentMigrationOutcome,
+  DocumentMigrationRequest,
+  DurableRetentionPolicy,
   InternalRoomEvent,
   LoadedRoom,
   PersistedOperation,
@@ -14,7 +18,12 @@ import type {
 } from './types.js'
 import { stableStringify } from './identity.js'
 
-const MIGRATION = `
+interface DatabaseMigration {
+  version: number
+  sql: string
+}
+
+const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [{ version: 1, sql: `
 CREATE TABLE IF NOT EXISTS collabhub_document_head (
   tenant_id text NOT NULL,
   document_id text NOT NULL,
@@ -75,7 +84,28 @@ CREATE TABLE IF NOT EXISTS collabhub_outbox (
 
 CREATE INDEX IF NOT EXISTS collabhub_outbox_pending_idx
   ON collabhub_outbox (id) WHERE delivered_at IS NULL;
-`
+` }, { version: 2, sql: `
+CREATE TABLE IF NOT EXISTS collabhub_schema_history (
+  tenant_id text NOT NULL,
+  document_id text NOT NULL,
+  canonical_version bigint NOT NULL,
+  from_schema_version text NOT NULL,
+  to_schema_version text NOT NULL,
+  applied_migrations jsonb NOT NULL,
+  state_checksum text NOT NULL,
+  migrated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (tenant_id, document_id, canonical_version, to_schema_version)
+);
+
+CREATE INDEX IF NOT EXISTS collabhub_wal_committed_at_idx
+  ON collabhub_operation_wal (committed_at);
+CREATE INDEX IF NOT EXISTS collabhub_receipt_created_at_idx
+  ON collabhub_operation_receipt (created_at);
+CREATE INDEX IF NOT EXISTS collabhub_outbox_delivered_at_idx
+  ON collabhub_outbox (delivered_at) WHERE delivered_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS collabhub_snapshot_created_at_idx
+  ON collabhub_snapshot (created_at);
+` }]
 
 function asNumber(value: string | number): number { return Number(value) }
 
@@ -92,7 +122,26 @@ export class PostgresCommitStore<TState extends JsonObject = JsonObject> impleme
     try {
       await client.query('BEGIN')
       await client.query(`SELECT pg_advisory_xact_lock(hashtext('collabhub_schema_migration'))`)
-      await client.query(MIGRATION)
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS collabhub_database_migration (
+          version integer PRIMARY KEY,
+          checksum text NOT NULL,
+          applied_at timestamptz NOT NULL DEFAULT now()
+        )
+      `)
+      const applied = await client.query(`SELECT version, checksum FROM collabhub_database_migration ORDER BY version`)
+      const appliedByVersion = new Map<number, string>(applied.rows.map((row) => [asNumber(row.version), String(row.checksum)]))
+      for (const migration of DATABASE_MIGRATIONS) {
+        const checksum = createHash('sha256').update(migration.sql).digest('hex')
+        const priorChecksum = appliedByVersion.get(migration.version)
+        if (priorChecksum && priorChecksum !== checksum) throw new Error(`database migration ${migration.version} checksum mismatch`)
+        if (priorChecksum) continue
+        await client.query(migration.sql)
+        await client.query(
+          `INSERT INTO collabhub_database_migration (version, checksum) VALUES ($1, $2)`,
+          [migration.version, checksum],
+        )
+      }
       await client.query('COMMIT')
     } catch (error) {
       await client.query('ROLLBACK')
@@ -276,6 +325,51 @@ export class PostgresCommitStore<TState extends JsonObject = JsonObject> impleme
     } finally { client.release() }
   }
 
+  async migrateDocument(request: DocumentMigrationRequest<TState>): Promise<DocumentMigrationOutcome> {
+    const client = await this.pool.connect()
+    try {
+      await client.query('BEGIN')
+      const head = await this.lockHead(client, request)
+      const canonicalVersion = asNumber(head.canonical_version)
+      const schemaVersion = String(head.schema_version)
+      if (asNumber(head.owner_epoch) !== request.ownerEpoch || head.owner_instance_id !== request.ownerInstanceId) {
+        await client.query('ROLLBACK')
+        return { kind: 'fenced' }
+      }
+      if (canonicalVersion !== request.version || schemaVersion !== request.fromSchemaVersion) {
+        await client.query('ROLLBACK')
+        if (schemaVersion === request.toSchemaVersion && canonicalVersion === request.version) return { kind: 'alreadyCurrent' }
+        return { kind: 'versionConflict', canonicalVersion, schemaVersion }
+      }
+      const checksum = this.checksum(request.state)
+      await client.query(
+        `INSERT INTO collabhub_snapshot (tenant_id, document_id, version, schema_version, state, checksum)
+         VALUES ($1, $2, $3, $4, $5::jsonb, $6)
+         ON CONFLICT (tenant_id, document_id, version) DO UPDATE
+         SET schema_version = EXCLUDED.schema_version, state = EXCLUDED.state,
+             checksum = EXCLUDED.checksum, created_at = now()`,
+        [request.tenantId, request.documentId, request.version, request.toSchemaVersion, JSON.stringify(request.state), checksum],
+      )
+      await client.query(
+        `INSERT INTO collabhub_schema_history
+           (tenant_id, document_id, canonical_version, from_schema_version, to_schema_version, applied_migrations, state_checksum)
+         VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7)`,
+        [request.tenantId, request.documentId, request.version, request.fromSchemaVersion, request.toSchemaVersion, JSON.stringify(request.applied), checksum],
+      )
+      await client.query(
+        `UPDATE collabhub_document_head
+         SET schema_version = $4, snapshot_version = $3, updated_at = now()
+         WHERE tenant_id = $1 AND document_id = $2`,
+        [request.tenantId, request.documentId, request.version, request.toSchemaVersion],
+      )
+      await client.query('COMMIT')
+      return { kind: 'migrated' }
+    } catch (error) {
+      await client.query('ROLLBACK')
+      throw error
+    } finally { client.release() }
+  }
+
   async saveSnapshot(room: RoomIdentity, version: number, schemaVersion: string, state: TState): Promise<void> {
     const client = await this.pool.connect()
     try {
@@ -288,8 +382,8 @@ export class PostgresCommitStore<TState extends JsonObject = JsonObject> impleme
       await client.query(
         `UPDATE collabhub_document_head SET snapshot_version = $3
          WHERE tenant_id = $1 AND document_id = $2
-           AND canonical_version >= $3 AND snapshot_version < $3`,
-        [room.tenantId, room.documentId, version],
+           AND canonical_version >= $3 AND snapshot_version < $3 AND schema_version = $4`,
+        [room.tenantId, room.documentId, version, schemaVersion],
       )
       await client.query('COMMIT')
     } catch (error) {
@@ -348,12 +442,76 @@ export class PostgresCommitStore<TState extends JsonObject = JsonObject> impleme
     await this.pool.query(`UPDATE collabhub_outbox SET delivered_at = now(), locked_by = NULL, locked_until = NULL WHERE id = $1`, [id])
   }
 
+  async compact(policy: DurableRetentionPolicy): Promise<CompactionResult> {
+    const client = await this.pool.connect()
+    let acquired = false
+    try {
+      const lock = await client.query(`SELECT pg_try_advisory_lock(hashtext('collabhub_durable_compaction')) AS acquired`)
+      acquired = Boolean(lock.rows[0]?.acquired)
+      if (!acquired) return { acquired: false, walDeleted: 0, receiptsDeleted: 0, outboxDeleted: 0, snapshotsDeleted: 0 }
+      await client.query('BEGIN')
+      const wal = await client.query(
+        `DELETE FROM collabhub_operation_wal wal
+         USING collabhub_document_head head
+         WHERE wal.tenant_id = head.tenant_id AND wal.document_id = head.document_id
+           AND wal.version <= LEAST(head.snapshot_version, GREATEST(head.canonical_version - $1, 0))`,
+        [policy.walVersions],
+      )
+      const receipts = await client.query(
+        `DELETE FROM collabhub_operation_receipt
+         WHERE created_at < now() - ($1::bigint * interval '1 millisecond')`,
+        [policy.receiptTtlMs],
+      )
+      const outbox = await client.query(
+        `DELETE FROM collabhub_outbox
+         WHERE delivered_at IS NOT NULL
+           AND delivered_at < now() - ($1::bigint * interval '1 millisecond')`,
+        [policy.deliveredOutboxTtlMs],
+      )
+      const snapshots = await client.query(
+        `WITH ranked AS (
+           SELECT snapshot.tenant_id, snapshot.document_id, snapshot.version,
+                  row_number() OVER (
+                    PARTITION BY snapshot.tenant_id, snapshot.document_id
+                    ORDER BY snapshot.version DESC
+                  ) AS rank,
+                  head.snapshot_version
+           FROM collabhub_snapshot snapshot
+           JOIN collabhub_document_head head
+             ON head.tenant_id = snapshot.tenant_id AND head.document_id = snapshot.document_id
+         )
+         DELETE FROM collabhub_snapshot snapshot
+         USING ranked
+         WHERE snapshot.tenant_id = ranked.tenant_id
+           AND snapshot.document_id = ranked.document_id
+           AND snapshot.version = ranked.version
+           AND ranked.rank > $1
+           AND ranked.version <> ranked.snapshot_version`,
+        [policy.snapshotsPerDocument],
+      )
+      await client.query('COMMIT')
+      return {
+        acquired: true,
+        walDeleted: wal.rowCount ?? 0,
+        receiptsDeleted: receipts.rowCount ?? 0,
+        outboxDeleted: outbox.rowCount ?? 0,
+        snapshotsDeleted: snapshots.rowCount ?? 0,
+      }
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => undefined)
+      throw error
+    } finally {
+      if (acquired) await client.query(`SELECT pg_advisory_unlock(hashtext('collabhub_durable_compaction'))`).catch(() => undefined)
+      client.release()
+    }
+  }
+
   async ping(): Promise<void> { await this.pool.query('SELECT 1') }
   async close(): Promise<void> { await this.pool.end() }
 
   private async lockHead(client: PoolClient, room: RoomIdentity) {
     const result = await client.query(
-      `SELECT canonical_version, owner_epoch, owner_instance_id
+      `SELECT canonical_version, owner_epoch, owner_instance_id, schema_version
        FROM collabhub_document_head WHERE tenant_id = $1 AND document_id = $2 FOR UPDATE`,
       [room.tenantId, room.documentId],
     )
