@@ -5,7 +5,7 @@
 源码与 10 个公开包均为 `1.0.0`。稳定版 `v1.0.0` 已于 2026-08-29 从 `main@77ef617f154d1c739a419c7bc1f1d109c5be9b92` 发布；发布前该精确提交通过了 CI 与以下远程验收。
 
 - [main CI 33249380314](https://github.com/superche/collabhub/actions/runs/33249380314) 的 6 个 job 全部通过，覆盖完整质量门禁、本地集群、三类容器构建和部署配置。
-- [稳定发布 workflow 33249539483](https://github.com/superche/collabhub/actions/runs/33249539483) 重跑发布门禁，通过 npm Trusted Publishing + provenance 发布 10 个包，构建两套 amd64/arm64 GHCR 镜像与 attestations，并创建不可变的 [v1.0.0 Release](https://github.com/superche/collabhub/releases/tag/v1.0.0)。
+- [稳定发布 workflow 33249539483](https://github.com/superche/collabhub/actions/runs/33249539483) 重跑发布门禁，通过 npm Trusted Publishing + provenance 发布 10 个包，构建两套 amd64/arm64 GHCR 镜像与 attestations，并创建 [v1.0.0 Release](https://github.com/superche/collabhub/releases/tag/v1.0.0)。该历史版本发布时未开启 GitHub Release 不可变保护；后来启用的仓库设置仅保护未来发布。
 - 发布后从 npm 官方源创建全新 Vite React 项目，安装 `@collabhub/create-react@1.0.0`；init、doctor、依赖安装、TypeScript 与 Vite production build 全部通过，npm 报告 0 个漏洞。
 - Render 手动部署精确源码 `77ef617`，`/healthz` 返回 `1.0.0`。部署后线上冒烟覆盖 Alice/Bob 收敛、单次拖拽提交、离线重放到 canonical v4、非法 Origin 拒绝、中英双语官网、蓝色主题、favicon 与 GitHub 链接，全部通过。
 
@@ -39,7 +39,7 @@
 - `pnpm smoke:todo-cluster`：2 Gateway + 2 Worker 独立进程，两个浏览器跨 Gateway；writer 故障切换、离线重放、快照恢复、PostgreSQL WAL/receipt/outbox 证据通过，最终 canonical v5。
 - standalone 与 distributed 两张 `0.2.0` Docker 镜像在本机真实构建通过。
 
-发布 workflow 会重复这些 gate，随后用 npm Trusted Publishing 发布 provenance 包、构建 amd64/arm64 GHCR 镜像并创建不可变 `v0.2.0` prerelease。Render 线上证据只在新部署完成后记录。
+当时的发布 workflow 重复了这些 gate，随后用 npm Trusted Publishing 发布 provenance 包、构建 amd64/arm64 GHCR 镜像并创建 `v0.2.0` prerelease。Render 线上证据只在新部署完成后记录。
 
 ## v0.1 最终 gate
 

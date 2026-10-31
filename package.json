@@ -38,7 +38,7 @@
     "smoke:existing-react": "pnpm build && node scripts/smoke-existing-react-init.mjs",
     "release:check": "pnpm check && pnpm build:distributed && node scripts/check-package-artifacts.mjs && node scripts/check-public-api.mjs",
     "pack:packages": "pnpm build && pnpm build:distributed && node scripts/check-package-artifacts.mjs --output artifacts/packages",
-    "publish:dry-run": "pnpm pack:packages && node scripts/publish-packages.mjs --input artifacts/packages --expected-version 1.0.0 --dry-run"
+    "publish:dry-run": "pnpm pack:packages && for archive in artifacts/packages/*.tgz; do npm publish \"$archive\" --registry=https://registry.npmjs.org --access=public --dry-run || exit; done"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",
