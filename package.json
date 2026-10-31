@@ -41,7 +41,7 @@
     "publish:dry-run": "pnpm pack:packages && for archive in artifacts/packages/*.tgz; do npm publish \"$archive\" --registry=https://registry.npmjs.org --access=public --dry-run || exit; done"
   },
   "devDependencies": {
-    "@playwright/test": "^1.55.0",
+    "@playwright/test": "^1.64.1",
     "@types/node": "^24.3.0",
     "concurrently": "^9.2.1",
     "tsx": "^4.20.5",
