@@ -6,7 +6,6 @@ on:
       expected_version:
         description: Version already committed to every public package
         required: true
-        default: 1.0.0
       confirmation:
         description: Type PUBLISH_STABLE_RELEASE
         required: true
@@ -16,12 +15,18 @@ permissions:
   packages: write
   id-token: write
 
+concurrency:
+  group: stable-release
+  cancel-in-progress: false
+
 jobs:
   publish:
-    if: inputs.confirmation == 'PUBLISH_STABLE_RELEASE'
+    if: github.ref == 'refs/heads/main' && inputs.confirmation == 'PUBLISH_STABLE_RELEASE'
     environment: release-approval
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      VERSION: ${{ inputs.expected_version }}
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -36,7 +41,7 @@ jobs:
         run: npm install --global npm@11.16.0
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
-      - run: node scripts/check-release-version.mjs "${{ inputs.expected_version }}"
+      - run: node scripts/check-release-version.mjs "$VERSION"
       - run: pnpm release:check
       - run: pnpm smoke:fresh-react
       - run: pnpm smoke:existing-react
@@ -44,8 +49,19 @@ jobs:
       - run: pnpm smoke:demo
       - run: pnpm smoke:postgres-hardening
       - run: pnpm pack:packages
+      - name: Create release draft for this commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${VERSION}" artifacts/packages/*.tgz \
+            --draft --target "$GITHUB_SHA" --title "CollabHub ${VERSION}" \
+            --notes-file "docs/release-notes-${VERSION}.md"
       - name: Publish npm packages with provenance
-        run: node scripts/publish-packages.mjs --input artifacts/packages --expected-version "${{ inputs.expected_version }}"
+        run: |
+          for archive in artifacts/packages/*.tgz; do
+            npm publish "$archive" --registry=https://registry.npmjs.org --access=public --provenance
+          done
+      - uses: docker/setup-qemu-action@v4
       - uses: docker/setup-buildx-action@v4
       - uses: docker/login-action@v4
         with:
@@ -76,15 +92,7 @@ jobs:
             ghcr.io/superche/collabhub-standalone:latest
           provenance: mode=max
           sbom: true
-      - name: Create immutable release
+      - name: Publish release and lock its tag and assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ inputs.expected_version }}
-        run: |
-          git config user.name "superche"
-          git config user.email "35420957+superche@users.noreply.github.com"
-          git tag -a "v${VERSION}" -m "CollabHub ${VERSION}"
-          git push origin "v${VERSION}"
-          gh release create "v${VERSION}" artifacts/packages/*.tgz \
-            --verify-tag --title "CollabHub ${VERSION}" \
-            --notes-file docs/release-notes-${VERSION}.md
+        run: gh release edit "v${VERSION}" --draft=false

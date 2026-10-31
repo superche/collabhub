@@ -5,7 +5,7 @@
 The source and all ten public packages report `1.0.0`. Stable `v1.0.0` was published from `main@77ef617f154d1c739a419c7bc1f1d109c5be9b92` on 2026-08-29 after the exact release commit passed CI and the remote checks below.
 
 - [Main CI run 33249380314](https://github.com/superche/collabhub/actions/runs/33249380314) passed all six jobs, including the full quality, local-cluster, container, and deploy-configuration gates.
-- [Stable release run 33249539483](https://github.com/superche/collabhub/actions/runs/33249539483) repeated the release gates, published all ten packages through npm Trusted Publishing with provenance, built both multi-architecture GHCR images with attestations, and created the immutable [v1.0.0 release](https://github.com/superche/collabhub/releases/tag/v1.0.0).
+- [Stable release run 33249539483](https://github.com/superche/collabhub/actions/runs/33249539483) repeated the release gates, published all ten packages through npm Trusted Publishing with provenance, built both multi-architecture GHCR images with attestations, and created the [v1.0.0 release](https://github.com/superche/collabhub/releases/tag/v1.0.0). GitHub release immutability was not enabled for this historical release; the later repository setting protects future releases only.
 - A post-release clean Vite React project installed `@collabhub/create-react@1.0.0` from the public npm registry; init, doctor, dependency install, TypeScript, and Vite production build all passed with zero reported vulnerabilities.
 - Render manually deployed exact source `77ef617`; `/healthz` reports `1.0.0`. The post-deploy live smoke passed Alice/Bob convergence, one coalesced drag, offline replay to canonical v4, untrusted-Origin rejection, bilingual landing content, blue theme, favicon, and GitHub link.
 
@@ -36,7 +36,7 @@ CollabHub `0.2.0` is a technical preview, not a production SLO. The 2026-08-28 l
 - Local cluster: two Gateways, two Workers, separate Alice/Bob browser processes, writer failover, offline replay, snapshot recovery, WAL/receipt/outbox evidence, final canonical v5.
 - Local Docker builds passed for `standalone:0.2.0` and PostgreSQL/Redis `0.2.0` images.
 
-The release workflow repeats these gates, publishes npm packages through Trusted Publishing with provenance, builds amd64/arm64 GHCR images with attestations, and creates the immutable `v0.2.0` prerelease. Public Render evidence is recorded only after that deployment finishes.
+The release workflow repeated these gates, published npm packages through Trusted Publishing with provenance, built amd64/arm64 GHCR images with attestations, and created the `v0.2.0` prerelease. Public Render evidence is recorded only after that deployment finishes.
 
 ## Historical v0.1.3 release
 
