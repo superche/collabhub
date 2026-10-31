@@ -40,7 +40,7 @@ The workflow builds and inspects the tarballs, creates a GitHub draft release ta
 Version protection uses existing platform features:
 
 - npm rejects attempts to overwrite a package name and version. No custom skip-existing or integrity-comparison publisher is used.
-- `gh release create` rejects an existing release before npm or image publication begins. GitHub release immutability locks the tag and assets when the draft is published. This repository setting applies to future releases; it does not retroactively lock the existing `v1.0.0` release.
+- Native `git push` creates the version tag at the exact workflow commit and refuses to replace an existing tag. `gh release create --verify-tag` rejects an existing release before npm or image publication begins. GitHub release immutability locks the tag and assets when the draft is published. This repository setting applies to future releases; it does not retroactively lock the existing `v1.0.0` release.
 - GHCR tags such as `1` and `latest` intentionally move. Pin an image's `sha256` digest when a deployment needs fixed content; GitHub Release immutability does not lock container tags.
 
 References: [npm publish](https://docs.npmjs.com/cli/commands/npm-publish/), [GitHub release immutability](https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/establish-provenance-and-integrity/prevent-release-changes), and [GHCR digests](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry).

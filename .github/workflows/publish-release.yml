@@ -53,8 +53,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          git push origin "${GITHUB_SHA}:refs/tags/v${VERSION}"
           gh release create "v${VERSION}" artifacts/packages/*.tgz \
-            --draft --target "$GITHUB_SHA" --title "CollabHub ${VERSION}" \
+            --draft --verify-tag --title "CollabHub ${VERSION}" \
             --notes-file "docs/release-notes-${VERSION}.md"
       - name: Publish npm packages with provenance
         run: |
